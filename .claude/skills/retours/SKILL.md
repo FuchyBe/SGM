@@ -6,7 +6,7 @@ description: Trie les signalements des utilisateurs (Issues de FuchyBe/SGM + ret
 # Tri des retours SGM
 
 1. **Collecte** —
-   - `gh issue list -R FuchyBe/SGM --state all --limit 50 --json number,title,state,updatedAt,labels,comments` ;
+   - `gh api "repos/FuchyBe/SGM/issues?state=all&per_page=50&sort=updated" --jq '.[] | select(.pull_request|not) | {number,title,state,updated_at,comments}'` ;
    - ajoute la section « Reçus hors GitHub » de `docs/RETOURS.md`.
    Ne garde que ce qui est nouveau ou modifié depuis « Dernier rapport ». Ignore les PR externes (pas des signalements).
 2. **Rien de neuf** — Arrête-toi : « Aucun nouveau retour SGM. » (pas de branche, pas de PR).
