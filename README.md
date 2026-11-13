@@ -153,6 +153,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Category filter: with statics, GSX profile in scenery, installed manually, no GSX profile.
 - Install GSX profiles from downloaded archives: drag & drop, Install button, Downloads folder detection at launch (.zip; .7z/.rar with 7-Zip).
 - Aircraft and liveries are skipped during the scan (faster).
+- Statics safety: a statics file with a different name that matches neither on/off variant is never overwritten (shown as "check manually").
 - Help › Report a problem / Suggest an idea (pre-filled GitHub issue).
 
 **beta v0.5**

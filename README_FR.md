@@ -153,6 +153,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Filtre par catégorie : avec statics, profil GSX dans la scène, installé à la main, sans profil GSX.
 - Installation de profils GSX depuis une archive téléchargée : glisser-déposer, bouton Installer, détection dans Téléchargements au lancement (.zip ; .7z/.rar avec 7-Zip).
 - Les avions et livrées sont ignorés pendant l'analyse (plus rapide).
+- Sécurité des statics : un fichier statics au nom différent qui ne correspond à aucune variante on/off n'est jamais écrasé (affiché « à vérifier »).
 - Aide › Signaler un problème / Proposer une idée (issue GitHub préremplie).
 
 **beta v0.5**

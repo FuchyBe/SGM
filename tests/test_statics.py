@@ -50,6 +50,32 @@ class TestStatics(SandboxTest):
         self.assertEqual(g.state, m.UNKNOWN)
         self.assertEqual(g.note, "note_unknown_active")
 
+    def test_unrelated_statics_file_is_never_overwritten(self):
+        """Paire on/off sans statics.bgl + autre fichier statics au contenu différent : ambigu, rien ne bouge."""
+        root = make_pkg(self.community, "test-ebci", "Charleroi EBCI", [
+            ("s/statics_on.bgl", b"N" * 50, False), ("s/statics_off.bgl", b"F" * 20, False),
+            ("s/EBCI_statics_vehicles.bgl", b"V" * 30, True)])
+        sc = self.scan()["test-ebci"]
+        self.assertEqual(sc.state, m.CONFLICT)
+        self.assertFalse(sc.toggleable)
+        self.assertEqual(sc.groups[0].note, "note_ambiguous_active")
+        m.set_scene_state(sc, m.OFF)
+        m.set_scene_state(sc, m.ON)
+        self.assertEqual((root / "s/EBCI_statics_vehicles.bgl").read_bytes(), b"V" * 30)
+        self.assertEqual(sorted(p.name for p in (root / "s").iterdir()),
+                         ["EBCI_statics_vehicles.bgl", "statics_off.bgl", "statics_on.bgl"])
+
+    def test_variant_base_with_other_name_is_recognised(self):
+        """statics_on/off + EBCI_statics.bgl identique à une variante : bascule normale."""
+        root = make_pkg(self.community, "test-ebci2", "Charleroi EBCI", [
+            ("s/statics_on.bgl", b"N" * 50, False), ("s/statics_off.bgl", b"F" * 20, False),
+            ("s/EBCI_statics.bgl", b"F" * 20, True)])
+        sc = self.scan()["test-ebci2"]
+        self.assertEqual(sc.state, m.OFF)
+        m.set_scene_state(sc, m.ON)
+        self.assertEqual((root / "s/EBCI_statics.bgl").read_bytes(), b"N" * 50)
+        self.assertEqual(manifest_size(root), 50)
+
     def test_conflict_is_never_toggled(self):
         root = make_pkg(self.community, "test-lszh", "Zurich LSZH", [
             ("s/LSZH_statics.bgl", b"S" * 10, True), ("s/LSZH_statics.bgl.off", b"T" * 10, False)])

@@ -458,7 +458,17 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
         if target is None and len(pairs) == 1:
             cands = [k for k, p in plain.items() if ".bgl" in p["exts"]]
             if len(cands) == 1:
-                target = cands[0]
+                cand = directory / plain[cands[0]]["exts"][".bgl"]
+                if same_content(cand, on_f) or same_content(cand, off_f):
+                    target = cands[0]
+                else:
+                    # Autre fichier statics au nom différent, contenu inconnu : peut-être un autre
+                    # jeu de statiques (véhicules…). Cas ambigu : on ne touche à rien.
+                    used.add(cands[0])
+                    used.add(key)
+                    groups.append(StaticsGroup("conflict", directory, cand, CONFLICT, on_f, off_f,
+                                               "note_ambiguous_active"))
+                    continue
         if target:
             used.add(target)
             active = directory / plain[target]["exts"][".bgl"]
