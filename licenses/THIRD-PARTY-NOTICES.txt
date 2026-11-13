@@ -1,0 +1,55 @@
+SGM — Statics & GSX Manager
+THIRD-PARTY NOTICES
+
+SGM is built with the following third-party components. Each one remains
+under its own licence. The exact versions included in your copy of SGM are
+shown in the application: Help > Licences.
+
+------------------------------------------------------------------------------
+1. Qt for Python (PySide6 and Shiboken6) and the Qt libraries
+------------------------------------------------------------------------------
+Copyright (C) The Qt Company Ltd. and other contributors.
+Licence: GNU Lesser General Public License version 3 (LGPL-3.0-only).
+         Full text: LGPL-3.0-only.txt. The LGPL refers to the GNU General
+         Public License version 3, provided in GPL-3.0-only.txt.
+
+SGM uses these libraries unmodified, as separate, dynamically loaded files.
+SGM is distributed as a folder, not as a single executable, so that the
+libraries can be replaced:
+  - the PySide6, Shiboken6 and Qt files are located in the "_internal"
+    sub-folder, next to SGM.exe (folders "_internal\PySide6" and
+    "_internal\shiboken6");
+  - you may replace them with a compatible version, including one you have
+    modified and built yourself, and SGM will use it.
+
+Source code of these libraries (corresponding source):
+  - Qt for Python (PySide6 / Shiboken6):
+      https://code.qt.io/cgit/pyside/pyside-setup.git/
+      https://download.qt.io/official_releases/QtForPython/
+  - Qt:
+      https://download.qt.io/official_releases/qt/
+Use the version shown in Help > Licences. On request, the author will
+provide a copy of the corresponding source code of these libraries for the
+version distributed with SGM, for at least three years after distribution
+of that version.
+
+------------------------------------------------------------------------------
+2. Python
+------------------------------------------------------------------------------
+SGM includes the Python runtime.
+Copyright (c) 2001 Python Software Foundation. All rights reserved.
+Licence: Python Software Foundation License (PSF-2.0) and the other licences
+of the Python distribution. Full text: Python-PSF-LICENSE.txt.
+https://www.python.org/
+
+------------------------------------------------------------------------------
+3. PyInstaller (bootloader)
+------------------------------------------------------------------------------
+SGM.exe is produced with PyInstaller. The PyInstaller bootloader is licensed
+under the GNU General Public License version 2 with a special exception that
+allows it to be distributed with programs under any licence, without
+additional obligations.
+https://pyinstaller.org/
+
+------------------------------------------------------------------------------
+SGM itself is distributed under its own freeware licence: LICENSE-SGM.txt.

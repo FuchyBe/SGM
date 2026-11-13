@@ -1,0 +1,59 @@
+name: Tests et SGM.exe
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bibliothèques Qt
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+      - run: pip install pyside6
+      - run: bash tests/run_tests.sh
+
+  windows:
+    needs: tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyside6 pyinstaller
+      - name: Compilation (dossier, conforme LGPL)
+        run: python -m PyInstaller --noconfirm --clean --onedir --windowed --name SGM statics_manager.py
+      - name: Licences et README
+        shell: pwsh
+        run: |
+          Copy-Item -Recurse licenses dist/SGM/licenses
+          Copy-Item README.md, README_FR.md dist/SGM/
+      - id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGM-exe
+          path: dist/SGM
+          retention-days: 14
+      - name: Lien dans la PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        env:
+          URL: ${{ steps.upload.outputs.artifact-url }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `**SGM.exe à tester** : ${process.env.URL}\n\nDécompresse le dossier, lance \`SGM.exe\`. (Commit ${context.sha.slice(0,7)})`
+            });

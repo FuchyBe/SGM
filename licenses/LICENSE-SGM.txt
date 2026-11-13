@@ -1,0 +1,45 @@
+SGM — Statics & GSX Manager
+Copyright (c) 2026 Fabian Fuchs. All rights reserved.
+
+FREEWARE LICENCE
+
+SGM is free software (freeware). It is provided free of charge.
+
+You MAY:
+  - use SGM for any personal purpose, free of charge;
+  - copy and redistribute the original, unmodified SGM package free of charge,
+    provided that this licence file, the disclaimer and the third-party
+    licence files in this folder are included.
+
+You MAY NOT:
+  - sell SGM, or include it in a paid product, bundle or service;
+  - distribute modified versions of SGM under the name "SGM" or
+    "Statics & GSX Manager";
+  - remove or alter the copyright, licence or disclaimer notices.
+
+Voluntary donations to support the project are welcome (paypal.me/Fuchy).
+A donation does not create any obligation of support, warranty or updates.
+
+THIRD-PARTY COMPONENTS
+SGM includes third-party components that remain under their own licences,
+which take precedence over this licence for those components.
+See THIRD-PARTY-NOTICES.txt in this folder.
+
+DISCLAIMER OF WARRANTY AND LIMITATION OF LIABILITY
+SGM IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE
+FOR ANY CLAIM, DAMAGES, DATA LOSS OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+SGM renames, copies and deletes files inside add-on packages and in the GSX
+profiles folder. Backups are made before every change, but you remain
+responsible for keeping your own backups.
+
+TRADEMARKS
+SGM is an independent project, not affiliated with, endorsed or supported by
+Microsoft, Asobo Studio, FSDreamTeam / Virtuali or any scenery developer.
+Microsoft Flight Simulator is a trademark of Microsoft Corporation.
+GSX is a product of FSDreamTeam / Virtuali. All other names and trademarks
+are the property of their respective owners.
