@@ -1499,7 +1499,15 @@ class SceneRow(QFrame):
         sp.setRetainSizeWhenHidden(True)
         self.switch.setSizePolicy(sp)
         self.switch.clicked.connect(lambda c: self.toggle_requested.emit(self.scene, c))
+        # Cas ambigu : pas de bascule automatique, on propose de le faire à la main
+        self.st_folder_btn = QPushButton()
+        self.st_folder_btn.setObjectName("folderBtn")
+        self.st_folder_btn.setIcon(folder_icon())
+        self.st_folder_btn.setIconSize(QSize(16, 16))
+        self.st_folder_btn.setCursor(Qt.PointingHandCursor)
+        self.st_folder_btn.clicked.connect(self.open_statics_folder)
         line.addWidget(self.state_lbl, 1)
+        line.addWidget(self.st_folder_btn)
         line.addWidget(self.switch)
         self.st_note = ElidedLabel()
         self.st_note.setObjectName("note")
@@ -1577,6 +1585,11 @@ class SceneRow(QFrame):
         tip_html = f"<b>{tr('statics_tip')}</b><br>" + ("<br>".join(tip) if tip else tr("no_file"))
         for w in (self.state_lbl, self.st_note, self.switch):
             w.setToolTip(tip_html)
+        manual = self.manual_groups()
+        self.st_folder_btn.setVisible(bool(manual))
+        if manual:
+            self.st_folder_btn.setToolTip(f"<b>{tr('tip_manual')}</b><br><span style='color:{C['muted']}'>"
+                                          f"{os.path.relpath(manual[0].directory, s.root)}</span>")
 
     def _clear_gsx(self):
         for b in self.gsx_btns:
@@ -1715,6 +1728,18 @@ class SceneRow(QFrame):
             self._note(f"{tr('var_note_check')}  ·  {reason}", is_warn=True, tip=f"{reason}<br><br>{tip}")
         else:
             self._note(tr("var_note_none", n=n), tip=tip)
+
+    def manual_groups(self) -> list:
+        """Fichiers statics que SGM ne bascule pas lui-même (cas ambigus)."""
+        return [g for g in self.scene.groups if not g.toggleable or g.note == "note_unknown_active"]
+
+    def open_statics_folder(self):
+        groups = self.manual_groups()
+        d = groups[0].directory if groups else self.scene.root
+        if not d.is_dir():
+            warn(self, tr("folder_missing_msg", path=d))
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(d)))
 
     def open_folder(self):
         root = self.scene.root
