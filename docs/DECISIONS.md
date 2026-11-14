@@ -5,11 +5,14 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
 ## Produit
 
 - **Nom** : SGM — Statics & GSX Manager (anciennement Statics Manager).
-- **Auteur** : Fabian Fuchs. Version actuelle : beta v0.6.
+- **Auteur** : Fabian Fuchs. Version actuelle : beta v0.7 (demandée par Fabian le 2026-11-14).
 - **Simulateurs** : MSFS 2024 par défaut, mode MSFS 2020 en option, mémoire séparée par simulateur.
 - **Portable** : aucune installation, données dans `SGM_data` à côté de `SGM.exe`.
 - **Interface** : sombre, sobre et élégante. 12 langues, anglais par défaut, codes langue à deux lettres.
-- **Statics** : deux méthodes (renommage `.bgl`↔`.bgl.off`, variantes on/off copiées sur `statics.bgl`).
+- **Statics** : méthodes reconnues d'après la base des cas réels (`docs/analyses/BASE.md`) : renommage (`.bgl.off`,
+  `.off`, `.disabled`, convention de l'éditeur conservée), variantes copiées sur le fichier actif, échange `.nostatic`,
+  paires avec/sans statics. Un cas peu clair n'est jamais basculé : « À vérifier » + icône dossier pour le faire à la main.
+- **Signalement de bug** : SGM propose de créer le rapport d'analyse des statics à joindre.
 - **GSX** : plusieurs versions (FULL/LITE…) → une seule active, choix mémorisé ; vert = active, rouge = non
   active, orange = à vérifier.
 - **Profils installés à la main** reconnus par le code OACI ; bouton de recherche flightsim.to (« OACI GSX »).

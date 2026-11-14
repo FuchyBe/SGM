@@ -60,6 +60,10 @@ pkg("demo-ebci-charleroi", "Charleroi Brussels South EBCI", "Demo Sim", [
     ("scenery/EBCI_statics_vehicles.bgl", b"V" * 9, True)])
 pkg("demo-egll-heathrow", "London Heathrow EGLL", "Demo Works", [
     ("scenery/EGLL_statics.bgl.off", b"S" * 9, False), ("GSX Profile/egll-demo.ini", INI, False)])
+pkg("demo-kdfw-dallas", "Dallas Fort Worth KDFW", "Demo Builds", [
+    ("Scenery/kdfw-scene/kdfw-scene-statics.off", b"S" * 9, False), ("Scenery/kdfw-scene/kdfw-scene-airport.bgl", b"A" * 99, True)])
+pkg("demo-lyni-nis", "Nis Constantine LYNI", "Demo Studio", [
+    ("scenery/world/scenery/lyni_place.bgl", b"P" * 20, True), ("scenery/world/scenery/lyni_place.bgl.nostatic", b"N" * 15, False)])
 pkg("demo-eham-schiphol", "Amsterdam Schiphol EHAM", "Demo Studio", [("scenery/EHAM.bgl", b"A" * 9, True)])
 
 from PySide6.QtCore import QTimer  # noqa: E402
