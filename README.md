@@ -45,7 +45,7 @@ On first launch SGM creates a `SGM_data` folder next to `SGM.exe`, containing it
 
 1. **Close the simulator.**
 2. Start SGM. Your Community folders are found automatically and scanned.
-3. Use the switch on each row to turn the statics ON or OFF, or filter the list and use **All ON** / **All OFF**.
+3. Use the switch on each row to turn the statics ON or OFF, or filter the list and use **All OFF** / **All ON** in the Statics column header (simple cases only: sceneries to check are never switched in bulk).
 4. In the **GSX profile** column, click **Copy to GSX** or choose the version to activate.
 5. Start the simulator.
 
@@ -93,7 +93,7 @@ The full user guide is in the app: **Help › User guide** (F1).
 ### Interface
 - 12 languages: English, Français, Deutsch, Español, Italiano, Português, Nederlands, Polski, Русский, 中文, 日本語, العربية (right-to-left).
 - Search (name, ICAO, developer), **New** button, and one **filter per column** in the column headers, with the same logic: Statics (All, ON, OFF, To check, No statics) and GSX profile (All, Installed, To install, Installed manually, No profile, To check).
-- The Statics and GSX columns follow the window size and can be resized by dragging the lines between the headers (setting remembered).
+- The Statics and GSX columns fit their text automatically (one line), leaving all the remaining space to the scenery names. Drag the lines between the headers to set them yourself (setting remembered); double-click a line to go back to the automatic fit.
 - Tooltips with the details of each file.
 - Folder icon on each row to open the scenery folder.
 - Help menu: user guide, disclaimer, licences, backups folder.
@@ -177,6 +177,8 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 **Next version (in development)**
 - **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
 - **flightsim.to button**: web search limited to flightsim.to (the site's own search ignored the ICAO from a link); the search setting is removed.
+- **All OFF / All ON** moved to the Statics column header; simple cases only, sceneries to check are left untouched.
+- **Columns fit their text automatically** (one line), scenery names get the rest; manual setting remembered, double-click to go back to automatic.
 - **Report a problem / Suggest an idea window**: your text goes straight into the GitHub page, report and log in one `.zip`, exact preview of what is shared.
 
 **beta v0.7**
