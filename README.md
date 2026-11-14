@@ -79,7 +79,8 @@ The full user guide is in the app: **Help › User guide** (F1).
 ### Installing a downloaded GSX profile
 - **Drop** the archive (`.zip`, `.7z`, `.rar`) or the `.ini`/`.py` files onto the SGM window, or click **Install GSX profile…**.
 - SGM extracts only the profile files (`.ini` and matching `.py`), asks which version to install if there are several, shows the matching scenery and asks for confirmation before copying.
-- At launch, SGM checks your **Downloads** folder for recent archives containing a GSX profile and offers to install them, once per archive. This can be turned off in **Settings**.
+- At launch, SGM checks your **download folders** for recent archives containing a GSX profile and offers to install them, once per archive (can be turned off in **Settings**). **Scan** checks them again every time, skipping archives whose profiles are already in GSX.
+- Download folders are set in **Folders**: Windows **Downloads** by default; change it or add others.
 - After installing from Downloads, SGM can remove the archive (**Settings › After installing from Downloads**: Ask / Delete automatically / Never). Archives go to the Recycle Bin; an archive with an installation problem is never deleted (alert), nor any archive outside the Downloads folder.
 - Archives are extracted safely: nothing is written outside a temporary folder, other files are ignored.
 - `.zip` works out of the box. `.7z` and `.rar` need **7-Zip** (7-zip.org).
@@ -177,6 +178,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 **Next version (in development)**
 - **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
 - **flightsim.to button**: web search limited to flightsim.to (the site's own search ignored the ICAO from a link); the search setting is removed.
+- **Scan also checks your download folders** for GSX profile archives; download folders can be changed or added in **Folders**.
 - **All OFF / All ON** moved to the Statics column header; simple cases only, sceneries to check are left untouched.
 - **Columns fit their text automatically** (one line), scenery names get the rest; manual setting remembered, double-click to go back to automatic.
 - **Report a problem / Suggest an idea window**: your text goes straight into the GitHub page, report and log in one `.zip`, exact preview of what is shared.
