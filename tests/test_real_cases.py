@@ -83,6 +83,27 @@ class TestRealCases(SandboxTest):
         self.assertFalse((root / f"{d}/lyni_place.bgl.bak").exists())
         self.cycle("orbx-airport-lyni-nis", root, orig)
 
+    # D1. UK2000 KHND : X.bgl (sans statics) + X.bgl.staticq (avec) -> règle de Fabian
+    def test_staticq_swap(self):
+        d = "scenery/UK2000Scenery/scenery"
+        root = make_pkg(self.community, "uk2000scenery-airport-khnd", "KHND", [
+            (f"{d}/khnd-airport.bgl", b"NO" * 200, True), (f"{d}/khnd-airport.bgl.staticq", b"WITH" * 100, False)])
+        orig = self.files(root)
+        g = self.scan()["uk2000scenery-airport-khnd"].groups[0]
+        self.assertEqual((g.mode, g.state), ("swap", m.OFF))           # statics désactivés de base
+        m.set_scene_state(self.scan()["uk2000scenery-airport-khnd"], m.ON)
+        self.assertEqual((root / f"{d}/khnd-airport.bgl").read_bytes(), b"WITH" * 100)
+        self.assertEqual((root / f"{d}/khnd-airport.bgl.bak").read_bytes(), b"NO" * 200)
+        self.assertEqual((root / f"{d}/khnd-airport.bgl.staticq").read_bytes(), b"WITH" * 100)
+        self.assertEqual(self.scan()["uk2000scenery-airport-khnd"].state, m.ON)
+        m.set_scene_state(self.scan()["uk2000scenery-airport-khnd"], m.OFF)
+        self.assertEqual(self.files(root), orig)
+        self.cycle("uk2000scenery-airport-khnd", root, orig)
+
+    def test_staticq_without_base_is_left_alone(self):
+        make_pkg(self.community, "uk2000-x", "XXXX", [("s/x-airport.bgl.staticq", b"W" * 9, False)])
+        self.assertEqual(self.scan()["uk2000-x"].groups[0].note, "note_swap_broken")
+
     # D2. Drzewiecki : XXXX_Static.off + XXXX_PLC.bgl.nostatic seuls (forme désactivée) -> renommer en .bgl
     def test_drzewiecki_static_and_plc(self):
         d = "scenery"

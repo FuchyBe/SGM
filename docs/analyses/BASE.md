@@ -18,7 +18,7 @@ Aucun chemin personnel ni nom d'utilisateur.
 
 ## Bilan
 
-Avant les règles du 2026-11-14, SGM gérait **15 scènes** sur ce rapport. Après : **78 scènes** (38 OFF, 27 ON,
+Avant les règles du 2026-11-14, SGM gérait **15 scènes** sur ce rapport. Après : **79 scènes** (39 OFF, 27 ON,
 1 mixte, 4 à vérifier, 8 ignorées à raison). Vérifié par simulation : OFF → ON → OFF → ON puis restauration
 d'origine redonne des fichiers identiques octet pour octet pour toutes les scènes.
 
@@ -37,7 +37,7 @@ d'origine redonne des fichiers identiques octet pour octet pour toutes les scèn
 | 8 | `oiaw-airport.bgl` + `oiaw-airport-statics.bgl.off` + `oiaw-airport-nostatics.off` | Homa Sim | 3 | Variantes : la version choisie est copiée sur `oiaw-airport.bgl` ; sans ce fichier : à vérifier | **danger** : SGM proposait ON = aéroport en double | corrigé |
 | 9 | `EBCI_NoStaticAircraft.bgl` seul | Propair Flight | 1 | À vérifier (icône dossier) | non vu | prudent |
 | 10 | `Xml_Placements_With_Static_Aircraft.bgl` absent de `layout.json` + `layout.json.static` | Orbx KBUR | 1 | À vérifier : l'éditeur échange `layout.json` | non vu | prudent |
-| 11 | `khnd-airport.bgl.staticq` | UK2000 | 1 | Ignoré (extension inconnue) | non vu | à confirmer |
+| 11 | `khnd-airport.bgl` + `khnd-airport.bgl.staticq` | UK2000 | 1 | **Règle de Fabian** : statics OFF de base ; ON = `khnd-airport.bgl` → `.bak` puis copie de `.staticq` nommée `khnd-airport.bgl` ; OFF = copie supprimée, `.bak` → `khnd-airport.bgl`. Sans `khnd-airport.bgl` : à vérifier | non vu | nouveau |
 | — | `statics-off.config.off` (Contrail), `modelib_People_static.BGL`, `modelLib-parked-*.BGL`, `*_flatten.bgl`, textures `*static*.dds/.ktx2`, modèles `.bin/.gltf` | Pyreegue, Atelic, IPDC, imaginesim, Orbx, … | 127 | Ignorés | — | juste |
 
 ## Points d'attention (à confirmer par Fabian sur les vraies scènes)
