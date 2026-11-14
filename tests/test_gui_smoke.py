@@ -44,10 +44,47 @@ class TestGui(SandboxTest):
         self.assertEqual(sorted(s.icao for s in w.scenes.values()), ["EBBR", "LEMD"])
         self.assertEqual(sorted(s.label for s in w.sources), ["Community", "Community2024"])
 
-        # catégories
-        w.cat_combo.setCurrentIndex(m.CATEGORY_KEYS.index("gsx_none"))
+        # filtres par colonne (même logique pour Statics et GSX)
+        visible = lambda: sorted(r.scene.icao for r in w.rows.values() if r.isVisible())
+        gsx = w.col_header.combos["gsx"]
+        gsx.setCurrentIndex(gsx.findData("none"))
         APP.processEvents()
-        self.assertEqual([r.scene.icao for r in w.rows.values() if r.isVisible()], ["LEMD"])
+        self.assertEqual(visible(), ["LEMD"])
+        self.assertTrue(w.reset_btn.isVisibleTo(w))
+        st = w.col_header.combos["statics"]
+        st.setCurrentIndex(st.findData("on"))
+        APP.processEvents()
+        self.assertEqual(visible(), [])                       # LEMD n'a pas de statics
+        w.reset_filters()
+        APP.processEvents()
+        self.assertEqual(visible(), ["EBBR", "LEMD"])
+        st.setCurrentIndex(st.findData("on"))
+        APP.processEvents()
+        self.assertEqual(visible(), ["EBBR"])
+        w.reset_filters()
+
+        # colonnes : ×1,5 à 1280 px, proportionnelles, minimums respectés, réglables à la poignée
+        w.resize(1280, 800)
+        APP.processEvents()
+        row = next(iter(w.rows.values()))
+        ws0, wg0 = row.st_col.width(), row.gsx_col.width()
+        self.assertGreaterEqual(ws0, 300)
+        self.assertGreaterEqual(wg0, 400)
+        w.resize(1900, 900)
+        APP.processEvents()
+        self.assertGreater(row.st_col.width(), ws0)
+        self.assertGreater(row.gsx_col.width(), wg0)
+        w.resize(820, 600)
+        APP.processEvents()
+        self.assertGreaterEqual(row.st_col.width(), m.COL_STATICS_MIN)
+        self.assertGreaterEqual(row.gsx_col.width(), m.COL_GSX_MIN)
+        w.resize(1280, 800)
+        APP.processEvents()
+        before = row.st_col.width()
+        w._drag_column(1, 40)
+        w._save_columns()
+        self.assertEqual(row.st_col.width(), before + 40)
+        self.assertEqual(m.Config().col_fs, w.config.col_fs)  # réglage mémorisé
 
         # fenêtres d'aide et dossiers
         for html in ("help_html", "disclaimer_html", "licenses_html"):

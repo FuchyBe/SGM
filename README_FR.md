@@ -89,7 +89,8 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 
 ### Interface
 - 12 langues : English, Français, Deutsch, Español, Italiano, Português, Nederlands, Polski, Русский, 中文, 日本語, العربية (de droite à gauche).
-- Recherche (nom, OACI, éditeur), filtres (ON, OFF, Nouvelles, À vérifier) et liste des **catégories** : avec statics, profil GSX dans la scène, GSX installé à la main, sans profil GSX.
+- Recherche (nom, OACI, éditeur), bouton **Nouvelles**, et un **filtre par colonne** dans les en-têtes, avec la même logique : Statics (Toutes, ON, OFF, À vérifier, Sans statics) et Profil GSX (Tous, Installé, À installer, Installé à la main, Sans profil, À vérifier).
+- Les colonnes Statics et GSX suivent la taille de la fenêtre et se règlent en tirant les traits entre les en-têtes (réglage mémorisé).
 - Infobulles détaillant chaque fichier.
 - Icône de dossier sur chaque ligne pour ouvrir le dossier de la scène.
 - Menu Aide : guide d'utilisation, avertissement, licences, dossier des sauvegardes.
@@ -170,6 +171,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - **Sécurité** : un aéroport n'est jamais chargé deux fois ; les cas peu clairs ne sont jamais basculés (« À vérifier » + icône dossier pour le faire à la main) ; un `.bgl` absent de `layout.json` n'est jamais touché ; bibliothèques de modèles et aplanissements ignorés.
 - **Correction** : SGM ≤ v0.6 pouvait désactiver un fichier d'aéroport complet nommé `…-airport-statics.bgl` (Homa Sim), laissant la scène sans aéroport. SGM affiche maintenant « Aucune version active » et n'en réactive qu'une.
 - **Restaurer l'état d'origine** : clic droit sur une scène › Restaurer l'état d'origine…, ou Aide › Tout restaurer à l'origine. SGM enregistre chaque scène et profil GSX avant sa première modification ; restauration tout ou rien.
+- **Interface** : un filtre par colonne (Statics et GSX, même logique), colonnes Statics et GSX plus larges qui suivent la taille de la fenêtre et se règlent à la main.
 - **Rapport d'analyse des statics** (menu Aide) : analyse en lecture seule, sans donnée personnelle, pour améliorer les règles. Aide › Signaler un problème propose de le créer et de le joindre.
 
 **beta v0.6**
