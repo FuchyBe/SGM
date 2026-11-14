@@ -15,6 +15,15 @@ _(vide)_
 
 Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L), risque.
 
+- **Journal local (logs)** — origine : Fabian (2026-11-14). `SGM_data\logs`, rotation, chemins réduits, joint aux
+  rapports de bug. S. Risque nul. Fiche : `docs/rd/2026-11-14-mise-a-jour-et-remontee.md` (étape 1).
+- **Fenêtre « Signaler / Suggérer » intégrée** — origine : Fabian. Formulaire, rapport + journal joints, `.zip` prêt
+  à glisser dans l'issue. M. Risque nul. Fiche, étape 2.
+- **Envoi direct des rapports sans compte GitHub** — origine : Fabian. Relais serveur. M. **Décision de Fabian**
+  (réseau, serveur, confidentialité). Fiche, étape 3.
+- **Mise à jour automatique** — origine : Fabian. GitHub Releases + SHA-256 + programme de mise à jour, `SGM_data`
+  préservé. M. **Décision de Fabian** (réseau optionnel, releases GitHub, signature). Fiche, étape 4.
+
 - **Vérifier l'adresse de recherche flightsim.to** — origine : beta v0.6. Le format
   `flightsim.to/search/?keyword=` n'a pas pu être vérifié. Bénéfice : bouton de recherche fiable. S. Risque faible.
 - **Tester .7z et .rar avec 7-Zip** — origine : beta v0.6. Extraction non testée faute de 7-Zip dans
