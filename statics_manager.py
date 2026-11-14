@@ -31,6 +31,7 @@ import sys
 import tempfile
 import time
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import quote_plus, urlencode
@@ -1194,6 +1195,207 @@ def backup_files(root: Path, files: list[Path]):
         shutil.rmtree(d, ignore_errors=True)
 
 
+# ── Annuler la dernière action ──
+# Chaque action de l'utilisateur (bascule, Tout ON/OFF, profil GSX, restauration) note l'état AVANT de chaque
+# fichier qu'elle touche (empreinte, et copie si petit), puis l'état APRÈS. Annuler n'agit que si les fichiers
+# sont encore exactement dans l'état APRÈS : sinon rien n'est modifié.
+
+UNDO_MAX = 10                       # actions gardées
+UNDO_COPY_MAX = 8 * 1024 * 1024     # au-delà, pas de copie : le contenu est retrouvé par empreinte (renommage)
+
+
+class UndoError(Exception):
+    pass
+
+
+def undo_dir() -> Path:
+    return data_dir() / "undo"
+
+
+class UndoRecorder:
+    def __init__(self, label: str):
+        self.label = label
+        self.before: dict = {}      # clé -> (chemin, empreinte ou None, copie ou None)
+        self.tmp = Path(tempfile.mkdtemp(prefix="sgm-undo-", dir=str(data_dir())))
+
+    def watch(self, *paths):
+        for p in paths:
+            if p is None:
+                continue
+            p = Path(p)
+            k = norm_key(p)
+            if k in self.before:
+                continue
+            h, copy = None, None
+            if p.is_file():
+                h = file_hash(p)
+                if p.stat().st_size <= UNDO_COPY_MAX or p.name.lower() in ("layout.json", "manifest.json"):
+                    copy = f"{len(self.before)}_{p.name}"
+                    shutil.copy2(p, self.tmp / copy)
+            self.before[k] = (p, h, copy)
+
+    def finish(self) -> bool:
+        files = []
+        for p, h, copy in self.before.values():
+            forget_hash(p)
+            after = file_hash(p) if p.is_file() else None
+            if after != h:
+                files.append({"path": str(p), "before": h, "after": after, "copy": copy})
+        if not files:
+            shutil.rmtree(self.tmp, ignore_errors=True)
+            return False
+        uid = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        d = undo_dir() / uid
+        d.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(self.tmp, d)
+        keep = {f["copy"] for f in files if f["copy"]}
+        for f in d.iterdir():                       # copies inutiles (fichiers inchangés)
+            if f.name not in keep:
+                f.unlink()
+        write_atomic(d / "undo.json", json.dumps({"label": self.label, "files": files}, indent=1,
+                                                 ensure_ascii=False))
+        stack = undo_stack() + [uid]
+        for old in stack[:-UNDO_MAX]:
+            shutil.rmtree(undo_dir() / old, ignore_errors=True)
+        _save_undo_stack(stack[-UNDO_MAX:])
+        LOG.info("Annulation possible : %s (%d fichier(s))", self.label, len(files))
+        return True
+
+    def discard(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+
+_UNDO: UndoRecorder | None = None
+
+
+def undo_watch(*paths):
+    """Appelée par le moteur juste avant de modifier des fichiers."""
+    if _UNDO is not None:
+        _UNDO.watch(*paths)
+
+
+@contextmanager
+def undoable(label: str):
+    """Regroupe tout ce qui est modifié dans le bloc en une action annulable."""
+    global _UNDO
+    if _UNDO is not None:                            # déjà dans une action : on la complète
+        yield _UNDO
+        return
+    rec = UndoRecorder(label)
+    _UNDO = rec
+    try:
+        yield rec
+    finally:
+        _UNDO = None
+        try:
+            rec.finish()
+        except OSError:
+            rec.discard()
+
+
+def undo_stack() -> list:
+    try:
+        stack = json.loads((undo_dir() / "stack.json").read_text(encoding="utf-8"))
+        return [s for s in stack if (undo_dir() / s / "undo.json").is_file()]
+    except (OSError, ValueError):
+        return []
+
+
+def _save_undo_stack(stack: list):
+    undo_dir().mkdir(parents=True, exist_ok=True)
+    write_atomic(undo_dir() / "stack.json", json.dumps(stack))
+
+
+def undo_paths() -> list:
+    """Fichiers concernés par la dernière action annulable."""
+    stack = undo_stack()
+    if not stack:
+        return []
+    try:
+        return [Path(f["path"]) for f in
+                json.loads((undo_dir() / stack[-1] / "undo.json").read_text(encoding="utf-8"))["files"]]
+    except (OSError, ValueError, KeyError):
+        return []
+
+
+def undo_label() -> str:
+    """Nom de la dernière action annulable, ou ""."""
+    stack = undo_stack()
+    if not stack:
+        return ""
+    try:
+        return json.loads((undo_dir() / stack[-1] / "undo.json").read_text(encoding="utf-8"))["label"]
+    except (OSError, ValueError, KeyError):
+        return ""
+
+
+def undo_last() -> str:
+    """Remet les fichiers de la dernière action dans leur état d'avant. Tout ou rien (UndoError)."""
+    stack = undo_stack()
+    if not stack:
+        raise UndoError(tr("undo_nothing"))
+    d = undo_dir() / stack[-1]
+    rec = json.loads((d / "undo.json").read_text(encoding="utf-8"))
+    files = rec["files"]
+    paths = {norm_key(f["path"]): Path(f["path"]) for f in files}
+    cur = {}
+    for k, p in paths.items():
+        forget_hash(p)
+        cur[k] = file_hash(p) if p.is_file() else None
+    changed = [p.name for f in files for k, p in [(norm_key(f["path"]), Path(f["path"]))] if cur[k] != f["after"]]
+    if changed:
+        raise UndoError(tr("undo_changed", files="\n".join(f"• {n}" for n in sorted(set(changed))[:15])))
+
+    # 1. Plan : chaque fichier d'avant vient de sa copie, sinon d'un fichier actuel de même empreinte (renommé)
+    copies, moves, from_target, used = [], [], [], set()
+    for f in files:
+        if f["before"] is None:
+            continue
+        dst = Path(f["path"])
+        if f["copy"] and (d / f["copy"]).is_file():
+            copies.append((d / f["copy"], dst))
+            continue
+        src = next((k for k, h in cur.items() if h == f["before"] and k not in used), None)
+        if src is not None:
+            used.add(src)
+            moves.append((paths[src], dst))
+            continue
+        # deux fichiers identiques avant (doubles) : le second est recopié depuis le premier remis en place
+        twin = next((dd for s, dd in moves if cur.get(norm_key(s)) == f["before"]), None)
+        if twin is None:
+            raise UndoError(tr("undo_changed", files=f"• {dst.name}"))
+        from_target.append((twin, dst))
+    deletes = [paths[k] for k, f in ((norm_key(f["path"]), f) for f in files)
+               if f["before"] is None and k not in used and paths[k].exists()]
+
+    # 2. Exécution (sauvegarde de l'état actuel d'abord)
+    by_root = {}
+    for p in paths.values():
+        if p.is_file():
+            by_root.setdefault(p.parent, []).append(p)
+    for parent, ps in by_root.items():
+        backup_files(parent, ps)
+    staged = []
+    for s, dd in moves:
+        tmp = s.with_name(s.name + ".sgm-undo")
+        os.rename(s, tmp)
+        staged.append((tmp, dd))
+    for q in deletes:
+        q.unlink()
+    for tmp, dd in staged:
+        os.replace(tmp, dd)
+    for s, dd in copies + from_target:
+        tmp = dd.with_name(dd.name + ".sm-tmp")
+        shutil.copy2(s, tmp)
+        os.replace(tmp, dd)
+    for p in paths.values():
+        forget_hash(p)
+    shutil.rmtree(d, ignore_errors=True)
+    _save_undo_stack(stack[:-1])
+    LOG.info("Action annulée : %s", rec["label"])
+    return rec["label"]
+
+
 # ── État d'origine (photo prise avant la toute première modification, jamais effacée) ──
 
 class RestoreError(Exception):
@@ -1339,6 +1541,7 @@ def _restore_scene_statics(root: Path):
         raise RestoreError(tr("restore_left", files="\n".join(f"• {r}" for r in sorted(set(left)))))
 
     # 2. Exécution, après sauvegarde de l'état actuel
+    undo_watch(root / "layout.json", root / "manifest.json", *cur.values(), *(root / r for r in wanted))
     backup_files(root, [root / "layout.json", root / "manifest.json"] + list(cur.values()))
     try:
         staged = []
@@ -1557,6 +1760,7 @@ def _gsx_restore(dest_dir: Path, names=None) -> int:
     if not keys:
         return 0
     current = [dest_dir / j["files"][k]["name"] for k in keys if (dest_dir / j["files"][k]["name"]).is_file()]
+    undo_watch(*(dest_dir / j["files"][k]["name"] for k in keys))
     if current:
         bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         bdir.mkdir(parents=True, exist_ok=True)
@@ -1595,6 +1799,7 @@ def gsx_journal_dests() -> list[Path]:
 def _move(src: Path, dst: Path):
     if dst.exists():
         raise ToggleError(tr("err_exists", name=dst.name))
+    undo_watch(src, dst)
     os.rename(src, dst)
     LOG.info("  renommé %s -> %s", src.name, dst.name)
     forget_hash(src)
@@ -1630,6 +1835,11 @@ def _set_scene_state(scene: Scene, target: str):
         return
     snapshot_scene(scene)
     meta = PackageMeta(scene.root)
+    undo_watch(meta.layout_file, meta.manifest_file, *(scene.root / n for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC)))
+    for g in groups:
+        undo_watch(g.active, g.on_file, g.off_file, g.on_path, g.off_path, g.alt_on, g.alt_off)
+        if g.mode == "swap" and g.active is not None:
+            undo_watch(g.active.with_name(g.active.name + ".bak"))
     to_backup = [meta.layout_file, meta.manifest_file]
     to_backup += [g.active for g in groups if g.mode == "variant" and g.state == UNKNOWN and g.active.exists()]
     to_backup += [g.on_path for g in groups if g.mode == "rename" and g.twin and g.on_path.is_file()]
@@ -1792,6 +2002,7 @@ def _copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
     replaced = [dest_dir / f.name for f in variant.files
                 if (dest_dir / f.name).is_file() and not same_content(f, dest_dir / f.name)]
     removed = gsx_other_installed(scene, variant, dest_dir)
+    undo_watch(*(dest_dir / f.name for f in variant.files), *removed)
     gsx_record(dest_dir, [f.name for f in variant.files] + [r.name for r in removed])
     if replaced or removed:
         bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
@@ -1897,6 +2108,7 @@ def _install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
     dest_dir.mkdir(parents=True, exist_ok=True)
     replaced = [dest_dir / f.name for f in files
                 if (dest_dir / f.name).is_file() and not same_content(f, dest_dir / f.name)]
+    undo_watch(*(dest_dir / f.name for f in files))
     gsx_record(dest_dir, [f.name for f in files])
     if replaced:
         bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
@@ -3542,13 +3754,19 @@ class MainWindow(QMainWindow):
         self.btn_all_on = QPushButton(tr("btn_all_on"))
         self.btn_all_on.setObjectName("primary")
         self.btn_all_on.clicked.connect(lambda: self.set_all(ON))
-        for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on):
+        # Annuler : séparé des boutons d'action (il défait, il ne crée rien)
+        self.btn_undo = QPushButton("↶  " + tr("btn_undo"))
+        self.btn_undo.setObjectName("ghost")
+        self.btn_undo.clicked.connect(self.undo_last_action)
+        for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on, self.btn_undo):
             b.setCursor(Qt.PointingHandCursor)
         self.scope_lbl = QLabel()
         self.scope_lbl.setObjectName("hint")
         bar2.addWidget(self.btn_folders)
         bar2.addWidget(self.btn_scan)
         bar2.addWidget(self.btn_install)
+        bar2.addSpacing(6)
+        bar2.addWidget(self.btn_undo)
         bar2.addStretch()
         bar2.addWidget(self.scope_lbl)
         bar2.addWidget(self.btn_all_off)
@@ -3689,6 +3907,11 @@ class MainWindow(QMainWindow):
         a.triggered.connect(self.open_folders)
         m_set.addAction(a)
 
+        undo_act = QAction(tr("btn_undo"), self)
+        undo_act.setShortcut("Ctrl+Z")                 # un champ de texte actif garde son propre Ctrl+Z
+        undo_act.triggered.connect(self.undo_last_action)
+        self.addAction(undo_act)
+
         m_help = mb.addMenu(tr("m_help"))
         for key, fn, shortcut in (("m_guide", self.show_guide, "F1"),
                                   ("m_disclaimer", self.show_disclaimer, None),
@@ -3824,15 +4047,17 @@ class MainWindow(QMainWindow):
         if not ask(self, tr("restore_confirm", name=scene.title), default_yes=False):
             return
         msgs = []
-        if has_origin(scene.root):
-            try:
-                restore_scene_statics(scene.root)
-            except RestoreError as e:
-                msgs.append(str(e))
-        folder = self.config.gsx_folder()
-        if folder and gsx_restore(Path(folder), [f.name for f in scene.gsx_files]):
-            self.config.gsx_choices.pop(scene.key, None)
-            self.config.save()
+        with undoable(f"↺ {scene.title}"):
+            if has_origin(scene.root):
+                try:
+                    restore_scene_statics(scene.root)
+                except RestoreError as e:
+                    msgs.append(str(e))
+            folder = self.config.gsx_folder()
+            if folder and gsx_restore(Path(folder), [f.name for f in scene.gsx_files]):
+                self.config.gsx_choices.pop(scene.key, None)
+                self.config.save()
+        self.update_undo_btn()
         self.refresh_gsx_index()
         self.refresh_scene(scene)
         self.update_stats()
@@ -3851,13 +4076,14 @@ class MainWindow(QMainWindow):
         if not ask(self, tr("restore_all_confirm", n=len(roots)), default_yes=False):
             return
         errors = []
-        for root in roots:
-            try:
-                restore_scene_statics(root)
-            except RestoreError as e:
-                errors.append(f"• {root.name} : {e}")
-        for d in dests:
-            gsx_restore(d)
+        with undoable("↺ " + tr("m_restore_all").rstrip("…. ")):
+            for root in roots:
+                try:
+                    restore_scene_statics(root)
+                except RestoreError as e:
+                    errors.append(f"• {root.name} : {e}")
+            for d in dests:
+                gsx_restore(d)
         self.config.gsx_choices.clear()
         self.config.save()
         self.status.setText(tr("restore_all_done", n=len(roots)))
@@ -4032,6 +4258,12 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, lambda: self.install_paths(paths))
 
     def install_paths(self, paths: list):
+        names = ", ".join(Path(p).name for p in paths[:2]) + ("…" if len(paths) > 2 else "")
+        with undoable(f"GSX — {names}"):
+            self._install_paths(paths)
+        self.update_undo_btn()
+
+    def _install_paths(self, paths: list):
         archives = [Path(p) for p in paths if Path(p).suffix.lower() in ARCHIVE_EXT]
         loose = [Path(p) for p in paths if Path(p).suffix.lower() in (".ini", ".py")]
         installed, outcomes, errors = [], {}, []
@@ -4143,6 +4375,7 @@ class MainWindow(QMainWindow):
         self.busy = busy
         for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on):
             b.setEnabled(not busy)
+        self.update_undo_btn()
         for r in self.rows.values():
             r.switch.setEnabled(not busy and r.scene.toggleable)
 
@@ -4374,10 +4607,12 @@ class MainWindow(QMainWindow):
                 row.refresh(scene)
             return
         try:
-            set_scene_state(scene, target)
+            with undoable(f"Statics {'ON' if target == ON else 'OFF'} — {scene.title}"):
+                set_scene_state(scene, target)
         except Exception as e:
             warn(self, tr("toggle_fail", name=scene.title, err=e))
         self.refresh_scene(scene)
+        self.update_undo_btn()
         self.update_stats()
         if scene.key in self.scenes:
             self.status.setText(tr("toggled", name=scene.title, state=state_text(self.scenes[scene.key].state)))
@@ -4393,14 +4628,15 @@ class MainWindow(QMainWindow):
             return
         self.set_busy(True)
         errors = []
-        for i, s in enumerate(targets, 1):
-            self.status.setText(tr("all_progress", label=label, i=i, n=len(targets), name=s.title))
-            QApplication.processEvents()
-            try:
-                set_scene_state(s, target)
-            except Exception as e:
-                errors.append(f"• {s.title} : {e}")
-            self.refresh_scene(s)
+        with undoable(f"{tr('btn_all_on' if target == ON else 'btn_all_off')} ({len(targets)})"):
+            for i, s in enumerate(targets, 1):
+                self.status.setText(tr("all_progress", label=label, i=i, n=len(targets), name=s.title))
+                QApplication.processEvents()
+                try:
+                    set_scene_state(s, target)
+                except Exception as e:
+                    errors.append(f"• {s.title} : {e}")
+                self.refresh_scene(s)
         self.set_busy(False)
         self.update_stats()
         self.apply_filter()
@@ -4449,7 +4685,8 @@ class MainWindow(QMainWindow):
             if not ask(self, msg):
                 return
         try:
-            copied = copy_gsx(scene, v, dest)
+            with undoable(f"GSX — {scene.title}" + (f" ({vlabel(v)})" if multi else "")):
+                copied = copy_gsx(scene, v, dest)
             if multi:
                 self.remember_gsx_choice(scene, variant_id(scene, v))
         except Exception as e:
@@ -4461,6 +4698,53 @@ class MainWindow(QMainWindow):
             row.refresh_gsx()
         done = tr("gsx_done_version", v=vlabel(v)) if multi else tr("gsx_done_copy")
         self.status.setText(tr("gsx_status", name=scene.title, what=done, files=", ".join(copied), dest=dest))
+
+    # ── Annuler la dernière action
+    def update_undo_btn(self):
+        if not hasattr(self, "btn_undo"):
+            return
+        label = undo_label()
+        self.btn_undo.setEnabled(bool(label) and not self.busy)
+        self.btn_undo.setToolTip(tr("undo_tip", label=label) + "  (Ctrl+Z)" if label else tr("undo_tip_none"))
+
+    def undo_last_action(self):
+        label = undo_label()
+        if self.busy:
+            return
+        if not label:
+            self.status.setText(tr("undo_nothing"))
+            return
+        if not self.ensure_sim_closed() or not ask(self, tr("undo_confirm", label=label)):
+            return
+        touched = undo_paths()
+        try:
+            undo_last()
+        except UndoError as e:
+            warn(self, str(e))
+            self.update_undo_btn()
+            return
+        except OSError as e:
+            warn(self, tr("toggle_fail", name=label, err=e))
+        # scènes concernées relues ; choix de version GSX oubliés pour les profils remis
+        keys = {norm_key(p) for p in touched}
+        gsx_names = {p.name.lower() for p in touched}
+        for s in list(self.scenes.values()):
+            root = norm_key(s.root)
+            if any(k.startswith(root) for k in keys):
+                self.refresh_scene(s)
+            if gsx_names & {f.name.lower() for f in s.gsx_files}:
+                self.config.gsx_choices.pop(s.key, None)
+        try:
+            self.config.save()
+        except OSError:
+            pass
+        self.refresh_gsx_index()
+        for r in self.rows.values():
+            r.refresh_gsx()
+        self.update_stats()
+        self.apply_filter()
+        self.update_undo_btn()
+        self.status.setText(tr("undo_done", label=label))
 
     def open_folders(self):
         dlg = FoldersDialog(self.config, self.sources, self)
