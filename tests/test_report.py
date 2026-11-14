@@ -54,6 +54,14 @@ class TestReport(SandboxTest):
         self.assertGreaterEqual(rep["summary"]["candidate_files_not_used_by_sgm"], 2)
         self.assertTrue(sc["sgm_groups"])
 
+    def test_base_files_are_listed(self):
+        make_pkg(self.community, "ini-lowi", "LOWI", [
+            ("s/lowi-scene-airport.bgl", b"A" * 30, True), ("s/lowi-scene-airport-statics.bgl.disabled", b"S" * 20, False),
+            ("s/lyni_place.bgl", b"P" * 9, True), ("s/lyni_place.bgl.nostatic", b"N" * 9, False)])
+        paths = {f["path"]: f for f in self.build()["scenes"][0]["files"]}
+        self.assertEqual(paths["s/lowi-scene-airport.bgl"]["size"], 30)
+        self.assertIn("s/lyni_place.bgl", paths)
+
     def test_aircraft_and_empty_packages_skipped(self):
         make_pkg(self.community, "plane", "Some Plane", [("SimObjects/x_static.bgl", b"x", True)], ctype="AIRCRAFT")
         make_pkg(self.community, "plain", "Plain Scenery", [("scenery/a.bgl", b"x", True)])

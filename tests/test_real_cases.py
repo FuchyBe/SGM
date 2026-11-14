@@ -73,10 +73,54 @@ class TestRealCases(SandboxTest):
         g = self.scan()["orbx-airport-lyni-nis"].groups[0]
         self.assertEqual((g.mode, g.state), ("swap", m.ON))
         m.set_scene_state(self.scan()["orbx-airport-lyni-nis"], m.OFF)
+        # règle de Fabian : X.bgl -> X.bgl.bak, puis copie de X.bgl.nostatic en X.bgl
         self.assertEqual((root / f"{d}/lyni_place.bgl").read_bytes(), b"NO" * 40)
-        self.assertEqual((root / f"{d}/lyni_place.bgl.static").read_bytes(), b"WITH" * 50)
-        self.assertFalse((root / f"{d}/lyni_place.bgl.nostatic").exists())
+        self.assertEqual((root / f"{d}/lyni_place.bgl.bak").read_bytes(), b"WITH" * 50)
+        self.assertEqual((root / f"{d}/lyni_place.bgl.nostatic").read_bytes(), b"NO" * 40)
+        self.assertEqual(self.scan()["orbx-airport-lyni-nis"].state, m.OFF)
+        m.set_scene_state(self.scan()["orbx-airport-lyni-nis"], m.ON)
+        self.assertEqual((root / f"{d}/lyni_place.bgl").read_bytes(), b"WITH" * 50)
+        self.assertFalse((root / f"{d}/lyni_place.bgl.bak").exists())
         self.cycle("orbx-airport-lyni-nis", root, orig)
+
+    # D2. Drzewiecki : XXXX_Static.off + XXXX_PLC.bgl.nostatic seuls (forme désactivée) -> renommer en .bgl
+    def test_drzewiecki_static_and_plc(self):
+        d = "scenery"
+        root = make_pkg(self.community, "drzewieckidesign-airport-epkt", "EPKT", [
+            ("scenery/EPKT Katowice Airport MSFS/EPKT_Static.off", b"S" * 300, False),
+            (f"{d}/EPKT_PLC.bgl.nostatic", b"P" * 29, False), (f"{d}/EPKT_APT.bgl", b"A" * 99, True)])
+        orig = self.files(root)
+        sc = self.scan()["drzewieckidesign-airport-epkt"]
+        self.assertEqual(sc.state, m.OFF)                    # plus « Mixte »
+        self.assertEqual(sorted(g.mode for g in sc.groups), ["rename", "rename"])
+        m.set_scene_state(sc, m.ON)
+        self.assertTrue((root / f"{d}/EPKT_PLC.bgl").is_file())
+        self.assertTrue((root / "scenery/EPKT Katowice Airport MSFS/EPKT_Static.bgl").is_file())
+        self.assertIn(f"{d}/EPKT_PLC.bgl", self.layout(root))
+        sc = self.scan()["drzewieckidesign-airport-epkt"]
+        self.assertEqual(sc.state, m.ON)                     # PLC retrouvé grâce à la photo d'origine
+        m.set_scene_state(sc, m.OFF)
+        self.assertTrue((root / f"{d}/EPKT_PLC.bgl.nostatic").is_file())
+        self.assertTrue((root / "scenery/EPKT Katowice Airport MSFS/EPKT_Static.off").is_file())
+        self.cycle("drzewieckidesign-airport-epkt", root, orig)
+
+    # F2. iniBuilds : .bgl.disabled seul -> ON = copie en .bgl (le .disabled reste), OFF = copie supprimée
+    def test_disabled_is_copied(self):
+        d = "Scenery/airport-lowi-innsbruck/lowi-scene"
+        root = make_pkg(self.community, "inibuilds-airport-lowi2", "LOWI", [
+            (f"{d}/lowi-scene-airport.bgl", b"A" * 9000, True),
+            (f"{d}/lowi-scene-airport-statics.bgl.disabled", b"S" * 1595, False)])
+        orig = self.files(root)
+        g = self.scan()["inibuilds-airport-lowi2"].groups[0]
+        self.assertEqual((g.mode, g.state), ("rename", m.OFF))
+        m.set_scene_state(self.scan()["inibuilds-airport-lowi2"], m.ON)
+        self.assertTrue((root / f"{d}/lowi-scene-airport-statics.bgl").is_file())
+        self.assertTrue((root / f"{d}/lowi-scene-airport-statics.bgl.disabled").is_file())
+        self.assertIn(f"{d}/lowi-scene-airport-statics.bgl", self.layout(root))
+        m.set_scene_state(self.scan()["inibuilds-airport-lowi2"], m.OFF)
+        self.assertFalse((root / f"{d}/lowi-scene-airport-statics.bgl").exists())
+        self.assertEqual(self.files(root), orig)
+        self.cycle("inibuilds-airport-lowi2", root, orig)
 
     # E. iniBuilds KPVD : X_nostatic.bgl actif + X_static.bgl.disabled
     def test_static_nostatic_pair(self):

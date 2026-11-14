@@ -56,7 +56,8 @@ The full user guide is in the app: **Help › User guide** (F1).
 - The methods used by developers are recognised (based on a real library of more than 2,000 packages):
   - **Renaming**: `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` or `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM keeps the developer's own naming.
   - **Variants**: `statics_on.bgl` + `statics_off.bgl` next to an active `statics.bgl`. The chosen variant is copied onto `statics.bgl`. Also `xxx-airport-statics` / `xxx-airport-nostatics` next to the active `xxx-airport.bgl` (Homa Sim).
-  - **No-statics version**: `xxx.bgl` + `xxx.bgl.nostatic` (Orbx, UK2000, Drzewiecki placements). The two files are swapped; `xxx.bgl.static` keeps the version with statics.
+  - **No-statics version**: `xxx.bgl` + `xxx.bgl.nostatic` (Orbx, UK2000). OFF saves `xxx.bgl` as `xxx.bgl.bak` and copies `xxx.bgl.nostatic` onto `xxx.bgl`; ON puts the original back. The developer's files stay in place. A `xxx.bgl.nostatic` on its own (Drzewiecki `XXXX_PLC.bgl.nostatic`) is simply renamed to `.bgl`.
+  - **`.bgl.disabled`** (iniBuilds): ON copies it to `.bgl` (the `.disabled` file stays), OFF deletes the copy.
   - **With / without pair**: `xxx_static` + `xxx_nostatic` (iniBuilds), or a complete airport file `xxx-statics` that replaces `xxx`. Only one of the two is ever active, so the airport is never loaded twice.
 - The package `layout.json` (and `total_package_size` in `manifest.json`) is updated automatically, like MSFSLayoutGenerator does. Without this, the simulator would ignore the change.
 - Ambiguous cases are never changed automatically. They are shown in orange as **To check**.

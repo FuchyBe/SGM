@@ -450,7 +450,7 @@ STATIC_WORD_RE = re.compile(r"static|parked", re.IGNORECASE)
 NEG_RE = re.compile(r"(?:no|without)[ _\-]?(statics?)", re.IGNORECASE)          # nostatic, no_static, without_static
 EXCLUDE_RE = re.compile(r"model[ _\-]?lib|modelib|library|flatten|exclu", re.IGNORECASE)   # bibliothèques, aplanissements
 FORMS = ((".bgl.off", "bgl.off"), (".bgl.disabled", "bgl.disabled"), (".bgl.nostatic", "bgl.nostatic"),
-         (".bgl.static", "bgl.static"), (".bgl", "bgl"), (".off", "off"), (".disabled", "disabled"))
+         (".bgl", "bgl"), (".off", "off"), (".disabled", "disabled"))
 OFF_FORMS = ("bgl.off", "bgl.disabled", "off", "disabled")
 
 
@@ -472,7 +472,7 @@ def is_statics_name(name: str) -> bool:
         return False
     if form in ("off", "disabled") and OTHER_EXT_RE.search(stem):
         return False                              # ex. statics-off.config.off : réglage d'un outil, pas un .bgl
-    return form in ("bgl.nostatic", "bgl.static") or bool(STATIC_WORD_RE.search(stem))
+    return form == "bgl.nostatic" or bool(STATIC_WORD_RE.search(stem))
 
 
 def _on_name(stem: str, form: str, name: str) -> str:
@@ -484,6 +484,8 @@ def _on_name(stem: str, form: str, name: str) -> str:
 
 def _off_name(on_name: str, form: str) -> str:
     """Nom désactivé d'un .bgl, dans la même convention que `form`."""
+    if form == "bgl.nostatic":
+        return on_name + ".nostatic"
     if form in ("off", "disabled"):
         return on_name[:-4] + "." + form
     if form == "bgl.disabled":
@@ -526,24 +528,29 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
             continue
         entries.setdefault(stem.lower(), {"stem": stem, "forms": {}})["forms"][form] = name
 
-    # 1. Fichier remplacé par sa version « sans statics » : X.bgl + X.bgl.nostatic / X.bgl.static
+    # 1. Version « sans statics » : X.bgl.nostatic
+    #    - avec X.bgl (Orbx, UK2000) : OFF = X.bgl -> X.bgl.bak puis copie de X.bgl.nostatic en X.bgl ;
+    #      ON = suppression de la copie, X.bgl.bak -> X.bgl. Les fichiers de l'éditeur restent en place.
+    #    - seul (Drzewiecki XXXX_PLC.bgl.nostatic) : forme désactivée, ON = renommer en X.bgl.
     for key, e in entries.items():
         f = e["forms"]
-        if "bgl.nostatic" not in f and "bgl.static" not in f:
+        if "bgl.nostatic" not in f:
             continue
         used.add(key)
-        main = directory / (e["stem"] + ".bgl")
-        if f.get("bgl"):
-            main = directory / f["bgl"]
-        nost = directory / (main.name + ".nostatic")
-        stat = directory / (main.name + ".static")
-        if main.is_file() and nost.is_file() and not stat.exists():
-            groups.append(StaticsGroup("swap", directory, main, ON, stat, nost))
-        elif main.is_file() and stat.is_file() and not nost.exists():
-            groups.append(StaticsGroup("swap", directory, main, OFF, stat, nost))
+        nost = directory / f["bgl.nostatic"]
+        main = directory / (f.get("bgl") or nost.name[:-len(".nostatic")])
+        bak = directory / (main.name + ".bak")
+        if main.is_file():
+            if not bak.exists() and not same_content(main, nost):
+                groups.append(StaticsGroup("swap", directory, main, ON, bak, nost))
+            elif bak.is_file() and same_content(main, nost):
+                groups.append(StaticsGroup("swap", directory, main, OFF, bak, nost))
+            else:
+                groups.append(StaticsGroup("conflict", directory, main, CONFLICT, note="note_swap_broken"))
+        elif not bak.exists():
+            groups.append(StaticsGroup("rename", directory, nost, OFF, on_path=main, off_path=nost))
         else:
-            groups.append(StaticsGroup("conflict", directory, main if main.is_file() else (nost if nost.is_file() else stat),
-                                       CONFLICT, note="note_swap_broken"))
+            groups.append(StaticsGroup("conflict", directory, nost, CONFLICT, note="note_swap_broken"))
 
     # 2. Variantes statics_on / statics_off (+ statics.bgl actif)
     variants: dict = {}
@@ -839,6 +846,14 @@ def _use_origin_off_names(root: Path, groups: list):
         names = {Path(r).as_posix().lower(): r for r in json.loads(rec.read_text(encoding="utf-8")).get("files", {})}
     except (OSError, ValueError):
         return
+    covered = {norm_key(p) for g in groups for p in g.paths()}
+    for low, rel in names.items():
+        # X.bgl.nostatic d'origine renommé en X.bgl par SGM : le nom ne contient pas « static »,
+        # on le retrouve grâce à la photo d'origine
+        if low.endswith(".bgl.nostatic"):
+            nost, main = root / rel, root / rel[:-len(".nostatic")]
+            if main.is_file() and not nost.exists() and norm_key(main) not in covered:
+                groups.append(StaticsGroup("rename", main.parent, main, ON, on_path=main, off_path=nost))
     for g in groups:
         if g.mode != "rename" or g.state != ON or g.twin:
             continue
@@ -1255,14 +1270,22 @@ def report_scene(root: Path, source: str) -> dict | None:
                 bgl_dirs.add(Path(os.path.relpath(dirpath, root)).as_posix())
             if REPORT_NOISE.search(low):
                 continue                           # textures, modèles 3D : jamais des interrupteurs de statics
-            if any(low.endswith(e) for e in REPORT_EXTS) and REPORT_WORDS.search(fn.rsplit(".", 1)[0] if "." in fn else fn):
-                files.append(_report_file(root, Path(dirpath) / fn, layout_paths))
-            elif "static" in low:
-                files.append(_report_file(root, Path(dirpath) / fn, layout_paths))
-                if low.endswith(".bgl.nostatic") or low.endswith(".bgl.static"):
-                    base = Path(dirpath) / fn.rsplit(".", 1)[0]
-                    if base.is_file():             # fichier actif échangé avec sa version sans statics
-                        files.append(_report_file(root, base, layout_paths))
+            if not ((any(low.endswith(e) for e in REPORT_EXTS) and REPORT_WORDS.search(fn.rsplit(".", 1)[0] if "." in fn else fn))
+                    or "static" in low):
+                continue
+            files.append(_report_file(root, Path(dirpath) / fn, layout_paths))
+            stem, _form = parse_form(fn)
+            cands = []
+            if low.endswith(".bgl.nostatic"):
+                cands.append(fn[:-len(".nostatic")])            # fichier actif échangé avec sa version sans statics
+                cands.append(fn[:-len(".nostatic")] + ".bak")
+            if stem:
+                base = STATIC_TOKEN_RE.sub("", stem, count=1)   # ex. lowi-scene-airport-statics -> lowi-scene-airport
+                if base and base.lower() != stem.lower():
+                    cands += [base + ".bgl", base + ".bgl.disabled", base + ".off"]
+            for c in cands:
+                if (Path(dirpath) / c).is_file():
+                    files.append(_report_file(root, Path(dirpath) / c, layout_paths))
     if not files:
         return None
     sc = scan_package(root, source)
@@ -1442,17 +1465,28 @@ def set_scene_state(scene: Scene, target: str):
                     else:
                         _move(g.on_path, g.off_path)
                     meta.remove(g.on_path)
+                elif g.off_form == "bgl.disabled":
+                    # iniBuilds : le .disabled d'origine reste en place, on active une copie
+                    if g.on_path.exists():
+                        raise ToggleError(tr("err_exists", name=g.on_path.name))
+                    shutil.copy2(g.off_path, g.on_path)
+                    forget_hash(g.on_path)
+                    meta.upsert(g.on_path)
                 else:
                     _move(g.off_path, g.on_path)
                     meta.upsert(g.on_path)
             elif g.mode == "swap":
-                main, stat, nost = g.active, g.on_file, g.off_file
-                if target == OFF:                         # X.bgl -> X.bgl.static, X.bgl.nostatic -> X.bgl
-                    _move(main, stat)
-                    _move(nost, main)
-                else:                                     # X.bgl -> X.bgl.nostatic, X.bgl.static -> X.bgl
-                    _move(main, nost)
-                    _move(stat, main)
+                main, bak, nost = g.active, g.on_file, g.off_file
+                if target == OFF:                         # X.bgl -> X.bgl.bak, copie de X.bgl.nostatic en X.bgl
+                    _move(main, bak)
+                    shutil.copy2(nost, main)
+                    forget_hash(main)
+                else:                                     # copie supprimée (vérifiée), X.bgl.bak -> X.bgl
+                    if not same_content(main, nost):
+                        raise ToggleError(tr("err_exists", name=main.name))
+                    main.unlink()
+                    forget_hash(main)
+                    _move(bak, main)
                 meta.upsert(main)
             elif g.mode == "pair":
                 if target == OFF:                         # avec statics désactivé, sans statics activé

@@ -56,7 +56,8 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 - Les méthodes des éditeurs sont reconnues (à partir d'une vraie bibliothèque de plus de 2 000 paquets) :
   - **Renommage** : `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` ou `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM garde la convention de l'éditeur.
   - **Variantes** : `statics_on.bgl` + `statics_off.bgl` à côté d'un `statics.bgl` actif. La variante choisie est copiée sur `statics.bgl`. Aussi `xxx-airport-statics` / `xxx-airport-nostatics` à côté du `xxx-airport.bgl` actif (Homa Sim).
-  - **Version sans statics** : `xxx.bgl` + `xxx.bgl.nostatic` (placements Orbx, UK2000, Drzewiecki). Les deux fichiers sont échangés ; `xxx.bgl.static` garde la version avec statics.
+  - **Version sans statics** : `xxx.bgl` + `xxx.bgl.nostatic` (Orbx, UK2000). OFF sauvegarde `xxx.bgl` en `xxx.bgl.bak` et copie `xxx.bgl.nostatic` sur `xxx.bgl` ; ON remet l'original. Les fichiers de l'éditeur restent en place. Un `xxx.bgl.nostatic` seul (Drzewiecki `XXXX_PLC.bgl.nostatic`) est simplement renommé en `.bgl`.
+  - **`.bgl.disabled`** (iniBuilds) : ON le copie en `.bgl` (le `.disabled` reste), OFF supprime la copie.
   - **Paire avec / sans** : `xxx_static` + `xxx_nostatic` (iniBuilds), ou un fichier d'aéroport complet `xxx-statics` qui remplace `xxx`. Un seul des deux est actif : l'aéroport n'est jamais chargé deux fois.
 - Le `layout.json` de la scène (et le `total_package_size` du `manifest.json`) est mis à jour automatiquement, comme le fait MSFSLayoutGenerator. Sans cela, le simulateur ignorerait le changement.
 - Les cas ambigus ne sont jamais modifiés automatiquement. Ils apparaissent en orange, « À vérifier ».
