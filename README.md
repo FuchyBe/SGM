@@ -98,6 +98,15 @@ Before every change, the modified files are copied to `SGM_data\backups`:
 
 **Help › Open backups folder** opens it.
 
+### Restore the original state
+
+Before its very first change to a scenery, SGM records how it was in `SGM_data\origin` (statics files, `layout.json`, `manifest.json`). This record is never deleted by later backups. SGM also records every GSX profile it replaced, removed or added.
+
+- **Right-click a scenery › Restore original state…** puts that scenery and its GSX profiles back as they were before SGM.
+- **Help › Restore everything to original…** does it for every scenery and the GSX folder, for example before removing SGM.
+- Restoring is all or nothing: if a file no longer matches (edited by hand), nothing is changed and the files to check are listed.
+- If the developer has updated the scenery since, its files are already original: nothing is done.
+
 ## Updates of sceneries
 
 A scenery update (for example through the Marketplace or an installer) may restore its original files. Just switch it again in SGM.
@@ -153,6 +162,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Category filter: with statics, GSX profile in scenery, installed manually, no GSX profile.
 - Install GSX profiles from downloaded archives: drag & drop, Install button, Downloads folder detection at launch (.zip; .7z/.rar with 7-Zip).
 - Aircraft and liveries are skipped during the scan (faster).
+- Restore original state: right-click a scenery, or Help › Restore everything to original. SGM records each scenery and GSX profile as it was before its first change.
 - Statics safety: a statics file with a different name that matches neither on/off variant is never overwritten: it is shown as "To check", with a folder icon to open the folder of the statics file and do it manually.
 - Help › Report a problem / Suggest an idea (pre-filled GitHub issue).
 

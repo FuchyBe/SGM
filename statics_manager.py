@@ -790,10 +790,242 @@ def backup_files(root: Path, files: list[Path]):
         shutil.rmtree(d, ignore_errors=True)
 
 
+# ── État d'origine (photo prise avant la toute première modification, jamais effacée) ──
+
+class RestoreError(Exception):
+    pass
+
+
+def _safe_name(text: str) -> str:
+    return re.sub(r'[<>:"/\\|?*\s]', "_", text)[:60]
+
+
+def origin_dir(root: Path) -> Path:
+    key = hashlib.sha1(norm_key(root).encode("utf-8")).hexdigest()[:10]
+    return data_dir() / "origin" / f"{_safe_name(root.name)}-{key}"
+
+
+def has_origin(root: Path) -> bool:
+    return (origin_dir(root) / "origin.json").is_file()
+
+
+def _pkg_version(root: Path) -> str:
+    return str(read_manifest(root).get("package_version") or "")
+
+
+def statics_paths(scene: Scene) -> list[Path]:
+    """Tous les fichiers statics d'une scène (actifs, variantes, renommés)."""
+    out = []
+    for g in scene.groups:
+        for p in (g.active, g.on_file, g.off_file):
+            if p is not None and p.is_file() and p not in out:
+                out.append(p)
+    return out
+
+
+def snapshot_scene(scene: Scene):
+    """Photo de l'état d'origine, une seule fois par scène : liste des fichiers statics avec leur empreinte,
+    copie de layout.json, manifest.json et des fichiers dont le contenu pourrait être remplacé."""
+    d = origin_dir(scene.root)
+    if (d / "origin.json").is_file():
+        return
+    files_dir = d / "files"
+    if d.exists():
+        shutil.rmtree(d, ignore_errors=True)          # photo incomplète d'une tentative précédente
+    files_dir.mkdir(parents=True, exist_ok=True)
+    rel = lambda p: Path(os.path.relpath(p, scene.root)).as_posix()
+    record = {"root": str(scene.root), "created": datetime.now().isoformat(timespec="seconds"),
+              "version": _pkg_version(scene.root), "files": {}, "copied": []}
+    for p in statics_paths(scene):
+        record["files"][rel(p)] = file_hash(p)
+    to_copy = [g.active for g in scene.groups if g.mode == "variant" and g.active.is_file()]
+    to_copy += [scene.root / "layout.json", scene.root / "manifest.json"]
+    for p in to_copy:
+        if p.is_file():
+            target = files_dir / rel(p)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(p, target)
+            record["copied"].append(rel(p))
+    write_atomic(d / "origin.json", json.dumps(record, indent=2, ensure_ascii=False))
+
+
+def restore_scene_statics(root: Path):
+    """Remet les fichiers statics, layout.json et manifest.json comme avant SGM.
+    Tout ou rien : si un fichier ne correspond pas à l'origine, rien n'est modifié (RestoreError)."""
+    d = origin_dir(root)
+    try:
+        record = json.loads((d / "origin.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise RestoreError(tr("restore_none"))
+    if not root.is_dir():
+        raise RestoreError(tr("folder_missing_msg", path=root))
+    if record.get("version", "") != _pkg_version(root):
+        shutil.rmtree(d, ignore_errors=True)          # la scène a été mise à jour : la photo n'est plus valable
+        raise RestoreError(tr("restore_updated"))
+    files_dir = d / "files"
+    current = scan_package(root, "")
+    cur_paths = statics_paths(current) if current else []
+    wanted = record.get("files", {})
+    copied = set(record.get("copied", []))
+    known = set(wanted.values())
+    if current:
+        for g in current.groups:
+            for v in (g.on_file, g.off_file):
+                if v is not None and v.is_file():
+                    known.add(file_hash(v))
+
+    # 1. Plan, sans rien toucher
+    plan, left, consumed = [], [], set()
+    for r, h in wanted.items():
+        p = root / r
+        if p.is_file() and file_hash(p) == h:
+            continue
+        if r in copied and (files_dir / r).is_file():
+            plan.append(("copy", files_dir / r, p))
+            continue
+        twin = p.with_name(p.name[:-4]) if p.name.lower().endswith(".off") else p.with_name(p.name + ".off")
+        if twin.is_file() and not p.exists() and file_hash(twin) == h:
+            plan.append(("rename", twin, p))
+            consumed.add(norm_key(twin))
+            continue
+        left.append(r)
+    for p in cur_paths:
+        r = Path(os.path.relpath(p, root)).as_posix()
+        if r in wanted or norm_key(p) in consumed:
+            continue
+        if file_hash(p) in known:
+            plan.append(("delete", p, None))
+        else:
+            left.append(r)
+    if left:
+        raise RestoreError(tr("restore_left", files="\n".join(f"• {r}" for r in sorted(set(left)))))
+
+    # 2. Exécution, après sauvegarde de l'état actuel
+    backup_files(root, [root / "layout.json", root / "manifest.json"] + cur_paths)
+    try:
+        for op, a, b in plan:
+            if op == "copy":
+                tmp = b.with_name(b.name + ".sm-tmp")
+                shutil.copy2(a, tmp)
+                os.replace(tmp, b)
+                forget_hash(b)
+            elif op == "rename":
+                os.rename(a, b)
+                forget_hash(a)
+            else:
+                a.unlink()
+                forget_hash(a)
+        for r in ("layout.json", "manifest.json"):
+            if r in copied and (files_dir / r).is_file():
+                tmp = root / (r + ".sm-tmp")
+                shutil.copy2(files_dir / r, tmp)
+                os.replace(tmp, root / r)
+    except PermissionError as e:
+        raise RestoreError(tr("err_access", file=e.filename))
+    shutil.rmtree(d, ignore_errors=True)
+
+
+def origin_roots() -> list[Path]:
+    base = data_dir() / "origin"
+    out = []
+    if base.is_dir():
+        for d in sorted(base.iterdir()):
+            try:
+                out.append(Path(json.loads((d / "origin.json").read_text(encoding="utf-8"))["root"]))
+            except (OSError, ValueError, KeyError):
+                continue
+    return out
+
+
+# ── Journal GSX : état d'origine de chaque fichier que SGM écrit ou retire ──
+
+def _gsx_journal_dir(dest_dir: Path) -> Path:
+    key = hashlib.sha1(norm_key(dest_dir).encode("utf-8")).hexdigest()[:10]
+    return data_dir() / "origin" / "_GSX" / key
+
+
+def _gsx_load(dest_dir: Path) -> dict:
+    try:
+        return json.loads((_gsx_journal_dir(dest_dir) / "journal.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"dest": str(dest_dir), "files": {}}
+
+
+def gsx_record(dest_dir: Path, names: list[str]):
+    """Avant d'écrire ou de retirer ces fichiers dans GSX : note leur état d'origine (une seule fois)."""
+    j = _gsx_load(dest_dir)
+    jd = _gsx_journal_dir(dest_dir)
+    changed = False
+    for n in names:
+        k = n.lower()
+        if k in j["files"]:
+            continue
+        p = dest_dir / n
+        if p.is_file():
+            (jd / "files").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(p, jd / "files" / n)
+            j["files"][k] = {"name": n, "existed": True}
+        else:
+            j["files"][k] = {"name": n, "existed": False}
+        changed = True
+    if changed:
+        jd.mkdir(parents=True, exist_ok=True)
+        write_atomic(jd / "journal.json", json.dumps(j, indent=2, ensure_ascii=False))
+
+
+def gsx_has_origin(dest_dir: Path, names) -> bool:
+    files = _gsx_load(dest_dir)["files"]
+    return any(n.lower() in files for n in names)
+
+
+def gsx_restore(dest_dir: Path, names=None) -> int:
+    """Remet les fichiers GSX notés dans le journal (tous, ou seulement `names`). Renvoie le nombre traité."""
+    j = _gsx_load(dest_dir)
+    jd = _gsx_journal_dir(dest_dir)
+    keys = [k for k in j["files"] if names is None or k in {n.lower() for n in names}]
+    if not keys:
+        return 0
+    current = [dest_dir / j["files"][k]["name"] for k in keys if (dest_dir / j["files"][k]["name"]).is_file()]
+    if current:
+        bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        bdir.mkdir(parents=True, exist_ok=True)
+        for p in current:
+            shutil.copy2(p, bdir / p.name)
+    for k in keys:
+        e = j["files"].pop(k)
+        p = dest_dir / e["name"]
+        if e["existed"]:
+            src = jd / "files" / e["name"]
+            if src.is_file():
+                shutil.copy2(src, p)
+                src.unlink()
+        elif p.is_file():
+            p.unlink()
+        forget_hash(p)
+    if j["files"]:
+        write_atomic(jd / "journal.json", json.dumps(j, indent=2, ensure_ascii=False))
+    else:
+        shutil.rmtree(jd, ignore_errors=True)
+    return len(keys)
+
+
+def gsx_journal_dests() -> list[Path]:
+    base = data_dir() / "origin" / "_GSX"
+    out = []
+    if base.is_dir():
+        for d in base.iterdir():
+            try:
+                out.append(Path(json.loads((d / "journal.json").read_text(encoding="utf-8"))["dest"]))
+            except (OSError, ValueError, KeyError):
+                continue
+    return out
+
+
 def set_scene_state(scene: Scene, target: str):
     groups = [g for g in scene.groups if g.toggleable and g.state != target]
     if not groups:
         return
+    snapshot_scene(scene)
     meta = PackageMeta(scene.root)
     to_backup = [meta.layout_file, meta.manifest_file]
     to_backup += [g.active for g in groups if g.mode == "variant" and g.state == UNKNOWN and g.active.exists()]
@@ -906,6 +1138,7 @@ def copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
     replaced = [dest_dir / f.name for f in variant.files
                 if (dest_dir / f.name).is_file() and not same_content(f, dest_dir / f.name)]
     removed = gsx_other_installed(scene, variant, dest_dir)
+    gsx_record(dest_dir, [f.name for f in variant.files] + [r.name for r in removed])
     if replaced or removed:
         bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         bdir.mkdir(parents=True, exist_ok=True)
@@ -1010,6 +1243,7 @@ def install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
     dest_dir.mkdir(parents=True, exist_ok=True)
     replaced = [dest_dir / f.name for f in files
                 if (dest_dir / f.name).is_file() and not same_content(f, dest_dir / f.name)]
+    gsx_record(dest_dir, [f.name for f in files])
     if replaced:
         bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         bdir.mkdir(parents=True, exist_ok=True)
@@ -1448,6 +1682,7 @@ class SceneRow(QFrame):
     toggle_requested = Signal(object, bool)
     gsx_requested = Signal(object, int, str)    # scène, index de variante, dossier GSX
     search_requested = Signal(object)
+    restore_requested = Signal(object)
 
     def __init__(self, scene: Scene, gsx_folder_fn=None, choices: dict | None = None, on_auto_choice=None,
                  gsx_index_fn=None):
@@ -1750,6 +1985,22 @@ class SceneRow(QFrame):
 
     def mouseDoubleClickEvent(self, _e):
         self.open_folder()
+
+    def can_restore(self) -> bool:
+        if has_origin(self.scene.root):
+            return True
+        folder = self.gsx_folder_fn() if self.gsx_folder_fn else ""
+        return bool(folder) and gsx_has_origin(Path(folder), [f.name for f in self.scene.gsx_files])
+
+    def contextMenuEvent(self, e):
+        menu = QMenu(self)
+        menu.addAction(tr("tip_open_folder"), self.open_folder)
+        menu.addSeparator()
+        a = menu.addAction(tr("ctx_restore"), lambda: self.restore_requested.emit(self.scene))
+        if not self.can_restore():
+            a.setEnabled(False)
+            a.setText(tr("ctx_restore_none"))
+        menu.exec(e.globalPos())
 
 
 class ScanWorker(QThread):
@@ -2195,7 +2446,8 @@ class MainWindow(QMainWindow):
         for key, fn, shortcut in (("m_guide", self.show_guide, "F1"),
                                   ("m_disclaimer", self.show_disclaimer, None),
                                   ("m_licenses", self.show_licenses, None),
-                                  ("m_backups", self.open_backups, None)):
+                                  ("m_backups", self.open_backups, None),
+                                  ("m_restore_all", self.restore_all, None)):
             a = QAction(tr(key), self)
             if shortcut:
                 a.setShortcut(shortcut)
@@ -2312,6 +2564,54 @@ class MainWindow(QMainWindow):
         if not found:
             doc += f"<p><i>{tr('licenses_missing')}</i></p>"
         DocDialog(tr("m_licenses").rstrip("…"), doc, "", self).exec()
+
+    # ── Restauration de l'état d'origine
+    def on_restore(self, scene: Scene):
+        if not self.ensure_sim_closed():
+            return
+        if not ask(self, tr("restore_confirm", name=scene.title), default_yes=False):
+            return
+        msgs = []
+        if has_origin(scene.root):
+            try:
+                restore_scene_statics(scene.root)
+            except RestoreError as e:
+                msgs.append(str(e))
+        folder = self.config.gsx_folder()
+        if folder and gsx_restore(Path(folder), [f.name for f in scene.gsx_files]):
+            self.config.gsx_choices.pop(scene.key, None)
+            self.config.save()
+        self.refresh_gsx_index()
+        self.refresh_scene(scene)
+        self.update_stats()
+        self.status.setText(tr("restore_done", name=scene.title))
+        if msgs:
+            warn(self, "\n\n".join(msgs))
+
+    def restore_all(self):
+        roots = origin_roots()
+        dests = gsx_journal_dests()
+        if not roots and not dests:
+            warn(self, tr("restore_nothing"))
+            return
+        if not self.ensure_sim_closed():
+            return
+        if not ask(self, tr("restore_all_confirm", n=len(roots)), default_yes=False):
+            return
+        errors = []
+        for root in roots:
+            try:
+                restore_scene_statics(root)
+            except RestoreError as e:
+                errors.append(f"• {root.name} : {e}")
+        for d in dests:
+            gsx_restore(d)
+        self.config.gsx_choices.clear()
+        self.config.save()
+        self.status.setText(tr("restore_all_done", n=len(roots)))
+        if errors:
+            warn(self, tr("all_errors") + "\n\n" + "\n".join(errors[:15]) + ("\n…" if len(errors) > 15 else ""))
+        self.start_scan()
 
     def open_backups(self):
         d = data_dir() / "backups"
@@ -2567,6 +2867,7 @@ class MainWindow(QMainWindow):
             row.toggle_requested.connect(self.on_toggle)
             row.gsx_requested.connect(self.on_gsx)
             row.search_requested.connect(self.search_profile)
+            row.restore_requested.connect(self.on_restore)
             self.list_l.insertWidget(2 + i, row)
             self.rows[s.key] = row
         self.apply_filter()
