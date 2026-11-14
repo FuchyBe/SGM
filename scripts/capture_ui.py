@@ -82,6 +82,7 @@ cfg.lang = lang
 cfg.manual_folders.append(str(lib))
 cfg.save()
 m.set_lang(lang)
+app.setLayoutDirection(m.Qt.RightToLeft if lang in m.RTL_LANGS else m.Qt.LeftToRight)   # comme main()
 w = m.MainWindow()
 w.resize(width, height)
 w.show()

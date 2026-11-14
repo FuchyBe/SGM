@@ -2304,6 +2304,7 @@ QPushButton#gsx[gsx="diff"] {{ color: {C['warn']}; border-color: #4A3A1E; }}
 QFrame#vsep {{ background: {C['border']}; min-width: 1px; max-width: 1px; border: none; }}
 QFrame#vsepHidden {{ background: transparent; min-width: 1px; max-width: 1px; border: none; }}
 QLabel#colHead {{ color: {C['faint']}; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }}
+QLabel#colHead[plain="true"] {{ font-size: 11px; letter-spacing: 0px; }}
 QLabel#note {{ color: {C['faint']}; font-size: 11px; }}
 QLabel#note[warn="true"] {{ color: {C['warn']}; }}
 QLabel#none {{ color: {C['faint']}; font-size: 12px; }}
@@ -2327,11 +2328,16 @@ QPlainTextEdit {{ background: {C['surface']}; border: 1px solid {C['border']}; b
                   padding: 5px 8px; color: {C['text']}; selection-background-color: {C['accent']}; }}
 QPlainTextEdit:focus {{ border-color: {C['border2']}; background: {C['surface2']}; }}
 QPlainTextEdit#preview {{ color: {C['muted']}; font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; }}
-QFrame#bulkSeg {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 8px; }}
-QPushButton#bulkOff, QPushButton#bulkOn {{ background: transparent; border: 1px solid transparent; border-radius: 6px;
-    padding: 2px 9px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; color: {C['muted']}; }}
-QPushButton#bulkOff:hover {{ color: #E07A72; background: rgba(224, 122, 114, 0.12); border-color: rgba(224, 122, 114, 0.35); }}
-QPushButton#bulkOn:hover {{ color: {C['accent']}; background: rgba(76, 201, 160, 0.12); border-color: rgba(76, 201, 160, 0.35); }}
+QFrame#bulkSeg {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 13px;
+                  min-height: 24px; max-height: 24px; }}
+QFrame#bulkSeg:hover {{ border-color: {C['border2']}; }}
+QFrame#bulkDiv {{ background: {C['border2']}; min-width: 1px; max-width: 1px; border: none; margin: 5px 0; }}
+QPushButton#bulkOff, QPushButton#bulkOn {{ background: transparent; border: none; border-radius: 11px;
+    padding: 0 7px; min-height: 22px; max-height: 22px; font-size: 11px; font-weight: 600; color: {C['muted']}; }}
+QPushButton#bulkOff:hover {{ color: #E07A72; background: #1F1413; }}
+QPushButton#bulkOn:hover {{ color: {C['accent']}; background: #12241E; }}
+QPushButton#bulkOff:pressed {{ background: #2A1817; }}
+QPushButton#bulkOn:pressed {{ background: #183026; }}
 QPushButton#bulkOff:disabled, QPushButton#bulkOn:disabled {{ color: {C['faint']}; }}
 QLabel#fieldLabel {{ color: {C['muted']}; font-size: 12px; }}
 QCheckBox {{ color: {C['text']}; spacing: 8px; }}
@@ -2649,6 +2655,9 @@ class ColumnHeader(QWidget):
         h.setSpacing(ROW_SPACING - 4)        # poignée de 9 px : son trait central tombe sur le séparateur des lignes
         scene = QLabel(tr("col_scene"))
         scene.setObjectName("colHead")
+        # Arabe, chinois, japonais : pas de capitales ; l'espacement des lettres casserait la liaison arabe
+        plain = get_lang() in ("ar", "zh", "ja")
+        scene.setProperty("plain", plain)
         h.addWidget(scene, 1)
         self.handles = [ColHandle(), ColHandle()]
         self.boxes, self.combos = {}, {}
@@ -2661,6 +2670,7 @@ class ColumnHeader(QWidget):
             bl.setSpacing(8)
             lbl = QLabel(tr(key))
             lbl.setObjectName("colHead")
+            lbl.setProperty("plain", plain)
             combo = ChevronCombo()
             combo.setObjectName("colFilter")
             combo.setCursor(Qt.PointingHandCursor)
@@ -2676,13 +2686,20 @@ class ColumnHeader(QWidget):
                 self.bulk_btns = {}
                 seg = QFrame()
                 seg.setObjectName("bulkSeg")
+                seg.setAttribute(Qt.WA_Hover)
                 sl = QHBoxLayout(seg)
-                sl.setContentsMargins(2, 2, 2, 2)
-                sl.setSpacing(2)
+                sl.setContentsMargins(1, 1, 1, 1)
+                sl.setSpacing(0)
                 for target, key, tip, name in ((OFF, "btn_all_off", "tip_all_off", "bulkOff"),
                                                (ON, "btn_all_on", "tip_all_on", "bulkOn")):
-                    b = QPushButton(tr(key))
+                    if target == ON:
+                        div = QFrame()
+                        div.setObjectName("bulkDiv")
+                        sl.addWidget(div)
+                    b = QPushButton("\u2009" + tr(key))     # espace fine : un peu d'air entre la pastille et le texte
                     b.setObjectName(name)
+                    b.setIcon(dot_icon("#E07A72" if target == OFF else C["accent"]))
+                    b.setIconSize(QSize(6, 6))
                     b.setCursor(Qt.PointingHandCursor)
                     b.setToolTip(tr(tip))
                     b.clicked.connect(lambda _c=False, tg=target: self.bulk_requested.emit(tg))
@@ -4520,6 +4537,22 @@ def folder_icon() -> QIcon:
         p.end()
         icon.addPixmap(pm, mode)
     _FOLDER_ICON = icon
+    return icon
+
+
+def dot_icon(color: str) -> QIcon:
+    """Pastille de couleur (Tout OFF rouge, Tout ON vert), grisée quand le bouton est désactivé."""
+    icon = QIcon()
+    for mode, c in ((QIcon.Normal, color), (QIcon.Active, color), (QIcon.Disabled, C["border2"])):
+        pm = QPixmap(24, 24)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(c))
+        p.drawEllipse(QRectF(2, 2, 20, 20))
+        p.end()
+        icon.addPixmap(pm, mode)
     return icon
 
 
