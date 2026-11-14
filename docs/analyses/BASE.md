@@ -31,8 +31,8 @@ d'origine redonne des fichiers identiques octet pour octet pour toutes les scèn
 | 2 | `kdfw-scene-statics.off`, `KDCA_Static.off`, `esgg-statics.off`, `statics.off` | iniBuilds (12), Orbx (5), Drzewiecki (5), JetStream, UK2000, NZA, Axonos, cat3dual, LimeSim | 29 | Renommage `.off` ↔ `.bgl`, retour à `.off` (convention de l'éditeur, retrouvée dans la photo d'origine) | non vu | nouveau |
 | 3 | `KBFI_STATIC.BGL`, `EDDF_Placements_staticAC.bgl`, `SP_LIRN_Static.bgl`, `objects-parked-aircraft.bgl` | Drzewiecki (8), SimPixel (3), Aerosoft, ASD, LimeSim, NetDesign, SiamFlight, Permille, Orbx JW, imaginesim, Seafront… | 27 | Renommage `.bgl` ↔ `.bgl.off` (« static » au singulier, « parked ») | non vu | nouveau |
 | 4 | `EPWR_Static.BGL` + `EPWR_Static.off` **identiques** | Drzewiecki | 1 | ON ; OFF = supprimer le `.BGL` (son double reste) ; ON = renommer le `.off` | « conflit » | nouveau |
-| 5 | `lyni_place.bgl` + `lyni_place.bgl.nostatic` | Orbx (3), UK2000 | 4 | **Règle de Fabian** : OFF `X.bgl`→`X.bgl.bak` puis copie de `X.bgl.nostatic` en `X.bgl` ; ON : copie supprimée, `X.bgl.bak`→`X.bgl` | non vu | nouveau |
-| 5b | `KMDW_PLC.bgl.nostatic` | Drzewiecki (7) | 7 | **Rapport 2** : `KMDW_PLC.bgl` existe aussi → même méthode que 5 (`.bak` + copie), basculé avec `KMDW_Static.off` ↔ `.bgl`. Affiché « Mixte » tant que les deux diffèrent (livré ainsi : bibliothèque OFF, placements avec statics). Si `KMDW_PLC.bgl` est absent : règle de Fabian, renommer `.nostatic` en `.bgl` | non vu | nouveau |
+| 5 | `lyni_place.bgl` + `lyni_place.bgl.nostatic` (+ `layout.json.nostatic`) | Orbx (3), UK2000 KTEX | 4 | **Méthode officielle** (notice Orbx LYNI, panneau Orbx Central) : OFF `X.bgl`→`X.bgl.static`, `X.bgl.nostatic`→`X.bgl`, `layout.json`→`layout.json.static`, `layout.json.nostatic`→`layout.json` ; ON l'inverse. Échange de layout seulement si le fichier est un layout valide | non vu | nouveau |
+| 5b | `KMDW_PLC.bgl` + `KMDW_PLC.bgl.nostatic` + `KMDW_Static.off` | Drzewiecki (7) | 7 | **Méthode officielle** (notice DD EPGD : mêmes renommages que 5 pour le PLC et `layout.json`), basculée avec `KMDW_Static.off` ↔ `.bgl` (DD : « retirer la bibliothèque d'avions statiques »). Si `KMDW_PLC.bgl` absent : renommer `.nostatic` en `.bgl` (règle de Fabian) | non vu | nouveau |
 | 6 | `kpvd-scene-airport_nostatic.bgl` + `kpvd-scene-airport_static.bgl.disabled` | iniBuilds | 1 | Paire : un seul des deux actif, l'autre `.disabled` | non vu | nouveau |
 | 7 | `lowi-scene-airport-statics.bgl.disabled` (1 595 504 o) + `lowi-scene-airport.bgl` (1 594 496 o) | iniBuilds | 1 | **Aéroport complet confirmé par le rapport 2** (tailles quasi identiques) : échange — ON active `-statics.bgl` et désactive `lowi-scene-airport.bgl` (`.disabled`), OFF l'inverse. Si le fichier de base était petit, la règle de Fabian (copie en `.bgl`) s'appliquerait | — | nouveau |
 | 8 | `oiaw-airport-statics.bgl.off` + `oiaw-airport-nostatics.off`, **pas de `oiaw-airport.bgl`** | Homa Sim | 3 | **Rapport 2** : les deux aéroports complets sont désactivés → aucun aéroport chargé, très probablement à cause de SGM ≤ v0.6 (ancienne règle « statics → .off »). SGM affiche « Aucune version active » : ON active `-statics.bgl`, OFF active `-nostatics.bgl`, jamais les deux. (Si un `oiaw-airport.bgl` existe : variantes copiées dessus) | **bug v0.6** | corrigé |
@@ -54,3 +54,11 @@ d'origine redonne des fichiers identiques octet pour octet pour toutes les scèn
 ## Tests à écrire
 
 Toutes les familles 1 à 10 ont leur test dans `tests/test_real_cases.py` (noms réels, contenus factices).
+
+## Sources éditeurs (recherche du 2026-11-14)
+
+- Orbx LYNI — notice : `layout.json`→`layout.json.static`, `layout.json.nostatic`→`layout.json`, `lyni_place.bgl`→`.static`, `lyni_place.bgl.nostatic`→`lyni_place.bgl` (addonhub.org) ; même mécanisme que le panneau « Configure » d'Orbx Central (forum Orbx 213909).
+- Drzewiecki EPGD — notice : mêmes renommages pour `EPGD_PLC.bgl` et `layout.json` (sceneryaddons.org) ; DD : la version sans statics « retire la bibliothèque d'avions statiques » (forum DD, KDCA).
+- iniBuilds — équipe : renommer `…-scene-statics.bgl` en `.disabled` puis mettre à jour `layout.json`, garder une sauvegarde (forum iniBuilds, OMDB).
+- Homa Sim — fiches Aerosoft / simMarket : « Static and non-static aircraft versions included » (pas de procédure publiée).
+- MSFS — un `.off` renommé en `.bgl` peut être ignoré si `layout.json` n'est pas mis à jour (devsupport 6982) : SGM met toujours `layout.json` à jour.

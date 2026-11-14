@@ -350,7 +350,7 @@ class StaticsGroup:
 
     @property
     def toggleable(self) -> bool:
-        return self.mode in ("rename", "variant", "swap", "pair")
+        return self.mode in ("rename", "variant", "swap", "rswap", "pair")
 
     def paths(self) -> list:
         """Tous les fichiers concernés qui existent sur le disque."""
@@ -454,6 +454,7 @@ FORMS = ((".bgl.off", "bgl.off"), (".bgl.disabled", "bgl.disabled"), (".bgl.nost
          (".bgl.staticq", "bgl.staticq"), (".bgl.static", "bgl.static"),
          (".bgl", "bgl"), (".off", "off"), (".disabled", "disabled"))
 ALT_FORMS = {"bgl.nostatic": False, "bgl.staticq": True, "bgl.static": True}   # version de rechange : avec statics ?
+LAYOUT_STATIC, LAYOUT_NOSTATIC = "layout.json.static", "layout.json.nostatic"     # échange officiel Orbx / Drzewiecki
 OFF_FORMS = ("bgl.off", "bgl.disabled", "off", "disabled")
 
 
@@ -532,41 +533,53 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
         entries.setdefault(stem.lower(), {"stem": stem, "forms": {}})["forms"][form] = name
 
     # 1. Version de rechange à côté du fichier actif
-    #    X.bgl + X.bgl.nostatic (Orbx, UK2000) : version SANS statics.
-    #      OFF = X.bgl -> X.bgl.bak puis copie de X.bgl.nostatic nommée X.bgl ; ON = copie supprimée, .bak -> X.bgl.
-    #    X.bgl + X.bgl.staticq / .static (UK2000 KHND) : version AVEC statics, X.bgl est sans statics.
+    #    Méthode officielle Orbx / Drzewiecki (notices LYNI, EPGD ; panneau Orbx Central) :
+    #      X.bgl + X.bgl.nostatic = statics ON ; OFF : X.bgl -> X.bgl.static, X.bgl.nostatic -> X.bgl
+    #      X.bgl + X.bgl.static   = statics OFF ; ON  : X.bgl -> X.bgl.nostatic, X.bgl.static -> X.bgl
+    #      (+ même échange pour layout.json / layout.json.static / layout.json.nostatic, voir set_scene_state)
+    #    X.bgl.nostatic seul (Drzewiecki XXXX_PLC sans XXXX_PLC.bgl) : forme désactivée, ON = renommer en X.bgl.
+    #    UK2000 (règle de Fabian) : X.bgl (sans statics) + X.bgl.staticq (avec) ;
     #      ON = X.bgl -> X.bgl.bak puis copie de X.bgl.staticq nommée X.bgl ; OFF = copie supprimée, .bak -> X.bgl.
-    #    X.bgl.nostatic seul (Drzewiecki XXXX_PLC) : forme désactivée, ON = renommer en X.bgl.
-    #    Les fichiers de l'éditeur restent toujours en place.
+    #    Ancien état laissé par une version de test (X.bgl.bak + copie du .nostatic) : reconnu, ON remet l'original.
     for key, e in entries.items():
         f = e["forms"]
         alts = [fm for fm in f if fm in ALT_FORMS]
         if not alts:
             continue
         used.add(key)
-        if len(alts) > 1:
-            groups.append(StaticsGroup("conflict", directory, directory / f[alts[0]], CONFLICT, note="note_swap_broken"))
-            continue
-        alt_form = alts[0]
-        alt = directory / f[alt_form]
-        with_statics = ALT_FORMS[alt_form]
-        main = directory / (f.get("bgl") or alt.name[:-len(alt_form) + 3])
+        first = directory / f[alts[0]]
+        main = directory / (f.get("bgl") or first.name[:-len(alts[0]) + 3])
         bak = directory / (main.name + ".bak")
-        if main.is_file():
-            applied = bak.is_file() and same_content(main, alt)       # la version de rechange est en place
-            original = not bak.exists() and not same_content(main, alt)
+        nost = directory / (main.name + ".nostatic")
+        stat = directory / (main.name + ".static")
+        statq = directory / (main.name + ".staticq")
+        broken = lambda at: StaticsGroup("conflict", directory, at, CONFLICT, note="note_swap_broken")
+        if "bgl.staticq" in alts:
+            if len(alts) > 1 or not main.is_file():
+                groups.append(broken(statq))
+                continue
+            applied = bak.is_file() and same_content(main, statq)
+            original = not bak.exists() and not same_content(main, statq)
             if applied or original:
-                if with_statics:
-                    state = ON if applied else OFF
-                else:
-                    state = OFF if applied else ON
-                groups.append(StaticsGroup("swap", directory, main, state, bak, alt, alt_static=with_statics))
+                groups.append(StaticsGroup("swap", directory, main, ON if applied else OFF, bak, statq,
+                                           alt_static=True))
             else:
-                groups.append(StaticsGroup("conflict", directory, main, CONFLICT, note="note_swap_broken"))
-        elif alt_form == "bgl.nostatic" and not bak.exists() and not NEG_RE.search(e["stem"]):
-            groups.append(StaticsGroup("rename", directory, alt, OFF, on_path=main, off_path=alt))
+                groups.append(broken(main))
+            continue
+        has_n, has_s = nost.is_file(), stat.is_file()
+        if main.is_file():
+            if has_n and not has_s and bak.is_file() and same_content(main, nost):
+                groups.append(StaticsGroup("swap", directory, main, OFF, bak, nost))       # ancien état .bak
+            elif has_n and not has_s and not bak.exists():
+                groups.append(StaticsGroup("rswap", directory, main, ON, stat, nost))
+            elif has_s and not has_n and not bak.exists():
+                groups.append(StaticsGroup("rswap", directory, main, OFF, stat, nost))
+            else:
+                groups.append(broken(main))
+        elif has_n and not has_s and not bak.exists() and not NEG_RE.search(e["stem"]):
+            groups.append(StaticsGroup("rename", directory, nost, OFF, on_path=main, off_path=nost))
         else:
-            groups.append(StaticsGroup("conflict", directory, alt, CONFLICT, note="note_swap_broken"))
+            groups.append(broken(first))
 
     # 2. Variantes statics_on / statics_off (+ statics.bgl actif)
     variants: dict = {}
@@ -856,7 +869,7 @@ def _check_layout(root: Path, groups: list) -> list:
     out = []
     for g in groups:
         on = g.on_path if g.mode in ("rename", "pair") and g.state == ON else (
-            g.alt_on if g.mode == "pair" else (g.active if g.mode == "swap" else None))
+            g.alt_on if g.mode == "pair" else (g.active if g.mode in ("swap", "rswap") else None))
         if on is not None and on.is_file() and Path(os.path.relpath(on, root)).as_posix().lower() not in listed:
             out.append(StaticsGroup("conflict", g.directory, on, CONFLICT, note="note_not_in_layout"))
         else:
@@ -1139,6 +1152,10 @@ def snapshot_scene(scene: Scene):
         record["files"][rel(p)] = file_hash(p)
     to_copy = [g.active for g in scene.groups if g.mode == "variant" and g.active.is_file()]
     to_copy += [scene.root / "layout.json", scene.root / "manifest.json"]
+    for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC):
+        if (scene.root / n).is_file():
+            to_copy.append(scene.root / n)
+            record["files"][n] = file_hash(scene.root / n)
     for p in to_copy:
         if p.is_file():
             target = files_dir / rel(p)
@@ -1176,6 +1193,11 @@ def restore_scene_statics(root: Path):
     # 1. Plan, sans rien toucher. Chaque fichier d'origine est retrouvé par son empreinte, quel que soit
     #    son nom actuel (renommé .off, .disabled, échangé avec sa version « sans statics »…).
     cur = {norm_key(p): p for p in cur_paths}
+    for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC):         # fichiers layout échangés (méthode officielle)
+        if (root / n).is_file():
+            cur.setdefault(norm_key(root / n), root / n)
+    if "layout.json" in copied and (files_dir / "layout.json").is_file():
+        known.add(file_hash(files_dir / "layout.json"))
     for r in wanted:
         if (root / r).is_file():
             cur.setdefault(norm_key(root / r), root / r)
@@ -1207,6 +1229,8 @@ def restore_scene_statics(root: Path):
     targets = {norm_key(dd) for _s, dd in moves + copies}
     for _s, dd in moves + copies:
         k = norm_key(dd)
+        if str(_s).startswith(str(files_dir)):
+            continue                              # remis depuis la photo d'origine (layout.json échangé…)
         if dd.exists() and k in cur and k not in sources:
             if hashes[k] in known:
                 deletes.append(dd)
@@ -1482,6 +1506,29 @@ def _move(src: Path, dst: Path):
     forget_hash(dst)
 
 
+def _swap_layout_files(root: Path, groups: list, target: str):
+    """Méthode officielle Orbx / Drzewiecki : layout.json est échangé avec layout.json.nostatic (OFF)
+    ou layout.json.static (ON), pour rester cohérent avec le panneau Orbx Central."""
+    if not any(g.mode == "rswap" for g in groups):
+        return
+    lj, ljs, ljn = root / "layout.json", root / LAYOUT_STATIC, root / LAYOUT_NOSTATIC
+
+    def valid(f: Path) -> bool:                   # jamais d'échange vers un layout illisible
+        try:
+            return isinstance(json.loads(f.read_text(encoding="utf-8-sig")).get("content"), list)
+        except Exception:
+            return False
+
+    if not lj.is_file():
+        return
+    if target == OFF and ljn.is_file() and not ljs.exists() and valid(ljn):
+        os.rename(lj, ljs)
+        os.rename(ljn, lj)
+    elif target == ON and ljs.is_file() and not ljn.exists() and valid(ljs):
+        os.rename(lj, ljn)
+        os.rename(ljs, lj)
+
+
 def set_scene_state(scene: Scene, target: str):
     groups = [g for g in scene.groups if g.toggleable and g.state != target]
     if not groups:
@@ -1491,7 +1538,10 @@ def set_scene_state(scene: Scene, target: str):
     to_backup = [meta.layout_file, meta.manifest_file]
     to_backup += [g.active for g in groups if g.mode == "variant" and g.state == UNKNOWN and g.active.exists()]
     to_backup += [g.on_path for g in groups if g.mode == "rename" and g.twin and g.on_path.is_file()]
+    to_backup += [scene.root / n for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC) if (scene.root / n).is_file()]
     backup_files(scene.root, to_backup)
+    _swap_layout_files(scene.root, groups, target)
+    meta = PackageMeta(scene.root)              # relu : layout.json a pu être échangé
     try:
         for g in groups:
             if g.mode == "rename":
@@ -1512,6 +1562,15 @@ def set_scene_state(scene: Scene, target: str):
                 else:
                     _move(g.off_path, g.on_path)
                     meta.upsert(g.on_path)
+            elif g.mode == "rswap":
+                main, stat, nost = g.active, g.on_file, g.off_file
+                if target == OFF:                         # X.bgl -> X.bgl.static, X.bgl.nostatic -> X.bgl
+                    _move(main, stat)
+                    _move(nost, main)
+                else:                                     # X.bgl -> X.bgl.nostatic, X.bgl.static -> X.bgl
+                    _move(main, nost)
+                    _move(stat, main)
+                meta.upsert(main)
             elif g.mode == "swap":
                 main, bak, alt = g.active, g.on_file, g.off_file
                 apply_alt = (target == ON) if g.alt_static else (target == OFF)
@@ -2120,13 +2179,15 @@ def state_text(st: str) -> str:
 
 
 GROUP_STATE_KEY = {ON: "grp_on", OFF: "grp_off", UNKNOWN: "grp_unknown", CONFLICT: "grp_conflict"}
-MODE_KEY = {"rename": "mode_rename", "variant": "mode_variant", "swap": "mode_swap", "pair": "mode_pair",
+MODE_KEY = {"rename": "mode_rename", "variant": "mode_variant", "swap": "mode_swap", "rswap": "mode_swap", "pair": "mode_pair",
             "conflict": "mode_conflict"}
-MODE_NOTE_KEY = {"rename": "note_rename", "variant": "note_variant", "swap": "note_swap", "pair": "note_pair",
+MODE_NOTE_KEY = {"rename": "note_rename", "variant": "note_variant", "swap": "note_swap", "rswap": "note_swap", "pair": "note_pair",
                  "conflict": "note_conflict"}
 
 
 def mode_note(groups: list, mode: str) -> str:
+    if mode == "rswap":
+        return tr("note_swap_x", alt=".bgl.nostatic / .static")
     if mode == "swap":
         alts = sorted({"." + parse_form(g.off_file.name)[1] for g in groups if g.mode == "swap" and g.off_file})
         return tr("note_swap_x", alt=" / ".join(alts))

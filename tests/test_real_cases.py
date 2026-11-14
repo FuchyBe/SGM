@@ -65,23 +65,69 @@ class TestRealCases(SandboxTest):
         self.cycle("drzewieckidesign-airport-epwr-wroclaw", root, orig)
 
     # D. Orbx / UK2000 / Drzewiecki PLC : X.bgl + X.bgl.nostatic
-    def test_nostatic_swap(self):
+    def test_nostatic_official_swap(self):
+        """Méthode officielle Orbx (notice LYNI) : renommages + échange de layout.json."""
         d = "scenery/world/scenery"
         root = make_pkg(self.community, "orbx-airport-lyni-nis", "LYNI", [
-            (f"{d}/lyni_place.bgl", b"WITH" * 50, True), (f"{d}/lyni_place.bgl.nostatic", b"NO" * 40, False)])
+            (f"{d}/lyni_place.bgl", b"WITH" * 50, True), (f"{d}/lyni_place.bgl.nostatic", b"NO" * 40, False),
+            (f"{d}/lyni_other.bgl", b"O" * 30, True)])
+        # layout.json.nostatic livré par l'éditeur : même contenu, taille de lyni_place adaptée
+        lay = json.loads((root / "layout.json").read_text())
+        for c in lay["content"]:
+            if c["path"].endswith("lyni_place.bgl"):
+                c["size"] = 80
+        (root / "layout.json.nostatic").write_text(json.dumps(lay))
         orig = self.files(root)
         g = self.scan()["orbx-airport-lyni-nis"].groups[0]
-        self.assertEqual((g.mode, g.state), ("swap", m.ON))
+        self.assertEqual((g.mode, g.state), ("rswap", m.ON))
         m.set_scene_state(self.scan()["orbx-airport-lyni-nis"], m.OFF)
-        # règle de Fabian : X.bgl -> X.bgl.bak, puis copie de X.bgl.nostatic en X.bgl
         self.assertEqual((root / f"{d}/lyni_place.bgl").read_bytes(), b"NO" * 40)
-        self.assertEqual((root / f"{d}/lyni_place.bgl.bak").read_bytes(), b"WITH" * 50)
-        self.assertEqual((root / f"{d}/lyni_place.bgl.nostatic").read_bytes(), b"NO" * 40)
+        self.assertEqual((root / f"{d}/lyni_place.bgl.static").read_bytes(), b"WITH" * 50)
+        self.assertFalse((root / f"{d}/lyni_place.bgl.nostatic").exists())
+        self.assertTrue((root / "layout.json.static").is_file())          # layout échangé comme Orbx Central
+        self.assertFalse((root / "layout.json.nostatic").exists())
         self.assertEqual(self.scan()["orbx-airport-lyni-nis"].state, m.OFF)
         m.set_scene_state(self.scan()["orbx-airport-lyni-nis"], m.ON)
-        self.assertEqual((root / f"{d}/lyni_place.bgl").read_bytes(), b"WITH" * 50)
-        self.assertFalse((root / f"{d}/lyni_place.bgl.bak").exists())
-        self.cycle("orbx-airport-lyni-nis", root, orig)
+        after = self.files(root)
+        # aller-retour exact, sauf layout.json.nostatic où SGM a corrigé taille et date de lyni_place.bgl
+        self.assertEqual({k: v for k, v in after.items() if k != "layout.json.nostatic"},
+                         {k: v for k, v in orig.items() if k != "layout.json.nostatic"})
+        lay_n = json.loads((root / "layout.json.nostatic").read_text())
+        self.assertIn(f"{d}/lyni_place.bgl", {c["path"] for c in lay_n["content"]})
+        self.cycle("orbx-airport-lyni-nis", root, orig)                    # restauration : tout à l'identique
+
+    def test_invalid_layout_companion_is_not_swapped(self):
+        d = "scenery/world/scenery"
+        root = make_pkg(self.community, "orbx-x", "XXXX", [
+            (f"{d}/x_place.bgl", b"W" * 9, True), (f"{d}/x_place.bgl.nostatic", b"N" * 9, False)])
+        (root / "layout.json.nostatic").write_text("corrupted")
+        m.set_scene_state(self.scan()["orbx-x"], m.OFF)
+        self.assertEqual((root / "layout.json.nostatic").read_text(), "corrupted")
+        self.assertIn(f"{d}/x_place.bgl", self.layout(root))
+        self.assertEqual(self.scan()["orbx-x"].state, m.OFF)
+
+    def test_nostatic_state_left_by_orbx_central(self):
+        """Statics déjà retirés par Orbx Central : X.bgl + X.bgl.static -> OFF, ON remet tout."""
+        d = "scenery/Orbx/LDZD"
+        root = make_pkg(self.community, "orbx-airport-ldzd", "LDZD", [
+            (f"{d}/orbx-ldzd-scen.bgl", b"NO" * 9, True), (f"{d}/orbx-ldzd-scen.bgl.static", b"WITH" * 9, False)])
+        g = self.scan()["orbx-airport-ldzd"].groups[0]
+        self.assertEqual((g.mode, g.state), ("rswap", m.OFF))
+        m.set_scene_state(self.scan()["orbx-airport-ldzd"], m.ON)
+        self.assertEqual((root / f"{d}/orbx-ldzd-scen.bgl").read_bytes(), b"WITH" * 9)
+        self.assertTrue((root / f"{d}/orbx-ldzd-scen.bgl.nostatic").is_file())
+
+    def test_legacy_bak_state_is_recognised(self):
+        """État laissé par l'exe de test précédent (.bak + copie) : ON remet l'original."""
+        d = "scenery/world/scenery"
+        root = make_pkg(self.community, "orbx-airport-lgsk", "LGSK", [
+            (f"{d}/x.bgl", b"NO" * 9, True), (f"{d}/x.bgl.nostatic", b"NO" * 9, False), (f"{d}/x.bgl.bak", b"W" * 9, False)])
+        g = self.scan()["orbx-airport-lgsk"].groups[0]
+        self.assertEqual((g.mode, g.state), ("swap", m.OFF))
+        m.set_scene_state(self.scan()["orbx-airport-lgsk"], m.ON)
+        self.assertEqual((root / f"{d}/x.bgl").read_bytes(), b"W" * 9)
+        self.assertFalse((root / f"{d}/x.bgl.bak").exists())
+        self.assertEqual(self.scan()["orbx-airport-lgsk"].groups[0].mode, "rswap")
 
     # D1. UK2000 KHND : X.bgl (sans statics) + X.bgl.staticq (avec) -> règle de Fabian
     def test_staticq_swap(self):
@@ -232,6 +278,7 @@ class TestRealCases(SandboxTest):
         self.assertEqual(self.scan()["drzewieckidesign-airport-kmdw"].state, m.MIXED)
         m.set_scene_state(self.scan()["drzewieckidesign-airport-kmdw"], m.OFF)
         self.assertEqual((root / f"{d}/KMDW_PLC.bgl").read_bytes(), b"N" * 331)
+        self.assertTrue((root / f"{d}/KMDW_PLC.bgl.static").is_file())        # méthode officielle (notice EPGD)
         self.assertTrue((root / "scenery/Chicago Midway MFS/KMDW_Static.off").is_file())
         m.set_scene_state(self.scan()["drzewieckidesign-airport-kmdw"], m.ON)
         self.assertEqual((root / f"{d}/KMDW_PLC.bgl").read_bytes(), b"P" * 329)
