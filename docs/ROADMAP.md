@@ -21,14 +21,18 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
   l'environnement de développement. Bénéfice : fiabilité de l'installation d'archives. S. Risque faible.
 - **Signature de l'exécutable** — origine : publication. SmartScreen et certains antivirus signalent un exe
   non signé. Bénéfice : confiance des utilisateurs. M (coût d'un certificat : décision de Fabian). Risque nul.
-- **Annuler la dernière action** — origine : idée. Restaurer la dernière sauvegarde d'une scène ou d'un profil
-  GSX depuis l'interface. Bénéfice : sécurité perçue. M. Risque moyen (fichiers).
+- **Annuler la dernière action** — origine : idée. Revenir à l'état d'avant le dernier clic (et pas seulement à
+  l'origine, déjà couvert par « Restaurer l'état d'origine », PR #2). Bénéfice : confort. M. Risque moyen (fichiers).
 - **Profils de statics** — origine : idée. Enregistrer un jeu d'états ON/OFF (« Trafic IA dense », « Vols
   photo ») et l'appliquer d'un clic. Bénéfice : confort. M. Risque faible.
+- **Arabe : en-tête mal aligné** — origine : captures du designer (`docs/captures/reference/ar.png`). En arabe, le
+  sous-titre « avions statiques et profils GSX » passe sous les compteurs, à droite, au lieu de rester sous le titre.
+  Bénéfice : interface propre en RTL. S. Risque nul. Agent : designer-interface.
 - **Relecture native des traductions** (ar, zh, ja surtout) — origine : publication. S. Risque nul.
 
 ## Livré
 
+- **beta v0.7** — méthodes de statics des éditeurs (base des cas réels), méthode officielle Orbx/Drzewiecki, restauration de l'état d'origine, rapport d'analyse, correction Homa Sim, cas peu clairs à faire à la main.
 - **beta v0.6** — aéroports sans profil, profils installés à la main, recherche flightsim.to, catégories,
   installation de profils depuis une archive, menu Signaler un problème.
 - **beta v0.5** — première version publique.

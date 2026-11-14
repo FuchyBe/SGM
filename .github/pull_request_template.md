@@ -11,6 +11,10 @@
 
 <!-- OK / À corriger / Bloquant + détails -->
 
+## Interface
+
+<!-- Avis du designer-interface (Interface OK / problèmes) + liens vers docs/captures/<branche>/ -->
+
 ## Vérifications
 
 - [ ] `bash tests/run_tests.sh` vert

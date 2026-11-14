@@ -36,6 +36,7 @@ class TestReport(SandboxTest):
         make_pkg(self.community, "studio-ebci", "Charleroi EBCI", [
             ("scenery/EBCI_statics.bgl", b"S" * 4, True),
             ("scenery/EBCI_static_aircraft.bgl", b"T" * 4, True),       # « static » sans s
+            ("scenery/modelLib_static_people.bgl", b"P" * 4, True),     # bibliothèque : pas basculée
             ("scenery/EBCI_parked_disabled.bgl.bak", b"U" * 4, False),
             ("Options/statics_without.bgl", b"V" * 4, False),
             ("scenery/EBCI_terrain.bgl", b"W" * 4, True)])               # sans rapport : ignoré
@@ -47,10 +48,19 @@ class TestReport(SandboxTest):
         self.assertIn("Options/statics_without.bgl", paths)
         self.assertNotIn("scenery/EBCI_terrain.bgl", paths)
         self.assertTrue(paths["scenery/EBCI_statics.bgl"]["in_layout"])
-        self.assertFalse(paths["scenery/EBCI_static_aircraft.bgl"]["used_by_sgm"])
-        self.assertEqual(sc["bgl_count"], 4)
+        self.assertTrue(paths["scenery/EBCI_static_aircraft.bgl"]["used_by_sgm"])
+        self.assertFalse(paths["scenery/modelLib_static_people.bgl"]["used_by_sgm"])
+        self.assertEqual(sc["bgl_count"], 5)
         self.assertGreaterEqual(rep["summary"]["candidate_files_not_used_by_sgm"], 2)
         self.assertTrue(sc["sgm_groups"])
+
+    def test_base_files_are_listed(self):
+        make_pkg(self.community, "ini-lowi", "LOWI", [
+            ("s/lowi-scene-airport.bgl", b"A" * 30, True), ("s/lowi-scene-airport-statics.bgl.disabled", b"S" * 20, False),
+            ("s/lyni_place.bgl", b"P" * 9, True), ("s/lyni_place.bgl.nostatic", b"N" * 9, False)])
+        paths = {f["path"]: f for f in self.build()["scenes"][0]["files"]}
+        self.assertEqual(paths["s/lowi-scene-airport.bgl"]["size"], 30)
+        self.assertIn("s/lyni_place.bgl", paths)
 
     def test_aircraft_and_empty_packages_skipped(self):
         make_pkg(self.community, "plane", "Some Plane", [("SimObjects/x_static.bgl", b"x", True)], ctype="AIRCRAFT")
