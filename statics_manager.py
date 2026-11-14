@@ -563,7 +563,7 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
                 groups.append(StaticsGroup("swap", directory, main, state, bak, alt, alt_static=with_statics))
             else:
                 groups.append(StaticsGroup("conflict", directory, main, CONFLICT, note="note_swap_broken"))
-        elif alt_form == "bgl.nostatic" and not bak.exists():
+        elif alt_form == "bgl.nostatic" and not bak.exists() and not NEG_RE.search(e["stem"]):
             groups.append(StaticsGroup("rename", directory, alt, OFF, on_path=main, off_path=alt))
         else:
             groups.append(StaticsGroup("conflict", directory, alt, CONFLICT, note="note_swap_broken"))
@@ -670,6 +670,18 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
                 else:
                     state, note = UNKNOWN, "note_unknown_active"
                 groups.append(StaticsGroup("variant", directory, base_p, state, s_file, n_file, note))
+            elif s_off and n_off and base_p is None:
+                # Homa Sim : deux aéroports complets (avec / sans statics) tous deux désactivés -> aucun aéroport
+                # chargé (souvent après une ancienne version de SGM). ON active la version avec statics,
+                # OFF la version sans ; jamais les deux.
+                s_name = s_forms[next(iter(s_forms))]
+                n_name = n_forms[next(iter(n_forms))]
+                s_form, n_form = parse_form(s_name)[1], parse_form(n_name)[1]
+                groups.append(StaticsGroup("pair", directory, directory / s_name, UNKNOWN, note="note_pair_none",
+                                           on_path=directory / _on_name(q["stem"], s_form, s_name),
+                                           off_path=directory / s_name,
+                                           alt_on=directory / _on_name(p["stem"], n_form, n_name),
+                                           alt_off=directory / n_name))
             else:
                 # les deux actifs, ou fichier actif introuvable : on ne touche à rien
                 groups.append(StaticsGroup("conflict", directory, directory / next(iter(s_forms.values())),
@@ -870,14 +882,22 @@ def _use_origin_off_names(root: Path, groups: list):
             nost, main = root / rel, root / rel[:-len(".nostatic")]
             if main.is_file() and not nost.exists() and norm_key(main) not in covered:
                 groups.append(StaticsGroup("rename", main.parent, main, ON, on_path=main, off_path=nost))
-    for g in groups:
-        if g.mode != "rename" or g.state != ON or g.twin:
-            continue
-        on_rel = Path(os.path.relpath(g.on_path, root)).as_posix()
-        for alt in (on_rel[:-4] + ".off", on_rel[:-4] + ".disabled", on_rel + ".disabled"):
+    def origin_off(on_path):
+        on_rel = Path(os.path.relpath(on_path, root)).as_posix()
+        for alt in (on_rel + ".off", on_rel[:-4] + ".off", on_rel[:-4] + ".disabled", on_rel + ".disabled",
+                    on_rel + ".nostatic"):
             if alt.lower() in names and alt.lower() != on_rel.lower():
-                g.off_path = root / names[alt.lower()]
-                break
+                return root / names[alt.lower()]
+        return None
+
+    for g in groups:
+        if g.mode == "rename" and g.state == ON and not g.twin:
+            g.off_path = origin_off(g.on_path) or g.off_path
+        elif g.mode == "pair":
+            if g.on_path is not None and g.on_path.is_file():
+                g.off_path = origin_off(g.on_path) or g.off_path
+            if g.alt_on is not None and g.alt_on.is_file():
+                g.alt_off = origin_off(g.alt_on) or g.alt_off
 
 
 def scan_package(root: Path, source_label: str) -> Scene | None:
@@ -1507,14 +1527,17 @@ def set_scene_state(scene: Scene, target: str):
                     _move(bak, main)
                 meta.upsert(main)
             elif g.mode == "pair":
+                # toujours désactiver d'abord, puis activer : jamais les deux versions chargées
                 if target == OFF:                         # avec statics désactivé, sans statics activé
-                    _move(g.on_path, g.off_path)
-                    meta.remove(g.on_path)
+                    if g.on_path.is_file():
+                        _move(g.on_path, g.off_path)
+                        meta.remove(g.on_path)
                     _move(g.alt_off, g.alt_on)
                     meta.upsert(g.alt_on)
                 else:
-                    _move(g.alt_on, g.alt_off)
-                    meta.remove(g.alt_on)
+                    if g.alt_on.is_file():
+                        _move(g.alt_on, g.alt_off)
+                        meta.remove(g.alt_on)
                     _move(g.off_path, g.on_path)
                     meta.upsert(g.on_path)
             else:

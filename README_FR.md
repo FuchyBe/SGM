@@ -173,6 +173,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Installation de profils GSX depuis une archive téléchargée : glisser-déposer, bouton Installer, détection dans Téléchargements au lancement (.zip ; .7z/.rar avec 7-Zip).
 - Les avions et livrées sont ignorés pendant l'analyse (plus rapide).
 - Rapport d'analyse des statics (menu Aide) : analyse en lecture seule pour améliorer les règles de détection.
+- Correction : SGM v0.6 pouvait désactiver les deux versions d'un fichier d'aéroport complet (`…-airport-statics.bgl`, Homa Sim), laissant la scène sans aéroport. SGM affiche maintenant « Aucune version active » et n'en réactive qu'une.
 - Beaucoup plus de méthodes de statics reconnues (`.off`, `.disabled`, `.nostatic`, paires static/nostatic, fichiers d'aéroport complets), à partir d'une vraie bibliothèque de plus de 2 000 paquets. Le signalement de problème peut inclure le rapport d'analyse.
 - Restauration de l'état d'origine : clic droit sur une scène, ou Aide › Tout restaurer à l'origine. SGM enregistre chaque scène et profil GSX tels qu'ils étaient avant sa première modification.
 - Sécurité des statics : un fichier statics au nom différent qui ne correspond à aucune variante on/off n'est jamais écrasé : il est affiché « À vérifier », avec une icône de dossier pour ouvrir le dossier du fichier statics et le faire manuellement.

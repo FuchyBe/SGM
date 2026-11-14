@@ -198,18 +198,53 @@ class TestRealCases(SandboxTest):
         self.assertEqual(len(list((root / "scenery").iterdir())), 3)    # aucun fichier ajouté ni chargé en double
         self.cycle("homasim-airport-oiaw", root, orig)
 
-    def test_three_way_without_base_is_left_alone(self):
-        make_pkg(self.community, "homasim-airport-oiie", "OIIE", [
-            ("scenery/oiie-airport-statics.bgl.off", b"S" * 9, False),
-            ("scenery/oiie-airport-nostatics.off", b"N" * 9, False)])
+    def test_three_way_without_base_none_active(self):
+        """Homa Sim après SGM v0.6 : -statics et -nostatics tous deux désactivés, aucun aéroport chargé."""
+        root = make_pkg(self.community, "homasim-airport-oiie", "OIIE", [
+            ("scenery/oiie-airport-statics.bgl.off", b"S" * 857, False),
+            ("scenery/oiie-airport-nostatics.off", b"N" * 858, False),
+            ("scenery/oiie-objects.bgl", b"O" * 50, True)])
         sc = self.scan()["homasim-airport-oiie"]
-        self.assertEqual((sc.state, sc.groups[0].note), (m.CONFLICT, "note_negation"))
+        g = sc.groups[0]
+        self.assertEqual((g.mode, g.state, g.note), ("pair", m.UNKNOWN, "note_pair_none"))
+        self.assertTrue(sc.toggleable)
+        m.set_scene_state(sc, m.ON)
+        self.assertTrue((root / "scenery/oiie-airport-statics.bgl").is_file())
+        self.assertTrue((root / "scenery/oiie-airport-nostatics.off").is_file())
+        self.assertEqual(self.scan()["homasim-airport-oiie"].state, m.ON)
+        m.set_scene_state(self.scan()["homasim-airport-oiie"], m.OFF)
+        self.assertTrue((root / "scenery/oiie-airport-statics.bgl.off").is_file())
+        self.assertTrue((root / "scenery/oiie-airport-nostatics.bgl").is_file())   # un seul aéroport actif
+        lay = self.layout(root)
+        self.assertIn("scenery/oiie-airport-nostatics.bgl", lay)
+        self.assertNotIn("scenery/oiie-airport-statics.bgl", lay)
+        m.restore_scene_statics(root)                       # origine : les deux désactivés
+        self.assertTrue((root / "scenery/oiie-airport-statics.bgl.off").is_file())
+        self.assertTrue((root / "scenery/oiie-airport-nostatics.off").is_file())
+
+    def test_drzewiecki_plc_with_both_files(self):
+        """Drzewiecki réel : XXXX_PLC.bgl + XXXX_PLC.bgl.nostatic + XXXX_Static.off -> basculés ensemble."""
+        d = "scenery"
+        root = make_pkg(self.community, "drzewieckidesign-airport-kmdw", "KMDW", [
+            ("scenery/Chicago Midway MFS/KMDW_Static.off", b"S" * 500, False),
+            (f"{d}/KMDW_PLC.bgl", b"P" * 329, True), (f"{d}/KMDW_PLC.bgl.nostatic", b"N" * 331, False)])
+        orig = self.files(root)
+        self.assertEqual(self.scan()["drzewieckidesign-airport-kmdw"].state, m.MIXED)
+        m.set_scene_state(self.scan()["drzewieckidesign-airport-kmdw"], m.OFF)
+        self.assertEqual((root / f"{d}/KMDW_PLC.bgl").read_bytes(), b"N" * 331)
+        self.assertTrue((root / "scenery/Chicago Midway MFS/KMDW_Static.off").is_file())
+        m.set_scene_state(self.scan()["drzewieckidesign-airport-kmdw"], m.ON)
+        self.assertEqual((root / f"{d}/KMDW_PLC.bgl").read_bytes(), b"P" * 329)
+        self.assertTrue((root / "scenery/Chicago Midway MFS/KMDW_Static.bgl").is_file())
+        m.restore_scene_statics(root)
+        self.assertEqual(self.files(root), orig)
 
     # H. Cas laissés à la main
     def test_cases_left_alone(self):
         make_pkg(self.community, "propair-ebci", "EBCI", [("scenery/EBCI_NoStaticAircraft.bgl", b"N" * 9, True)])
         make_pkg(self.community, "orbx-kbur", "KBUR", [
             ("scenery/Orbx/kbur/Xml_Placements_With_Static_Aircraft.bgl", b"S" * 9, False),
+            ("scenery/Orbx/kbur/Xml Placements_Without_Static_Aircraft.bgl.nostatic", b"N" * 9, False),
             ("scenery/Orbx/kbur/other.bgl", b"O" * 9, True)])
         make_pkg(self.community, "pyreegue-egaa", "EGAA", [
             ("Contrail/src/statics-off.config.off", b"", False), ("Contrail/src/statics-on.config", b"", False)])
@@ -218,7 +253,8 @@ class TestRealCases(SandboxTest):
             ("Scenery/katl/placement/placement_full_gse_rampguy_static_flatten.bgl", b"F" * 9, True)])
         scenes = self.scan()
         self.assertEqual(scenes["propair-ebci"].groups[0].note, "note_negation")
-        self.assertEqual(scenes["orbx-kbur"].groups[0].note, "note_not_in_layout")
+        self.assertEqual(scenes["orbx-kbur"].state, m.CONFLICT)          # jamais « Without » activé par erreur
+        self.assertFalse(scenes["orbx-kbur"].toggleable)
         for name in ("pyreegue-egaa", "atelic-lipz", "orbx-katl"):
             self.assertFalse(name in scenes and scenes[name].groups, name)
 

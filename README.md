@@ -173,6 +173,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Install GSX profiles from downloaded archives: drag & drop, Install button, Downloads folder detection at launch (.zip; .7z/.rar with 7-Zip).
 - Aircraft and liveries are skipped during the scan (faster).
 - Statics analysis report (Help menu): read-only scan to help improve detection rules.
+- Fix: SGM v0.6 could disable both versions of a complete airport file (`…-airport-statics.bgl`, Homa Sim), leaving no airport loaded. SGM now shows "No version active" and re-enables only one.
 - Many more statics methods recognised (`.off`, `.disabled`, `.nostatic`, static/nostatic pairs, complete airport files), from a real library of 2,000+ packages. Problem report can include the statics analysis report.
 - Restore original state: right-click a scenery, or Help › Restore everything to original. SGM records each scenery and GSX profile as it was before its first change.
 - Statics safety: a statics file with a different name that matches neither on/off variant is never overwritten: it is shown as "To check", with a folder icon to open the folder of the statics file and do it manually.

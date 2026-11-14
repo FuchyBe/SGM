@@ -15,6 +15,7 @@ Aucun chemin personnel ni nom d'utilisateur.
 | Fichier | Date | Paquets | Scènes avec statics | Origine |
 |---|---|---|---|---|
 | `2026-11-14-rapport-1.json` | 2026-11-14 | 2 218 | 89 (après retrait des textures) | bibliothèque de Fabian (MSFS 2024) |
+| `2026-11-14-rapport-2.json` | 2026-11-14 | 2 218 | 89 | même bibliothèque, après tests ; liste les fichiers de base |
 
 ## Bilan
 
@@ -31,12 +32,12 @@ d'origine redonne des fichiers identiques octet pour octet pour toutes les scèn
 | 3 | `KBFI_STATIC.BGL`, `EDDF_Placements_staticAC.bgl`, `SP_LIRN_Static.bgl`, `objects-parked-aircraft.bgl` | Drzewiecki (8), SimPixel (3), Aerosoft, ASD, LimeSim, NetDesign, SiamFlight, Permille, Orbx JW, imaginesim, Seafront… | 27 | Renommage `.bgl` ↔ `.bgl.off` (« static » au singulier, « parked ») | non vu | nouveau |
 | 4 | `EPWR_Static.BGL` + `EPWR_Static.off` **identiques** | Drzewiecki | 1 | ON ; OFF = supprimer le `.BGL` (son double reste) ; ON = renommer le `.off` | « conflit » | nouveau |
 | 5 | `lyni_place.bgl` + `lyni_place.bgl.nostatic` | Orbx (3), UK2000 | 4 | **Règle de Fabian** : OFF `X.bgl`→`X.bgl.bak` puis copie de `X.bgl.nostatic` en `X.bgl` ; ON : copie supprimée, `X.bgl.bak`→`X.bgl` | non vu | nouveau |
-| 5b | `KMDW_PLC.bgl.nostatic` seul | Drzewiecki (7) | 7 | **Règle de Fabian** : forme désactivée, ON = renommer en `KMDW_PLC.bgl` (avec `XXXX_Static.off` → `.bgl`) | non vu | nouveau |
+| 5b | `KMDW_PLC.bgl.nostatic` | Drzewiecki (7) | 7 | **Rapport 2** : `KMDW_PLC.bgl` existe aussi → même méthode que 5 (`.bak` + copie), basculé avec `KMDW_Static.off` ↔ `.bgl`. Affiché « Mixte » tant que les deux diffèrent (livré ainsi : bibliothèque OFF, placements avec statics). Si `KMDW_PLC.bgl` est absent : règle de Fabian, renommer `.nostatic` en `.bgl` | non vu | nouveau |
 | 6 | `kpvd-scene-airport_nostatic.bgl` + `kpvd-scene-airport_static.bgl.disabled` | iniBuilds | 1 | Paire : un seul des deux actif, l'autre `.disabled` | non vu | nouveau |
-| 7 | `lowi-scene-airport-statics.bgl.disabled` | iniBuilds | 1 | **Règle de Fabian** : ON = copie en `.bgl` (le `.disabled` reste), OFF = copie supprimée. Sécurité : si le fichier de base `lowi-scene-airport.bgl` a presque la même taille (±25 %), c'est un aéroport complet → échange des deux | — | nouveau |
-| 8 | `oiaw-airport.bgl` + `oiaw-airport-statics.bgl.off` + `oiaw-airport-nostatics.off` | Homa Sim | 3 | Variantes : la version choisie est copiée sur `oiaw-airport.bgl` ; sans ce fichier : à vérifier | **danger** : SGM proposait ON = aéroport en double | corrigé |
+| 7 | `lowi-scene-airport-statics.bgl.disabled` (1 595 504 o) + `lowi-scene-airport.bgl` (1 594 496 o) | iniBuilds | 1 | **Aéroport complet confirmé par le rapport 2** (tailles quasi identiques) : échange — ON active `-statics.bgl` et désactive `lowi-scene-airport.bgl` (`.disabled`), OFF l'inverse. Si le fichier de base était petit, la règle de Fabian (copie en `.bgl`) s'appliquerait | — | nouveau |
+| 8 | `oiaw-airport-statics.bgl.off` + `oiaw-airport-nostatics.off`, **pas de `oiaw-airport.bgl`** | Homa Sim | 3 | **Rapport 2** : les deux aéroports complets sont désactivés → aucun aéroport chargé, très probablement à cause de SGM ≤ v0.6 (ancienne règle « statics → .off »). SGM affiche « Aucune version active » : ON active `-statics.bgl`, OFF active `-nostatics.bgl`, jamais les deux. (Si un `oiaw-airport.bgl` existe : variantes copiées dessus) | **bug v0.6** | corrigé |
 | 9 | `EBCI_NoStaticAircraft.bgl` seul | Propair Flight | 1 | À vérifier (icône dossier) | non vu | prudent |
-| 10 | `Xml_Placements_With_Static_Aircraft.bgl` absent de `layout.json` + `layout.json.static` | Orbx KBUR | 1 | À vérifier : l'éditeur échange `layout.json` | non vu | prudent |
+| 10 | `Xml_Placements_With_Static_Aircraft.bgl` (absent de `layout.json`) + `Xml Placements_Without_Static_Aircraft.bgl.nostatic` + `layout.json.static` | Orbx KBUR | 1 | À vérifier : l'éditeur échange `layout.json`, et « Without » ne doit jamais être activé comme s'il apportait les statics | non vu | prudent |
 | 11 | `khnd-airport.bgl` + `khnd-airport.bgl.staticq` | UK2000 | 1 | **Règle de Fabian** : statics OFF de base ; ON = `khnd-airport.bgl` → `.bak` puis copie de `.staticq` nommée `khnd-airport.bgl` ; OFF = copie supprimée, `.bak` → `khnd-airport.bgl`. Sans `khnd-airport.bgl` : à vérifier | non vu | nouveau |
 | — | `statics-off.config.off` (Contrail), `modelib_People_static.BGL`, `modelLib-parked-*.BGL`, `*_flatten.bgl`, textures `*static*.dds/.ktx2`, modèles `.bin/.gltf` | Pyreegue, Atelic, IPDC, imaginesim, Orbx, … | 127 | Ignorés | — | juste |
 
