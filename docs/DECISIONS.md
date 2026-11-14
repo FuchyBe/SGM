@@ -35,6 +35,13 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
 
 ## Fonctionnement de l'équipe d'agents
 
+- Équipe : developpeur, designer-interface, testeur, gardien-securite, analyste-regles, support-utilisateurs,
+  veille-communaute. Un changement visible passe par le designer (maquette/captures) ; un nouvel écran attend l'accord de Fabian.
+- **Rapport d'analyse des statics** (Aide › Créer un rapport…) : lecture seule, sans chemin personnel. Fabian dépose
+  les rapports dans `docs/analyses/` ; l'analyste en tire la base des cas réels et propose des règles.
+- **Restauration de l'état d'origine** : photo prise avant la première modification, jamais effacée ; restauration
+  tout ou rien.
+
 - Fabian valide d'abord un **plan des ajouts** (section « Prêt » de la ROADMAP), puis **chaque changement**
   (PR) avant intégration.
 - Code et signalements : dépôt **public** **FuchyBe/SGM**, séparé de Hangar.
