@@ -54,6 +54,7 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 ## Fonctions
 
 ### Avions statiques
+- **Profils** (barre d'outils) : enregistre l'état ON/OFF de tes scènes sous un nom et applique-le plus tard d'un clic ; seules les scènes qui diffèrent sont basculées, les scènes à vérifier ne sont jamais touchées, et l'application d'un profil s'annule.
 - Les fichiers sont détectés quand leur nom contient `static`, `statics` ou `parked`, à n'importe quelle profondeur dans la scène. Les bibliothèques de modèles (`modelLib…`) et les aplanissements de terrain sont ignorés.
 - Les méthodes des éditeurs sont reconnues (à partir d'une vraie bibliothèque de plus de 2 000 paquets) :
   - **Renommage** : `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` ou `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM garde la convention de l'éditeur.
@@ -180,6 +181,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 **Prochaine version (en développement)**
 - **Journal** (`SGM_data\logs`, sans nom d'utilisateur), joint aux signalements de bug ; Aide › Ouvrir le dossier du journal.
 - **Bouton flightsim.to** : recherche web limitée à flightsim.to (la recherche du site ignorait l'OACI depuis un lien) ; le réglage de recherche est retiré.
+- **Profils de statics** : enregistre l'état ON/OFF de tes scènes sous un nom (par ex. « Trafic IA dense », « Vols photo ») et applique-le d'un clic (cas simples uniquement, annulable).
 - **Annuler la dernière action** (bouton ou Ctrl+Z, 10 actions gardées) : bascules, Tout ON/OFF, profils GSX, restaurations ; fichiers remis exactement, refus s'ils ont changé depuis.
 - **Analyser vérifie aussi tes dossiers de téléchargement** (archives de profils GSX) ; dossiers modifiables et ajoutables dans **Dossiers**.
 - **Fenêtre Signaler un problème / Proposer une idée** : ton texte arrive directement dans la page GitHub, rapport et journal dans un seul `.zip`, aperçu exact de ce qui est partagé.

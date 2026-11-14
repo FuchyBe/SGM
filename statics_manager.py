@@ -235,7 +235,17 @@ def norm_key(p) -> str:
 
 
 def _empty_profile() -> dict:
-    return {"manual_folders": [], "known_scenes": [], "gsx_folder": "", "gsx_choices": {}, "scanned": False}
+    return {"manual_folders": [], "known_scenes": [], "gsx_folder": "", "gsx_choices": {}, "scanned": False,
+            "statics_profiles": {}}
+
+
+def _clean_statics_profiles(raw) -> dict:
+    out = {}
+    if isinstance(raw, dict):
+        for name, states in list(raw.items())[:30]:
+            if isinstance(states, dict) and str(name).strip():
+                out[str(name).strip()[:40]] = {str(k): v for k, v in states.items() if v in ("on", "off")}
+    return out
 
 
 class Config:
@@ -278,6 +288,7 @@ class Config:
                             "gsx_folder": str(p.get("gsx_folder") or ""),
                             "gsx_choices": {str(k): str(v) for k, v in (p.get("gsx_choices") or {}).items()},
                             "scanned": bool(p.get("scanned")),
+                            "statics_profiles": _clean_statics_profiles(p.get("statics_profiles")),
                         })
                         self.profiles[sim] = prof
             else:   # ancienne version (MSFS 2024 uniquement) -> profil 2024
@@ -323,6 +334,11 @@ class Config:
     @property
     def gsx_choices(self) -> dict:
         return self.p["gsx_choices"]
+
+    @property
+    def statics_profiles(self) -> dict:
+        """Profils de statics de ce simulateur : nom -> {clé de scène: "on" / "off"}."""
+        return self.p.setdefault("statics_profiles", {})
 
     @property
     def first_run(self) -> bool:
@@ -2773,6 +2789,33 @@ def column(width: int):
     return w, v
 
 
+def simple_statics(scene) -> bool:
+    """Scène basculable en bloc sans risque : entièrement ON ou OFF, aucun fichier ambigu."""
+    return (scene.toggleable and scene.state in (ON, OFF)
+            and not any(g.mode == "conflict" for g in scene.groups))
+
+
+def profile_from_scenes(scenes) -> dict:
+    """État actuel des scènes simples, à enregistrer comme profil."""
+    return {s.key: ("on" if s.state == ON else "off") for s in scenes if simple_statics(s)}
+
+
+def profile_plan(profile: dict, scenes) -> tuple:
+    """(liste (scène, cible) à basculer, scènes du profil à vérifier, scènes du profil introuvables).
+    Les scènes absentes du profil ne sont jamais touchées."""
+    by_key = {s.key: s for s in scenes}
+    todo, check, missing = [], 0, 0
+    for key, want in profile.items():
+        s = by_key.get(key)
+        if s is None:
+            missing += 1
+        elif not simple_statics(s):
+            check += 1
+        elif s.state != (ON if want == "on" else OFF):
+            todo.append((s, ON if want == "on" else OFF))
+    return todo, check, missing
+
+
 class ColHandle(QFrame):
     """Séparateur d'en-tête qu'on peut tirer pour régler la largeur des colonnes."""
     dragged = Signal(int)
@@ -3755,16 +3798,24 @@ class MainWindow(QMainWindow):
         self.btn_all_on.setObjectName("primary")
         self.btn_all_on.clicked.connect(lambda: self.set_all(ON))
         # Annuler : séparé des boutons d'action (il défait, il ne crée rien)
+        # Profils de statics : enregistrer / appliquer un jeu d'états ON/OFF
+        self.btn_profiles = QPushButton(tr("btn_profiles"))          # flèche de menu dessinée par Qt
+        self.btn_profiles.setToolTip(tr("tip_profiles"))
+        self.profiles_menu = QMenu(self)
+        self.profiles_menu.aboutToShow.connect(self.build_profiles_menu)
+        self.btn_profiles.setMenu(self.profiles_menu)
         self.btn_undo = QPushButton("↶  " + tr("btn_undo"))
         self.btn_undo.setObjectName("ghost")
         self.btn_undo.clicked.connect(self.undo_last_action)
-        for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on, self.btn_undo):
+        for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on, self.btn_undo,
+                  self.btn_profiles):
             b.setCursor(Qt.PointingHandCursor)
         self.scope_lbl = QLabel()
         self.scope_lbl.setObjectName("hint")
         bar2.addWidget(self.btn_folders)
         bar2.addWidget(self.btn_scan)
         bar2.addWidget(self.btn_install)
+        bar2.addWidget(self.btn_profiles)
         bar2.addSpacing(6)
         bar2.addWidget(self.btn_undo)
         bar2.addStretch()
@@ -4373,7 +4424,8 @@ class MainWindow(QMainWindow):
 
     def set_busy(self, busy: bool):
         self.busy = busy
-        for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on):
+        for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on,
+                  self.btn_profiles):
             b.setEnabled(not busy)
         self.update_undo_btn()
         for r in self.rows.values():
@@ -4698,6 +4750,94 @@ class MainWindow(QMainWindow):
             row.refresh_gsx()
         done = tr("gsx_done_version", v=vlabel(v)) if multi else tr("gsx_done_copy")
         self.status.setText(tr("gsx_status", name=scene.title, what=done, files=", ".join(copied), dest=dest))
+
+    # ── Profils de statics
+    def build_profiles_menu(self):
+        m = self.profiles_menu
+        m.clear()
+        profs = self.config.statics_profiles
+        if not profs:
+            a = m.addAction(tr("prof_none"))
+            a.setEnabled(False)
+        for name in sorted(profs, key=str.lower):
+            a = m.addAction(tr("prof_item", name=name, n=len(profs[name])))
+            a.triggered.connect(lambda _=False, n=name: self.apply_profile(n))
+        m.addSeparator()
+        a = m.addAction(tr("prof_save"))
+        a.triggered.connect(self.save_profile)
+        a.setEnabled(bool(self.scenes))
+        if profs:
+            sm = m.addMenu(tr("prof_delete"))
+            for name in sorted(profs, key=str.lower):
+                a = sm.addAction(name)
+                a.triggered.connect(lambda _=False, n=name: self.delete_profile(n))
+
+    def _save_config(self):
+        try:
+            self.config.save()
+        except OSError as e:
+            warn(self, str(e))
+
+    def save_profile(self):
+        states = profile_from_scenes(self.scenes.values())
+        if not states:
+            warn(self, tr("prof_empty"))
+            return
+        name, ok = QInputDialog.getText(self, tr("btn_profiles"), tr("prof_name_q"))
+        name = (name or "").strip()[:40]
+        if not ok or not name:
+            return
+        profs = self.config.statics_profiles
+        same = next((k for k in profs if k.lower() == name.lower()), None)
+        if same is not None:
+            if not ask(self, tr("prof_exists", name=same), default_yes=False):
+                return
+            profs.pop(same)
+        profs[name] = states
+        self._save_config()
+        LOG.info("Profil de statics enregistré : %s (%d scènes)", name, len(states))
+        self.status.setText(tr("prof_saved", name=name, n=len(states)))
+
+    def delete_profile(self, name: str):
+        if name in self.config.statics_profiles and ask(self, tr("prof_delete_q", name=name), default_yes=False):
+            self.config.statics_profiles.pop(name)
+            self._save_config()
+            self.status.setText(tr("prof_deleted", name=name))
+
+    def apply_profile(self, name: str):
+        prof = self.config.statics_profiles.get(name)
+        if prof is None or self.busy:
+            return
+        todo, check, missing = profile_plan(prof, self.scenes.values())
+        skip = ("\n\n" + tr("prof_skip", check=check, missing=missing)) if check or missing else ""
+        if not todo:
+            if skip:
+                QMessageBox.information(self, APP_NAME, tr("prof_already", name=name) + skip)
+            else:
+                self.status.setText(tr("prof_already", name=name))
+            return
+        n_on = sum(1 for _s, tg in todo if tg == ON)
+        if not ask(self, tr("prof_apply_q", name=name, n=len(todo), on=n_on, off=len(todo) - n_on) + skip) \
+                or not self.ensure_sim_closed():
+            return
+        LOG.info("Profil de statics appliqué : %s (%d bascules)", name, len(todo))
+        self.set_busy(True)
+        errors = []
+        with undoable(f"{tr('btn_profiles')} — {name}"):
+            for i, (s, target) in enumerate(todo, 1):
+                self.status.setText(tr("all_progress", label=name, i=i, n=len(todo), name=s.title))
+                QApplication.processEvents()
+                try:
+                    set_scene_state(s, target)
+                except Exception as e:
+                    errors.append(f"• {s.title} : {e}")
+                self.refresh_scene(s)
+        self.set_busy(False)
+        self.update_stats()
+        self.apply_filter()
+        self.status.setText(tr("prof_done", name=name, n=len(todo) - len(errors)))
+        if errors:
+            warn(self, tr("all_errors") + "\n\n" + "\n".join(errors[:15]) + ("\n…" if len(errors) > 15 else ""))
 
     # ── Annuler la dernière action
     def update_undo_btn(self):
