@@ -78,6 +78,7 @@ The full user guide is in the app: **Help › User guide** (F1).
 - **Drop** the archive (`.zip`, `.7z`, `.rar`) or the `.ini`/`.py` files onto the SGM window, or click **Install GSX profile…**.
 - SGM extracts only the profile files (`.ini` and matching `.py`), asks which version to install if there are several, shows the matching scenery and asks for confirmation before copying.
 - At launch, SGM checks your **Downloads** folder for recent archives containing a GSX profile and offers to install them, once per archive. This can be turned off in **Settings**.
+- After installing from Downloads, SGM can remove the archive (**Settings › After installing from Downloads**: Ask / Delete automatically / Never). Archives go to the Recycle Bin; an archive with an installation problem is never deleted (alert), nor any archive outside the Downloads folder.
 - Archives are extracted safely: nothing is written outside a temporary folder, other files are ignored.
 - `.zip` works out of the box. `.7z` and `.rar` need **7-Zip** (7-zip.org).
 
@@ -89,7 +90,8 @@ The full user guide is in the app: **Help › User guide** (F1).
 
 ### Interface
 - 12 languages: English, Français, Deutsch, Español, Italiano, Português, Nederlands, Polski, Русский, 中文, 日本語, العربية (right-to-left).
-- Search (name, ICAO, developer), filters (ON, OFF, New, To check) and a **category** list: with statics, GSX profile in scenery, GSX installed manually, no GSX profile.
+- Search (name, ICAO, developer), **New** button, and one **filter per column** in the column headers, with the same logic: Statics (All, ON, OFF, To check, No statics) and GSX profile (All, Installed, To install, Installed manually, No profile, To check).
+- The Statics and GSX columns follow the window size and can be resized by dragging the lines between the headers (setting remembered).
 - Tooltips with the details of each file.
 - Folder icon on each row to open the scenery folder.
 - Help menu: user guide, disclaimer, licences, backups folder.
@@ -170,6 +172,8 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - **Safety**: an airport is never loaded twice; unclear cases are never switched ("To check" + folder icon to do it manually); a `.bgl` missing from `layout.json` is never touched; model libraries and terrain flattens are ignored.
 - **Fix**: SGM ≤ v0.6 could disable a complete airport file named `…-airport-statics.bgl` (Homa Sim), leaving the scenery without an airport. SGM now shows "No version active" and re-enables only one version.
 - **Restore original state**: right-click a scenery › Restore original state…, or Help › Restore everything to original. SGM records each scenery and GSX profile as it was before its first change; restoring is all or nothing.
+- **GSX archives**: after installing from the Downloads folder, ask / delete automatically / never delete the archive (Recycle Bin); never on error.
+- **Interface**: one filter per column (Statics and GSX, same logic), wider Statics and GSX columns that follow the window size and can be resized by hand.
 - **Statics analysis report** (Help menu): read-only scan, no personal data, to help improve the detection rules. Help › Report a problem offers to create it and attach it.
 
 **beta v0.6**

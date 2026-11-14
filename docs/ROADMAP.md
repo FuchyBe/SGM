@@ -7,33 +7,13 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-14, dans cet ordre.
 
-1. **Harmoniser l'affichage du filtrage des colonnes Statics et GSX** — origine : Fabian. Les deux colonnes doivent
-   présenter leurs états et leurs filtres de la même façon (mêmes libellés, mêmes couleurs, même position de l'état,
-   de la note et des boutons ; filtres et catégories alignés sur les deux colonnes). Agents : `designer-interface`
-   (maquette + captures avant le code), `developpeur`, `traducteur`. M.
-2. **Colonnes Statics et GSX 1,5× plus larges et redimensionnables** — origine : Fabian. Largeur de départ ×1,5
-   (`COL_STATICS_W` 220 → 330, `COL_GSX_W` 300 → 450). Redimensionnement automatique avec la fenêtre en gardant
-   les proportions (nom de la scène / Statics / GSX), largeurs minimales pour que tout reste visible (bascule,
-   boutons, icônes), textes coupés avec info-bulle complète ; poignée pour régler à la main, réglage mémorisé.
-   Vérifier en 1024, 1280, 1920 px et en de, ar, ja. Agents : `designer-interface`, `developpeur`. M.
-3. **Nouvelle icône de l'application** — origine : Fabian. Agent : `directeur-artistique` : 3 à 4 propositions,
+1. **Nouvelle icône de l'application** — origine : Fabian. Agent : `directeur-artistique` : 3 à 4 propositions,
    Fabian choisit, puis intégration (exe, fenêtre, barre des tâches, README, flightsim.to). S.
-4. **Supprimer les archives de profils GSX après installation** — origine : Fabian (2026-11-14).
-   - Nouveau réglage « Après l'installation d'un profil depuis Téléchargements » : **Demander** (par défaut) /
-     **Supprimer automatiquement** / **Ne jamais supprimer**, mémorisé dans la configuration.
-   - « Demander » : après l'installation, une fenêtre liste les archives installées avec succès et demande la
-     confirmation de les supprimer.
-   - Une archive dont un profil n'a pas pu être installé n'est **jamais** supprimée : alerte avec le nom de
-     l'archive et la raison (archive illisible, profil invalide, accès refusé…).
-   - Suppression vers la **Corbeille de Windows** (récupérable), uniquement pour les archives du dossier
-     Téléchargements (jamais une archive glissée-déposée depuis ailleurs ou choisie avec le bouton Installer).
-   - « Déjà installé à l'identique » compte comme un succès.
-   - Tests (bac à sable) : succès, erreur partielle, archive verrouillée, fichier hors Téléchargements.
-   Agents : `developpeur`, `designer-interface` (fenêtre et réglage), `traducteur`, `gardien-securite`. M.
 
 ## En cours (PR à tester)
 
-_(vide)_
+- Filtres harmonisés + colonnes ×1,5 redimensionnables — PR #7.
+- Suppression des archives GSX après installation — branche `sprint/2026-11-14-archives`.
 
 ## À trier
 
