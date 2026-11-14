@@ -2,11 +2,11 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
-set VERSION=0.6
+set VERSION=0.7
 echo === SGM - Statics ^& GSX Manager : creation du paquet portable (beta v%VERSION%) ===
 echo.
 
-for %%F in (statics_manager.py i18n.py README.md README_FR.md licenses\LICENSE-SGM.txt licenses\THIRD-PARTY-NOTICES.txt licenses\LGPL-3.0-only.txt licenses\GPL-3.0-only.txt) do (
+for %%F in (statics_manager.py i18n.py assets\SGM.ico README.md README_FR.md licenses\LICENSE-SGM.txt licenses\THIRD-PARTY-NOTICES.txt licenses\LGPL-3.0-only.txt licenses\GPL-3.0-only.txt) do (
   if not exist "%%F" ( echo Fichier manquant : %%F & pause & exit /b 1 )
 )
 
@@ -20,7 +20,7 @@ python --version >nul 2>&1 || (
 python -m pip install --upgrade pyside6 pyinstaller || ( pause & exit /b 1 )
 
 rem --onedir : les bibliotheques Qt / PySide6 restent des fichiers separes et remplacables (exigence LGPL)
-python -m PyInstaller --noconfirm --clean --onedir --windowed --name "SGM" statics_manager.py || ( pause & exit /b 1 )
+python -m PyInstaller --noconfirm --clean --onedir --windowed --icon assets\SGM.ico --name "SGM" statics_manager.py || ( pause & exit /b 1 )
 
 rem Licences, README
 xcopy /E /I /Y licenses "dist\SGM\licenses" >nul

@@ -35,10 +35,10 @@ from urllib.parse import quote_plus, urlencode
 import platform
 from pathlib import Path, PurePosixPath
 
-from PySide6.QtCore import (Property, QEasingCurve, QPropertyAnimation, QRectF,
+from PySide6.QtCore import (QEvent, Property, QEasingCurve, QPropertyAnimation, QRectF,
                             QSize, Qt, QThread, QTimer, QUrl, Signal)
-from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont,
-                           QIcon, QPainter, QPainterPath, QPen, QPixmap)
+from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QFontMetricsF,
+                           QIcon, QImage, QPainter, QPainterPath, QPen, QPixmap)
 from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QComboBox, QInputDialog,
                                QDialog, QFileDialog, QFrame, QHBoxLayout,
                                QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
@@ -49,7 +49,7 @@ from i18n import LANGS, RTL_LANGS, get_lang, set_lang, tr
 
 APP_NAME = "SGM"
 APP_FULL = "Statics & GSX Manager"
-APP_VERSION = "0.6"
+APP_VERSION = "0.7"
 APP_AUTHOR = "Fabian Fuchs"
 # Lien de don public (PayPal.me)
 DONATE_URL = "https://paypal.me/Fuchy"
@@ -168,7 +168,9 @@ class Config:
         self.lang = "en"
         self.search = "fsto"
         self.check_downloads = True
+        self.archive_cleanup = "ask"          # après installation depuis Téléchargements : ask / auto / never
         self.seen_archives: list = []
+        self.col_fs, self.col_fg = COL_STATICS_W / COL_REF_W, COL_GSX_W / COL_REF_W
         self.sim = DEFAULT_SIM
         self.profiles: dict = {}
         try:
@@ -180,6 +182,15 @@ class Config:
                 self.lang = str(data.get("lang") or "en")
                 self.search = data.get("search") if data.get("search") in SEARCH_ENGINES else "fsto"
                 self.check_downloads = bool(data.get("check_downloads", True))
+                if data.get("archive_cleanup") in ARCHIVE_CLEANUP:
+                    self.archive_cleanup = data["archive_cleanup"]
+                cols = data.get("columns") or {}
+                try:
+                    fs, fg = float(cols.get("statics", self.col_fs)), float(cols.get("gsx", self.col_fg))
+                    if 0.1 <= fs <= 0.6 and 0.1 <= fg <= 0.7 and fs + fg <= 0.85:
+                        self.col_fs, self.col_fg = fs, fg
+                except (TypeError, ValueError):
+                    pass
                 self.seen_archives = [str(x) for x in data.get("seen_archives", [])][-300:]
                 self.sim = data.get("sim") if data.get("sim") in SIMS else DEFAULT_SIM
                 for sim, p in (data.get("profiles") or {}).items():
@@ -251,6 +262,8 @@ class Config:
     def save(self):
         data = {"version": 3, "lang": self.lang, "sim": self.sim, "search": self.search,
                 "check_downloads": self.check_downloads, "seen_archives": self.seen_archives[-300:],
+                "archive_cleanup": self.archive_cleanup,
+                "columns": {"statics": self.col_fs, "gsx": self.col_fg},
                 "profiles": {}}
         for sim, p in self.profiles.items():
             q = dict(p)
@@ -334,17 +347,37 @@ def display_source(label: str) -> str:
 
 @dataclass
 class StaticsGroup:
-    mode: str              # "rename" | "variant" | "conflict"
+    mode: str              # "rename" | "variant" | "swap" | "pair" | "conflict"
     directory: Path
-    active: Path           # rename : fichier actuel / variant : statics.bgl actif
+    active: Path           # fichier actuel (rename) / statics.bgl actif (variant) / X.bgl (swap, pair)
     state: str
-    on_file: Path | None = None
-    off_file: Path | None = None
+    on_file: Path | None = None    # variant : variante ON / swap : X.bgl.static
+    off_file: Path | None = None   # variant : variante OFF / swap : X.bgl.nostatic
     note: str = ""         # clé de traduction
+    on_path: Path | None = None    # rename, pair : chemin activé (.bgl)
+    off_path: Path | None = None   # rename, pair : chemin désactivé (.bgl.off, .off, .bgl.disabled…)
+    alt_on: Path | None = None     # pair : fichier « sans statics » activé
+    alt_off: Path | None = None    # pair : fichier « sans statics » désactivé
+    twin: bool = False     # rename : copie désactivée identique présente à côté du .bgl actif
+    alt_static: bool = False   # swap : la version de rechange est celle AVEC statics (UK2000 .bgl.staticq)
 
     @property
     def toggleable(self) -> bool:
-        return self.mode in ("rename", "variant")
+        return self.mode in ("rename", "variant", "swap", "rswap", "pair")
+
+    def paths(self) -> list:
+        """Tous les fichiers concernés qui existent sur le disque."""
+        out = []
+        for p in (self.active, self.on_file, self.off_file, self.on_path, self.off_path, self.alt_on, self.alt_off):
+            if p is not None and p.is_file() and p not in out:
+                out.append(p)
+        return out
+
+    @property
+    def off_form(self) -> str:
+        if self.off_path is None:
+            return ""
+        return parse_form(self.off_path.name)[1] or ""
 
 
 @dataclass
@@ -426,39 +459,174 @@ def split_ext(name: str):
     return None, None
 
 
+# Règles de détection (base des cas réels : docs/analyses/BASE.md)
+STATIC_WORD_RE = re.compile(r"static|parked", re.IGNORECASE)
+NEG_RE = re.compile(r"(?:no|without)[ _\-]?(statics?)", re.IGNORECASE)          # nostatic, no_static, without_static
+EXCLUDE_RE = re.compile(r"model[ _\-]?lib|modelib|library|flatten|exclu", re.IGNORECASE)   # bibliothèques, aplanissements
+FORMS = ((".bgl.off", "bgl.off"), (".bgl.disabled", "bgl.disabled"), (".bgl.nostatic", "bgl.nostatic"),
+         (".bgl.staticq", "bgl.staticq"), (".bgl.static", "bgl.static"),
+         (".bgl", "bgl"), (".off", "off"), (".disabled", "disabled"))
+ALT_FORMS = {"bgl.nostatic": False, "bgl.staticq": True, "bgl.static": True}   # version de rechange : avec statics ?
+LAYOUT_STATIC, LAYOUT_NOSTATIC = "layout.json.static", "layout.json.nostatic"     # échange officiel Orbx / Drzewiecki
+OFF_FORMS = ("bgl.off", "bgl.disabled", "off", "disabled")
+
+
+def parse_form(name: str):
+    """'X.bgl.off' -> ('X', 'bgl.off') ; 'X.off' -> ('X', 'off') ; autre -> (None, None)."""
+    low = name.lower()
+    for suffix, form in FORMS:
+        if low.endswith(suffix):
+            return name[:-len(suffix)], form
+    return None, None
+
+
+OTHER_EXT_RE = re.compile(r"\.(config|cfg|json|xml|txt|ini|py|js|html?|css|dds|png|ktx2|bin|gltf)$", re.IGNORECASE)
+
+
+def is_statics_name(name: str) -> bool:
+    stem, form = parse_form(name)
+    if stem is None or EXCLUDE_RE.search(name):
+        return False
+    if form in ("off", "disabled") and OTHER_EXT_RE.search(stem):
+        return False                              # ex. statics-off.config.off : réglage d'un outil, pas un .bgl
+    return form in ALT_FORMS or bool(STATIC_WORD_RE.search(stem))
+
+
+def _on_name(stem: str, form: str, name: str) -> str:
+    """Nom activé (.bgl) d'un fichier désactivé."""
+    if form in ("bgl.off", "bgl.disabled"):
+        return name[:-(len(form) - 3)]           # retire .off / .disabled, garde la casse de .bgl
+    return stem + ".bgl"
+
+
+def _off_name(on_name: str, form: str) -> str:
+    """Nom désactivé d'un .bgl, dans la même convention que `form`."""
+    if form == "bgl.nostatic":
+        return on_name + ".nostatic"
+    if form in ("off", "disabled"):
+        return on_name[:-4] + "." + form
+    if form == "bgl.disabled":
+        return on_name + ".disabled"
+    return on_name + ".off"
+
+
+STATIC_TOKEN_RE = re.compile(r"[ _\-.]?statics?", re.IGNORECASE)
+FULL_SIZE_RATIO = 1.25        # fichier « aéroport complet avec statics » ≈ même taille que le fichier de base
+
+
+def _find_any(listing: dict, directory: Path, stem: str):
+    """Fichier `stem` en .bgl ou sous une forme désactivée : (chemin, forme) ou (None, None)."""
+    for suffix, form in ((".bgl", "bgl"), (".bgl.off", "bgl.off"), (".bgl.disabled", "bgl.disabled"),
+                         (".off", "off"), (".disabled", "disabled")):
+        real = listing.get((stem + suffix).lower())
+        if real:
+            return directory / real, form
+    return None, None
+
+
+def _similar_size(a: Path, b: Path) -> bool:
+    try:
+        x, y = a.stat().st_size, b.stat().st_size
+    except OSError:
+        return False
+    return min(x, y) > 0 and max(x, y) / min(x, y) <= FULL_SIZE_RATIO
+
+
 def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
-    variants: dict = {}
-    plain: dict = {}
+    groups, used = [], set()
+    try:
+        listing = {n.lower(): n for n in os.listdir(directory)}
+    except OSError:
+        listing = {}
+    entries: dict = {}
     for name in files:
-        stem, ext = split_ext(name)
+        stem, form = parse_form(name)
         if stem is None:
             continue
-        m = VARIANT_RE.search(stem)
-        if m:
-            base = stem[:m.start()] + m.group(1) + stem[m.end():]
-            v = variants.setdefault(base.lower(), {"base": base})
-            v.setdefault(m.group(2).lower(), name)
-        else:
-            plain.setdefault(stem.lower(), {"stem": stem, "exts": {}})["exts"][ext] = name
+        entries.setdefault(stem.lower(), {"stem": stem, "forms": {}})["forms"][form] = name
 
+    # 1. Version de rechange à côté du fichier actif
+    #    Méthode officielle Orbx / Drzewiecki (notices LYNI, EPGD ; panneau Orbx Central) :
+    #      X.bgl + X.bgl.nostatic = statics ON ; OFF : X.bgl -> X.bgl.static, X.bgl.nostatic -> X.bgl
+    #      X.bgl + X.bgl.static   = statics OFF ; ON  : X.bgl -> X.bgl.nostatic, X.bgl.static -> X.bgl
+    #      (+ même échange pour layout.json / layout.json.static / layout.json.nostatic, voir set_scene_state)
+    #    X.bgl.nostatic seul (Drzewiecki XXXX_PLC sans XXXX_PLC.bgl) : forme désactivée, ON = renommer en X.bgl.
+    #    UK2000 (règle de Fabian) : X.bgl (sans statics) + X.bgl.staticq (avec) ;
+    #      ON = X.bgl -> X.bgl.bak puis copie de X.bgl.staticq nommée X.bgl ; OFF = copie supprimée, .bak -> X.bgl.
+    #    Ancien état laissé par une version de test (X.bgl.bak + copie du .nostatic) : reconnu, ON remet l'original.
+    for key, e in entries.items():
+        f = e["forms"]
+        alts = [fm for fm in f if fm in ALT_FORMS]
+        if not alts:
+            continue
+        used.add(key)
+        first = directory / f[alts[0]]
+        main = directory / (f.get("bgl") or first.name[:-len(alts[0]) + 3])
+        bak = directory / (main.name + ".bak")
+        nost = directory / (main.name + ".nostatic")
+        stat = directory / (main.name + ".static")
+        statq = directory / (main.name + ".staticq")
+        broken = lambda at: StaticsGroup("conflict", directory, at, CONFLICT, note="note_swap_broken")
+        if "bgl.staticq" in alts:
+            if len(alts) > 1 or not main.is_file():
+                groups.append(broken(statq))
+                continue
+            applied = bak.is_file() and same_content(main, statq)
+            original = not bak.exists() and not same_content(main, statq)
+            if applied or original:
+                groups.append(StaticsGroup("swap", directory, main, ON if applied else OFF, bak, statq,
+                                           alt_static=True))
+            else:
+                groups.append(broken(main))
+            continue
+        has_n, has_s = nost.is_file(), stat.is_file()
+        if main.is_file():
+            if has_n and not has_s and bak.is_file() and same_content(main, nost):
+                groups.append(StaticsGroup("swap", directory, main, OFF, bak, nost))       # ancien état .bak
+            elif has_n and not has_s and not bak.exists():
+                groups.append(StaticsGroup("rswap", directory, main, ON, stat, nost))
+            elif has_s and not has_n and not bak.exists():
+                groups.append(StaticsGroup("rswap", directory, main, OFF, stat, nost))
+            else:
+                groups.append(broken(main))
+        elif has_n and not has_s and not bak.exists() and not NEG_RE.search(e["stem"]):
+            groups.append(StaticsGroup("rename", directory, nost, OFF, on_path=main, off_path=nost))
+        else:
+            groups.append(broken(first))
+
+    # 2. Variantes statics_on / statics_off (+ statics.bgl actif)
+    variants: dict = {}
+    plain: dict = {}
+    for key, e in entries.items():
+        if key in used:
+            continue
+        for form, name in e["forms"].items():
+            if form not in ("bgl", "bgl.off") or not STATIC_WORD_RE.search(e["stem"]):
+                continue
+            m = VARIANT_RE.search(e["stem"])
+            if m:
+                base = e["stem"][:m.start()] + m.group(1) + e["stem"][m.end():]
+                v = variants.setdefault(base.lower(), {"base": base})
+                v.setdefault(m.group(2).lower(), name)
     pairs = {}
     for key, v in variants.items():
         if "on" in v and "off" in v:
             pairs[key] = v
-        else:   # variante isolée -> fichier simple
-            for tok in ("on", "off"):
-                if tok in v:
-                    stem, ext = split_ext(v[tok])
-                    plain.setdefault(stem.lower(), {"stem": stem, "exts": {}})["exts"][ext] = v[tok]
+    variant_names = {n.lower() for v in pairs.values() for n in (v["on"], v["off"])}
+    for key, e in entries.items():
+        if key in used or not STATIC_WORD_RE.search(e["stem"]):
+            continue
+        forms = {fm: n for fm, n in e["forms"].items() if n.lower() not in variant_names}
+        if forms:
+            plain[key] = {"stem": e["stem"], "forms": forms}
 
-    groups, used = [], set()
     for key, v in pairs.items():
         on_f, off_f = directory / v["on"], directory / v["off"]
-        target = key if (key in plain and ".bgl" in plain[key]["exts"]) else None
+        target = key if (key in plain and "bgl" in plain[key]["forms"]) else None
         if target is None and len(pairs) == 1:
-            cands = [k for k, p in plain.items() if ".bgl" in p["exts"]]
+            cands = [k for k, p in plain.items() if "bgl" in p["forms"] and not NEG_RE.search(p["stem"])]
             if len(cands) == 1:
-                cand = directory / plain[cands[0]]["exts"][".bgl"]
+                cand = directory / plain[cands[0]]["forms"]["bgl"]
                 if same_content(cand, on_f) or same_content(cand, off_f):
                     target = cands[0]
                 else:
@@ -471,7 +639,7 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
                     continue
         if target:
             used.add(target)
-            active = directory / plain[target]["exts"][".bgl"]
+            active = directory / plain[target]["forms"]["bgl"]
             if same_content(active, on_f):
                 state, note = ON, ""
             elif same_content(active, off_f):
@@ -484,17 +652,114 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
             state, note = UNKNOWN, "note_no_active"
         groups.append(StaticsGroup("variant", directory, active, state, on_f, off_f, note))
 
+    # 3. Paires « avec statics » / « sans statics » : X_static.bgl.disabled + X_nostatic.bgl
+    for key, p in list(plain.items()):
+        if key in used or not NEG_RE.search(p["stem"]):
+            continue
+        partner = NEG_RE.sub(lambda mm: mm.group(1), p["stem"]).lower()
+        used.add(key)
+        q = plain.get(partner)
+        if q is None or partner in used:
+            groups.append(StaticsGroup("conflict", directory, directory / next(iter(p["forms"].values())),
+                                       CONFLICT, note="note_negation"))
+            continue
+        used.add(partner)
+        s_forms, n_forms = q["forms"], p["forms"]
+        s_on = "bgl" in s_forms and len(s_forms) == 1
+        n_on = "bgl" in n_forms and len(n_forms) == 1
+        s_off = len(s_forms) == 1 and next(iter(s_forms)) in OFF_FORMS
+        n_off = len(n_forms) == 1 and next(iter(n_forms)) in OFF_FORMS
+        if s_on and n_off:
+            n_name = n_forms[next(iter(n_forms))]
+            form = parse_form(n_name)[1]
+            s_path = directory / s_forms["bgl"]
+            groups.append(StaticsGroup("pair", directory, s_path, ON,
+                                       on_path=s_path, off_path=directory / _off_name(s_path.name, form),
+                                       alt_on=directory / _on_name(p["stem"], form, n_name), alt_off=directory / n_name))
+        elif n_on and s_off:
+            s_name = s_forms[next(iter(s_forms))]
+            form = parse_form(s_name)[1]
+            n_path = directory / n_forms["bgl"]
+            groups.append(StaticsGroup("pair", directory, n_path, OFF,
+                                       on_path=directory / _on_name(q["stem"], form, s_name), off_path=directory / s_name,
+                                       alt_on=n_path, alt_off=directory / _off_name(n_path.name, form)))
+        else:
+            base_p, base_f = _find_any(listing, directory, STATIC_TOKEN_RE.sub("", q["stem"], count=1))
+            if s_off and n_off and base_f == "bgl":
+                # X.bgl actif + X-statics + X-nostatics désactivés : on copie la version choisie sur X.bgl
+                s_file = directory / s_forms[next(iter(s_forms))]
+                n_file = directory / n_forms[next(iter(n_forms))]
+                if same_content(base_p, s_file):
+                    state, note = ON, ""
+                elif same_content(base_p, n_file):
+                    state, note = OFF, ""
+                else:
+                    state, note = UNKNOWN, "note_unknown_active"
+                groups.append(StaticsGroup("variant", directory, base_p, state, s_file, n_file, note))
+            elif s_off and n_off and base_p is None:
+                # Homa Sim : deux aéroports complets (avec / sans statics) tous deux désactivés -> aucun aéroport
+                # chargé (souvent après une ancienne version de SGM). ON active la version avec statics,
+                # OFF la version sans ; jamais les deux.
+                s_name = s_forms[next(iter(s_forms))]
+                n_name = n_forms[next(iter(n_forms))]
+                s_form, n_form = parse_form(s_name)[1], parse_form(n_name)[1]
+                groups.append(StaticsGroup("pair", directory, directory / s_name, UNKNOWN, note="note_pair_none",
+                                           on_path=directory / _on_name(q["stem"], s_form, s_name),
+                                           off_path=directory / s_name,
+                                           alt_on=directory / _on_name(p["stem"], n_form, n_name),
+                                           alt_off=directory / n_name))
+            else:
+                # les deux actifs, ou fichier actif introuvable : on ne touche à rien
+                groups.append(StaticsGroup("conflict", directory, directory / next(iter(s_forms.values())),
+                                           CONFLICT, note="note_negation"))
+
+    # 3b. Aéroport complet « avec statics » qui remplace le fichier de base : X-statics ↔ X (tailles proches)
+    for key, p in list(plain.items()):
+        if key in used:
+            continue
+        base = STATIC_TOKEN_RE.sub("", p["stem"], count=1)
+        if not base or base.lower() == key or STATIC_WORD_RE.search(base):
+            continue
+        base_p, base_f = _find_any(listing, directory, base)
+        if base_p is None or len(p["forms"]) != 1:
+            continue
+        s_form, s_name = next(iter(p["forms"].items()))
+        s_file = directory / s_name
+        if not _similar_size(s_file, base_p):
+            continue
+        used.add(key)
+        if s_form in OFF_FORMS and base_f == "bgl":
+            groups.append(StaticsGroup("pair", directory, base_p, OFF,
+                                       on_path=directory / _on_name(p["stem"], s_form, s_name), off_path=s_file,
+                                       alt_on=base_p, alt_off=directory / _off_name(base_p.name, s_form)))
+        elif s_form == "bgl" and base_f in OFF_FORMS:
+            groups.append(StaticsGroup("pair", directory, s_file, ON,
+                                       on_path=s_file, off_path=directory / _off_name(s_name, base_f),
+                                       alt_on=directory / _on_name(base, base_f, base_p.name), alt_off=base_p))
+        else:
+            groups.append(StaticsGroup("conflict", directory, s_file, CONFLICT, note="note_negation"))
+
+    # 4. Fichier simple : X.bgl <-> X.bgl.off / X.off / X.bgl.disabled / X.disabled
     for key, p in plain.items():
         if key in used:
             continue
-        exts = p["exts"]
-        if ".bgl" in exts and ".bgl.off" in exts:
-            groups.append(StaticsGroup("conflict", directory, directory / exts[".bgl"], CONFLICT,
-                                       note="note_conflict"))
-        elif ".bgl" in exts:
-            groups.append(StaticsGroup("rename", directory, directory / exts[".bgl"], ON))
+        forms = p["forms"]
+        offs = [fm for fm in forms if fm in OFF_FORMS]
+        if "bgl" in forms and not offs:
+            on = directory / forms["bgl"]
+            groups.append(StaticsGroup("rename", directory, on, ON, on_path=on, off_path=directory / (on.name + ".off")))
+        elif "bgl" not in forms and len(offs) == 1:
+            off = directory / forms[offs[0]]
+            on = directory / _on_name(p["stem"], offs[0], off.name)
+            groups.append(StaticsGroup("rename", directory, off, OFF, on_path=on, off_path=off))
+        elif "bgl" in forms and len(offs) == 1 and same_content(directory / forms["bgl"], directory / forms[offs[0]]):
+            # copie désactivée identique : ON ; désactiver = supprimer le .bgl (son double reste)
+            on = directory / forms["bgl"]
+            groups.append(StaticsGroup("rename", directory, on, ON, on_path=on, off_path=directory / forms[offs[0]],
+                                       twin=True))
         else:
-            groups.append(StaticsGroup("rename", directory, directory / exts[".bgl.off"], OFF))
+            groups.append(StaticsGroup("conflict", directory, directory / (forms.get("bgl") or next(iter(forms.values()))),
+                                       CONFLICT, note="note_conflict"))
     return groups
 
 
@@ -604,6 +869,63 @@ def detect_icao(title: str, folder: str) -> str:
     return ""
 
 
+def _check_layout(root: Path, groups: list) -> list:
+    """Un .bgl actif absent de layout.json n'est pas chargé par MSFS : l'éditeur gère alors ses statics
+    autrement (échange de layout.json…). Cas ambigu : on ne touche à rien."""
+    try:
+        layout = json.loads((root / "layout.json").read_text(encoding="utf-8-sig"))
+        listed = {str(e.get("path", "")).replace("\\", "/").lower() for e in layout.get("content", [])}
+    except Exception:
+        return groups
+    if not listed:
+        return groups
+    out = []
+    for g in groups:
+        on = g.on_path if g.mode in ("rename", "pair") and g.state == ON else (
+            g.alt_on if g.mode == "pair" else (g.active if g.mode in ("swap", "rswap") else None))
+        if on is not None and on.is_file() and Path(os.path.relpath(on, root)).as_posix().lower() not in listed:
+            out.append(StaticsGroup("conflict", g.directory, on, CONFLICT, note="note_not_in_layout"))
+        else:
+            out.append(g)
+    return out
+
+
+def _use_origin_off_names(root: Path, groups: list):
+    """Un fichier livré désactivé (ex. X.off) et activé par SGM redevient X.off, pas X.bgl.off :
+    on garde la convention de l'éditeur, retrouvée dans la photo d'origine."""
+    rec = origin_dir(root) / "origin.json"
+    if not rec.is_file():
+        return
+    try:
+        names = {Path(r).as_posix().lower(): r for r in json.loads(rec.read_text(encoding="utf-8")).get("files", {})}
+    except (OSError, ValueError):
+        return
+    covered = {norm_key(p) for g in groups for p in g.paths()}
+    for low, rel in names.items():
+        # X.bgl.nostatic d'origine renommé en X.bgl par SGM : le nom ne contient pas « static »,
+        # on le retrouve grâce à la photo d'origine
+        if low.endswith(".bgl.nostatic"):
+            nost, main = root / rel, root / rel[:-len(".nostatic")]
+            if main.is_file() and not nost.exists() and norm_key(main) not in covered:
+                groups.append(StaticsGroup("rename", main.parent, main, ON, on_path=main, off_path=nost))
+    def origin_off(on_path):
+        on_rel = Path(os.path.relpath(on_path, root)).as_posix()
+        for alt in (on_rel + ".off", on_rel[:-4] + ".off", on_rel[:-4] + ".disabled", on_rel + ".disabled",
+                    on_rel + ".nostatic"):
+            if alt.lower() in names and alt.lower() != on_rel.lower():
+                return root / names[alt.lower()]
+        return None
+
+    for g in groups:
+        if g.mode == "rename" and g.state == ON and not g.twin:
+            g.off_path = origin_off(g.on_path) or g.off_path
+        elif g.mode == "pair":
+            if g.on_path is not None and g.on_path.is_file():
+                g.off_path = origin_off(g.on_path) or g.off_path
+            if g.alt_on is not None and g.alt_on.is_file():
+                g.alt_off = origin_off(g.alt_on) or g.alt_off
+
+
 def scan_package(root: Path, source_label: str) -> Scene | None:
     man = read_manifest(root)
     ctype = str(man.get("content_type") or "").upper()
@@ -617,13 +939,16 @@ def scan_package(root: Path, source_label: str) -> Scene | None:
     for dirpath, _dirs, filenames in os.walk(root, followlinks=True):
         for fn in filenames:
             low = fn.lower()
-            if "statics" in low and (low.endswith(".bgl") or low.endswith(".bgl.off")):
-                by_dir.setdefault(dirpath, []).append(fn)
+            if is_statics_name(fn):
+                if not EXCLUDE_RE.search(os.path.relpath(dirpath, root)):
+                    by_dir.setdefault(dirpath, []).append(fn)
             elif low.endswith(".ini"):
                 inis.append(Path(dirpath) / fn)
     groups = []
     for d in sorted(by_dir):
         groups += build_groups(Path(d), sorted(by_dir[d], key=str.lower))
+    groups = _check_layout(root, groups)
+    _use_origin_off_names(root, groups)
     gsx = find_gsx_files(root, sorted(inis))
     is_airport = bool(icao) and ctype in ("SCENERY", "")
     if not groups and not gsx and not is_airport:
@@ -790,26 +1115,503 @@ def backup_files(root: Path, files: list[Path]):
         shutil.rmtree(d, ignore_errors=True)
 
 
+# ── État d'origine (photo prise avant la toute première modification, jamais effacée) ──
+
+class RestoreError(Exception):
+    pass
+
+
+def _safe_name(text: str) -> str:
+    return re.sub(r'[<>:"/\\|?*\s]', "_", text)[:60]
+
+
+def origin_dir(root: Path) -> Path:
+    key = hashlib.sha1(norm_key(root).encode("utf-8")).hexdigest()[:10]
+    return data_dir() / "origin" / f"{_safe_name(root.name)}-{key}"
+
+
+def has_origin(root: Path) -> bool:
+    return (origin_dir(root) / "origin.json").is_file()
+
+
+def _pkg_version(root: Path) -> str:
+    return str(read_manifest(root).get("package_version") or "")
+
+
+def statics_paths(scene: Scene) -> list[Path]:
+    """Tous les fichiers statics d'une scène (actifs, variantes, renommés)."""
+    out = []
+    for g in scene.groups:
+        for p in g.paths():
+            if p not in out:
+                out.append(p)
+    return out
+
+
+def snapshot_scene(scene: Scene):
+    """Photo de l'état d'origine, une seule fois par scène : liste des fichiers statics avec leur empreinte,
+    copie de layout.json, manifest.json et des fichiers dont le contenu pourrait être remplacé."""
+    d = origin_dir(scene.root)
+    if (d / "origin.json").is_file():
+        return
+    files_dir = d / "files"
+    if d.exists():
+        shutil.rmtree(d, ignore_errors=True)          # photo incomplète d'une tentative précédente
+    files_dir.mkdir(parents=True, exist_ok=True)
+    rel = lambda p: Path(os.path.relpath(p, scene.root)).as_posix()
+    record = {"root": str(scene.root), "created": datetime.now().isoformat(timespec="seconds"),
+              "version": _pkg_version(scene.root), "files": {}, "copied": []}
+    for p in statics_paths(scene):
+        record["files"][rel(p)] = file_hash(p)
+    to_copy = [g.active for g in scene.groups if g.mode == "variant" and g.active.is_file()]
+    to_copy += [scene.root / "layout.json", scene.root / "manifest.json"]
+    for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC):
+        if (scene.root / n).is_file():
+            to_copy.append(scene.root / n)
+            record["files"][n] = file_hash(scene.root / n)
+    for p in to_copy:
+        if p.is_file():
+            target = files_dir / rel(p)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(p, target)
+            record["copied"].append(rel(p))
+    write_atomic(d / "origin.json", json.dumps(record, indent=2, ensure_ascii=False))
+
+
+def restore_scene_statics(root: Path):
+    """Remet les fichiers statics, layout.json et manifest.json comme avant SGM.
+    Tout ou rien : si un fichier ne correspond pas à l'origine, rien n'est modifié (RestoreError)."""
+    d = origin_dir(root)
+    try:
+        record = json.loads((d / "origin.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise RestoreError(tr("restore_none"))
+    if not root.is_dir():
+        raise RestoreError(tr("folder_missing_msg", path=root))
+    if record.get("version", "") != _pkg_version(root):
+        shutil.rmtree(d, ignore_errors=True)          # la scène a été mise à jour : la photo n'est plus valable
+        raise RestoreError(tr("restore_updated"))
+    files_dir = d / "files"
+    current = scan_package(root, "")
+    cur_paths = statics_paths(current) if current else []
+    wanted = record.get("files", {})
+    copied = set(record.get("copied", []))
+    known = set(wanted.values())
+    if current:
+        for g in current.groups:
+            for v in (g.on_file, g.off_file):
+                if v is not None and v.is_file():
+                    known.add(file_hash(v))
+
+    # 1. Plan, sans rien toucher. Chaque fichier d'origine est retrouvé par son empreinte, quel que soit
+    #    son nom actuel (renommé .off, .disabled, échangé avec sa version « sans statics »…).
+    cur = {norm_key(p): p for p in cur_paths}
+    for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC):         # fichiers layout échangés (méthode officielle)
+        if (root / n).is_file():
+            cur.setdefault(norm_key(root / n), root / n)
+    if "layout.json" in copied and (files_dir / "layout.json").is_file():
+        known.add(file_hash(files_dir / "layout.json"))
+    for r in wanted:
+        if (root / r).is_file():
+            cur.setdefault(norm_key(root / r), root / r)
+    hashes = {k: file_hash(p) for k, p in cur.items()}
+    rel_of = lambda p: Path(os.path.relpath(p, root)).as_posix()
+    ok = {norm_key(root / r) for r, h in wanted.items() if hashes.get(norm_key(root / r)) == h}
+    moves, copies, deletes, left, sources = [], [], [], [], set()
+    for r, h in wanted.items():
+        dst = root / r
+        if norm_key(dst) in ok:
+            continue
+        if r in copied and (files_dir / r).is_file():
+            copies.append((files_dir / r, dst))
+            continue
+        src = next((k for k, hh in hashes.items() if hh == h and k not in ok and k not in sources), None)
+        if src is not None:
+            moves.append((cur[src], dst))
+            sources.add(src)
+            continue
+        src = next((k for k, hh in hashes.items() if hh == h and k in ok), None)
+        if src is not None:
+            copies.append((cur[src], dst))
+            continue
+        twin = next((d2 for s2, d2 in moves if hashes.get(norm_key(s2)) == h), None)
+        if twin is not None:                     # deux fichiers identiques à l'origine : copie du premier remis
+            copies.append((twin, dst))
+            continue
+        left.append(r)
+    targets = {norm_key(dd) for _s, dd in moves + copies}
+    for _s, dd in moves + copies:
+        k = norm_key(dd)
+        if str(_s).startswith(str(files_dir)):
+            continue                              # remis depuis la photo d'origine (layout.json échangé…)
+        if dd.exists() and k in cur and k not in sources:
+            if hashes[k] in known:
+                deletes.append(dd)
+            else:
+                left.append(rel_of(dd))
+    for k, q in cur.items():
+        if rel_of(q) in wanted or k in sources or k in targets:
+            continue
+        if hashes[k] in known:
+            deletes.append(q)
+        else:
+            left.append(rel_of(q))
+    if left:
+        raise RestoreError(tr("restore_left", files="\n".join(f"• {r}" for r in sorted(set(left)))))
+
+    # 2. Exécution, après sauvegarde de l'état actuel
+    backup_files(root, [root / "layout.json", root / "manifest.json"] + list(cur.values()))
+    try:
+        staged = []
+        for s, dd in moves:                      # d'abord vers des noms temporaires (échanges de noms)
+            tmp = s.with_name(s.name + ".sgm-restore")
+            os.rename(s, tmp)
+            forget_hash(s)
+            staged.append((tmp, dd))
+        for q in deletes:
+            if q.exists():
+                q.unlink()
+                forget_hash(q)
+        for tmp, dd in staged:
+            os.replace(tmp, dd)
+            forget_hash(dd)
+        for s, dd in copies:
+            tmp = dd.with_name(dd.name + ".sm-tmp")
+            shutil.copy2(s, tmp)
+            os.replace(tmp, dd)
+            forget_hash(dd)
+        for r in ("layout.json", "manifest.json"):
+            if r in copied and (files_dir / r).is_file():
+                tmp = root / (r + ".sm-tmp")
+                shutil.copy2(files_dir / r, tmp)
+                os.replace(tmp, root / r)
+    except PermissionError as e:
+        raise RestoreError(tr("err_access", file=e.filename))
+    shutil.rmtree(d, ignore_errors=True)
+
+
+def origin_roots() -> list[Path]:
+    base = data_dir() / "origin"
+    out = []
+    if base.is_dir():
+        for d in sorted(base.iterdir()):
+            try:
+                out.append(Path(json.loads((d / "origin.json").read_text(encoding="utf-8"))["root"]))
+            except (OSError, ValueError, KeyError):
+                continue
+    return out
+
+
+# ── Rapport d'analyse des fichiers statics (lecture seule) ──
+# But : constituer une base réelle de noms de fichiers pour améliorer les règles de détection.
+# Aucun chemin complet ni nom d'utilisateur : uniquement des chemins relatifs au paquet de la scène.
+
+REPORT_SCHEMA = 1
+REPORT_EXTS = (".bgl", ".off", ".bak", ".disabled", ".old", ".orig", ".inactive")
+REPORT_NOISE = re.compile(r"\.(dds|ktx2|png|jpg|jpeg|tif|tga|bmp|bin|gltf|glb|xml|spb|pck|svg|wav|ogg|js|css|html)(\.json)?$")
+REPORT_WORDS = re.compile(r"static|parked|parking_?ai|(?<![a-z])(off|disabled?|deactivated?|inactive|without|nostatics?|"
+                          r"no[_ \-]?statics?|empty|bak)(?![a-z])", re.IGNORECASE)
+
+
+def _report_file(root: Path, p: Path, layout_paths: set) -> dict:
+    rel = Path(os.path.relpath(p, root)).as_posix()
+    try:
+        size = p.stat().st_size
+        h = file_hash(p)[:12]
+    except OSError:
+        size, h = -1, ""
+    return {"path": rel, "size": size, "sha1": h, "in_layout": rel.lower() in layout_paths}
+
+
+def report_scene(root: Path, source: str) -> dict | None:
+    """Description d'une scène pour le rapport, ou None si aucun fichier intéressant."""
+    man = read_manifest(root)
+    ctype = str(man.get("content_type") or "").upper()
+    if ctype in SKIP_CONTENT_TYPES:
+        return None
+    try:
+        layout = json.loads((root / "layout.json").read_text(encoding="utf-8-sig"))
+        layout_paths = {str(e.get("path", "")).replace("\\", "/").lower() for e in layout.get("content", [])}
+    except Exception:
+        layout_paths = set()
+    files, bgl_count, bgl_dirs = [], 0, set()
+    for dirpath, _dirs, filenames in os.walk(root, followlinks=True):
+        for fn in filenames:
+            low = fn.lower()
+            if low.endswith(".bgl"):
+                bgl_count += 1
+                bgl_dirs.add(Path(os.path.relpath(dirpath, root)).as_posix())
+            if REPORT_NOISE.search(low):
+                continue                           # textures, modèles 3D : jamais des interrupteurs de statics
+            if not ((any(low.endswith(e) for e in REPORT_EXTS) and REPORT_WORDS.search(fn.rsplit(".", 1)[0] if "." in fn else fn))
+                    or "static" in low):
+                continue
+            files.append(_report_file(root, Path(dirpath) / fn, layout_paths))
+            stem, _form = parse_form(fn)
+            cands = []
+            for suffix in (".nostatic", ".staticq", ".static"):
+                if low.endswith(".bgl" + suffix):
+                    cands.append(fn[:-len(suffix)])             # fichier actif + sa sauvegarde
+                    cands.append(fn[:-len(suffix)] + ".bak")
+            if stem:
+                base = STATIC_TOKEN_RE.sub("", stem, count=1)   # ex. lowi-scene-airport-statics -> lowi-scene-airport
+                if base and base.lower() != stem.lower():
+                    cands += [base + ".bgl", base + ".bgl.disabled", base + ".off"]
+            for c in cands:
+                if (Path(dirpath) / c).is_file():
+                    files.append(_report_file(root, Path(dirpath) / c, layout_paths))
+    if not files:
+        return None
+    sc = scan_package(root, source)
+    groups = []
+    for g in (sc.groups if sc else []):
+        groups.append({"mode": g.mode, "state": g.state, "note": g.note,
+                       "paths": [Path(os.path.relpath(x, root)).as_posix() for x in g.paths()],
+                       "active": Path(os.path.relpath(g.active, root)).as_posix(),
+                       "on": Path(os.path.relpath(g.on_file, root)).as_posix() if g.on_file else "",
+                       "off": Path(os.path.relpath(g.off_file, root)).as_posix() if g.off_file else ""})
+    detected = {gp.lower() for g in groups if g["mode"] != "conflict" for gp in g["paths"]}
+    seen_paths = set()
+    uniq = []
+    for f in files:
+        if f["path"] in seen_paths:
+            continue
+        seen_paths.add(f["path"])
+        f["used_by_sgm"] = f["path"].lower() in detected
+        uniq.append(f)
+    files = uniq
+    return {"folder": root.name, "title": str(man.get("title") or ""), "creator": str(man.get("creator") or ""),
+            "version": str(man.get("package_version") or ""), "content_type": ctype,
+            "icao": detect_icao(str(man.get("title") or root.name), root.name), "source": source,
+            "bgl_count": bgl_count, "bgl_dirs": sorted(bgl_dirs)[:20], "files": sorted(files, key=lambda f: f["path"]),
+            "sgm_groups": groups,
+            "sgm_state": sc.state if sc else NONE}
+
+
+def build_statics_report(sources: list, sim: str, progress=None) -> dict:
+    pkgs = []
+    for s in sources:
+        if s.exists:
+            pkgs += [(s, p) for p in find_packages(s.path)]
+    scenes, seen = [], set()
+    for i, (s, p) in enumerate(pkgs):
+        if progress:
+            progress(i + 1, len(pkgs), p.name)
+        real = norm_key(os.path.realpath(p))
+        if real in seen:
+            continue
+        seen.add(real)
+        try:
+            r = report_scene(p, source_label(s, p))
+        except Exception as e:                     # une scène illisible ne bloque pas le rapport
+            r = {"folder": p.name, "error": type(e).__name__}
+        if r:
+            scenes.append(r)
+    states: dict = {}
+    for r in scenes:
+        st = r.get("sgm_state", "error")
+        states[st] = states.get(st, 0) + 1
+    unused = sum(1 for r in scenes for f in r.get("files", []) if not f.get("used_by_sgm"))
+    return {"schema": REPORT_SCHEMA, "app": f"SGM beta v{APP_VERSION}", "sim": sim,
+            "created": datetime.now().strftime("%Y-%m-%d %H:%M"), "packages_scanned": len(seen),
+            "summary": {"scenes_with_candidates": len(scenes), "by_sgm_state": states,
+                        "candidate_files_not_used_by_sgm": unused},
+            "scenes": scenes}
+
+
+def write_statics_report(report: dict) -> Path:
+    d = data_dir() / "reports"
+    d.mkdir(parents=True, exist_ok=True)
+    out = d / f"sgm-statics-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    write_atomic(out, json.dumps(report, indent=1, ensure_ascii=False))
+    return out
+
+
+# ── Journal GSX : état d'origine de chaque fichier que SGM écrit ou retire ──
+
+def _gsx_journal_dir(dest_dir: Path) -> Path:
+    key = hashlib.sha1(norm_key(dest_dir).encode("utf-8")).hexdigest()[:10]
+    return data_dir() / "origin" / "_GSX" / key
+
+
+def _gsx_load(dest_dir: Path) -> dict:
+    try:
+        return json.loads((_gsx_journal_dir(dest_dir) / "journal.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"dest": str(dest_dir), "files": {}}
+
+
+def gsx_record(dest_dir: Path, names: list[str]):
+    """Avant d'écrire ou de retirer ces fichiers dans GSX : note leur état d'origine (une seule fois)."""
+    j = _gsx_load(dest_dir)
+    jd = _gsx_journal_dir(dest_dir)
+    changed = False
+    for n in names:
+        k = n.lower()
+        if k in j["files"]:
+            continue
+        p = dest_dir / n
+        if p.is_file():
+            (jd / "files").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(p, jd / "files" / n)
+            j["files"][k] = {"name": n, "existed": True}
+        else:
+            j["files"][k] = {"name": n, "existed": False}
+        changed = True
+    if changed:
+        jd.mkdir(parents=True, exist_ok=True)
+        write_atomic(jd / "journal.json", json.dumps(j, indent=2, ensure_ascii=False))
+
+
+def gsx_has_origin(dest_dir: Path, names) -> bool:
+    files = _gsx_load(dest_dir)["files"]
+    return any(n.lower() in files for n in names)
+
+
+def gsx_restore(dest_dir: Path, names=None) -> int:
+    """Remet les fichiers GSX notés dans le journal (tous, ou seulement `names`). Renvoie le nombre traité."""
+    j = _gsx_load(dest_dir)
+    jd = _gsx_journal_dir(dest_dir)
+    keys = [k for k in j["files"] if names is None or k in {n.lower() for n in names}]
+    if not keys:
+        return 0
+    current = [dest_dir / j["files"][k]["name"] for k in keys if (dest_dir / j["files"][k]["name"]).is_file()]
+    if current:
+        bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        bdir.mkdir(parents=True, exist_ok=True)
+        for p in current:
+            shutil.copy2(p, bdir / p.name)
+    for k in keys:
+        e = j["files"].pop(k)
+        p = dest_dir / e["name"]
+        if e["existed"]:
+            src = jd / "files" / e["name"]
+            if src.is_file():
+                shutil.copy2(src, p)
+                src.unlink()
+        elif p.is_file():
+            p.unlink()
+        forget_hash(p)
+    if j["files"]:
+        write_atomic(jd / "journal.json", json.dumps(j, indent=2, ensure_ascii=False))
+    else:
+        shutil.rmtree(jd, ignore_errors=True)
+    return len(keys)
+
+
+def gsx_journal_dests() -> list[Path]:
+    base = data_dir() / "origin" / "_GSX"
+    out = []
+    if base.is_dir():
+        for d in base.iterdir():
+            try:
+                out.append(Path(json.loads((d / "journal.json").read_text(encoding="utf-8"))["dest"]))
+            except (OSError, ValueError, KeyError):
+                continue
+    return out
+
+
+def _move(src: Path, dst: Path):
+    if dst.exists():
+        raise ToggleError(tr("err_exists", name=dst.name))
+    os.rename(src, dst)
+    forget_hash(src)
+    forget_hash(dst)
+
+
+def _swap_layout_files(root: Path, groups: list, target: str):
+    """Méthode officielle Orbx / Drzewiecki : layout.json est échangé avec layout.json.nostatic (OFF)
+    ou layout.json.static (ON), pour rester cohérent avec le panneau Orbx Central."""
+    if not any(g.mode == "rswap" for g in groups):
+        return
+    lj, ljs, ljn = root / "layout.json", root / LAYOUT_STATIC, root / LAYOUT_NOSTATIC
+
+    def valid(f: Path) -> bool:                   # jamais d'échange vers un layout illisible
+        try:
+            return isinstance(json.loads(f.read_text(encoding="utf-8-sig")).get("content"), list)
+        except Exception:
+            return False
+
+    if not lj.is_file():
+        return
+    if target == OFF and ljn.is_file() and not ljs.exists() and valid(ljn):
+        os.rename(lj, ljs)
+        os.rename(ljn, lj)
+    elif target == ON and ljs.is_file() and not ljn.exists() and valid(ljs):
+        os.rename(lj, ljn)
+        os.rename(ljs, lj)
+
+
 def set_scene_state(scene: Scene, target: str):
     groups = [g for g in scene.groups if g.toggleable and g.state != target]
     if not groups:
         return
+    snapshot_scene(scene)
     meta = PackageMeta(scene.root)
     to_backup = [meta.layout_file, meta.manifest_file]
     to_backup += [g.active for g in groups if g.mode == "variant" and g.state == UNKNOWN and g.active.exists()]
+    to_backup += [g.on_path for g in groups if g.mode == "rename" and g.twin and g.on_path.is_file()]
+    to_backup += [scene.root / n for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC) if (scene.root / n).is_file()]
     backup_files(scene.root, to_backup)
+    _swap_layout_files(scene.root, groups, target)
+    meta = PackageMeta(scene.root)              # relu : layout.json a pu être échangé
     try:
         for g in groups:
             if g.mode == "rename":
-                cur = g.active
-                new = cur.with_name(cur.name + ".off") if target == OFF else cur.with_name(cur.name[:-4])
-                if new.exists():
-                    raise ToggleError(tr("err_exists", name=new.name))
-                os.rename(cur, new)
                 if target == OFF:
-                    meta.remove(cur)
+                    if g.twin and g.off_path.is_file() and same_content(g.on_path, g.off_path):
+                        g.on_path.unlink()               # son double désactivé identique reste en place
+                        forget_hash(g.on_path)
+                    else:
+                        _move(g.on_path, g.off_path)
+                    meta.remove(g.on_path)
+                elif g.off_form == "bgl.disabled":
+                    # iniBuilds : le .disabled d'origine reste en place, on active une copie
+                    if g.on_path.exists():
+                        raise ToggleError(tr("err_exists", name=g.on_path.name))
+                    shutil.copy2(g.off_path, g.on_path)
+                    forget_hash(g.on_path)
+                    meta.upsert(g.on_path)
                 else:
-                    meta.upsert(new)
+                    _move(g.off_path, g.on_path)
+                    meta.upsert(g.on_path)
+            elif g.mode == "rswap":
+                main, stat, nost = g.active, g.on_file, g.off_file
+                if target == OFF:                         # X.bgl -> X.bgl.static, X.bgl.nostatic -> X.bgl
+                    _move(main, stat)
+                    _move(nost, main)
+                else:                                     # X.bgl -> X.bgl.nostatic, X.bgl.static -> X.bgl
+                    _move(main, nost)
+                    _move(stat, main)
+                meta.upsert(main)
+            elif g.mode == "swap":
+                main, bak, alt = g.active, g.on_file, g.off_file
+                apply_alt = (target == ON) if g.alt_static else (target == OFF)
+                if apply_alt:                             # X.bgl -> X.bgl.bak, copie de la version de rechange en X.bgl
+                    _move(main, bak)
+                    shutil.copy2(alt, main)
+                    forget_hash(main)
+                else:                                     # copie supprimée (vérifiée), X.bgl.bak -> X.bgl
+                    if not same_content(main, alt):
+                        raise ToggleError(tr("err_exists", name=main.name))
+                    main.unlink()
+                    forget_hash(main)
+                    _move(bak, main)
+                meta.upsert(main)
+            elif g.mode == "pair":
+                # toujours désactiver d'abord, puis activer : jamais les deux versions chargées
+                if target == OFF:                         # avec statics désactivé, sans statics activé
+                    if g.on_path.is_file():
+                        _move(g.on_path, g.off_path)
+                        meta.remove(g.on_path)
+                    _move(g.alt_off, g.alt_on)
+                    meta.upsert(g.alt_on)
+                else:
+                    if g.alt_on.is_file():
+                        _move(g.alt_on, g.alt_off)
+                        meta.remove(g.alt_on)
+                    _move(g.off_path, g.on_path)
+                    meta.upsert(g.on_path)
             else:
                 src = g.on_file if target == ON else g.off_file
                 tmp = g.active.with_name(g.active.name + ".sm-tmp")
@@ -906,6 +1708,7 @@ def copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
     replaced = [dest_dir / f.name for f in variant.files
                 if (dest_dir / f.name).is_file() and not same_content(f, dest_dir / f.name)]
     removed = gsx_other_installed(scene, variant, dest_dir)
+    gsx_record(dest_dir, [f.name for f in variant.files] + [r.name for r in removed])
     if replaced or removed:
         bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         bdir.mkdir(parents=True, exist_ok=True)
@@ -1010,6 +1813,7 @@ def install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
     dest_dir.mkdir(parents=True, exist_ok=True)
     replaced = [dest_dir / f.name for f in files
                 if (dest_dir / f.name).is_file() and not same_content(f, dest_dir / f.name)]
+    gsx_record(dest_dir, [f.name for f in files])
     if replaced:
         bdir = data_dir() / "backups" / "_GSX" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         bdir.mkdir(parents=True, exist_ok=True)
@@ -1091,7 +1895,67 @@ def find_download_archives(seen: set) -> list[Path]:
     return out
 
 
-def report_url(kind: str, sim: str, lang: str) -> str:
+ARCHIVE_CLEANUP = ("ask", "auto", "never")
+ARCH_OK, ARCH_CANCEL, ARCH_ERROR = "ok", "cancel", "error"
+
+
+def in_downloads(path: Path, downloads: Path | None = None) -> bool:
+    """L'archive est directement dans le dossier Téléchargements (jamais ailleurs)."""
+    try:
+        return Path(path).resolve().parent == Path(downloads or downloads_dir()).resolve()
+    except OSError:
+        return False
+
+
+def cleanup_candidates(outcomes: dict, downloads: Path | None = None) -> list:
+    """Archives à proposer à la suppression : installées sans erreur (ou déjà installées à l'identique)
+    ET situées dans Téléchargements. Une archive en erreur ou annulée n'est jamais supprimée."""
+    return [Path(a) for a, st in outcomes.items() if st == ARCH_OK and in_downloads(a, downloads)]
+
+
+def send_to_trash(path: Path):
+    """Envoie un fichier dans la Corbeille de Windows (récupérable). Lève OSError en cas d'échec.
+    Hors Windows (tests) : déplacé dans SGM_data/trash."""
+    path = Path(path)
+    if not path.is_file():
+        raise OSError(f"{path.name}: introuvable")
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        class SHFILEOPSTRUCTW(ctypes.Structure):
+            _fields_ = [("hwnd", wintypes.HWND), ("wFunc", wintypes.UINT), ("pFrom", wintypes.LPCWSTR),
+                        ("pTo", wintypes.LPCWSTR), ("fFlags", ctypes.c_ushort),
+                        ("fAnyOperationsAborted", wintypes.BOOL), ("hNameMappings", ctypes.c_void_p),
+                        ("lpszProgressTitle", wintypes.LPCWSTR)]
+        fo_delete, flags = 3, 0x0004 | 0x0010 | 0x0040 | 0x0400   # SILENT | NOCONFIRMATION | ALLOWUNDO | NOERRORUI
+        op = SHFILEOPSTRUCTW(None, fo_delete, str(path) + "\0", None, flags, False, None, None)
+        res = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
+        if res != 0 or op.fAnyOperationsAborted or path.exists():
+            raise OSError(f"{path.name}: {res}")
+        return
+    trash = data_dir() / "trash"
+    trash.mkdir(parents=True, exist_ok=True)
+    target = trash / path.name
+    n = 1
+    while target.exists():
+        target = trash / f"{path.stem} ({n}){path.suffix}"
+        n += 1
+    shutil.move(str(path), str(target))
+
+
+def trash_archives(paths: list) -> list:
+    """Envoie les archives à la Corbeille ; renvoie [(nom, erreur)] pour celles qui ont échoué."""
+    failed = []
+    for p in paths:
+        try:
+            send_to_trash(p)
+        except OSError as e:
+            failed.append((Path(p).name, str(e)))
+    return failed
+
+
+def report_url(kind: str, sim: str, lang: str, attachment: str = "") -> str:
     """Lien « nouvelle issue » prérempli. Aucune donnée personnelle : ni chemin, ni nom d'utilisateur."""
     title = "Bug: " if kind == "bug" else "Idea: "
     if kind == "bug":
@@ -1100,6 +1964,9 @@ def report_url(kind: str, sim: str, lang: str) -> str:
                 "### Steps to reproduce\n1. \n2. \n\n"
                 "### Scenery concerned (name, developer, ICAO)\n\n\n"
                 "### Message shown by SGM (if any)\n\n\n")
+        if attachment:
+            body += ("### Statics analysis report\n"
+                     f"Please drag the file `{attachment}` (folder opened by SGM) into this box.\n\n")
     else:
         body = ("### Your idea\n\n\n"
                 "### Why would it help you?\n\n\n")
@@ -1181,6 +2048,15 @@ QPushButton#searchBtn:hover {{ color: {C['blue']}; border-color: #2E4670; backgr
 QComboBox#catCombo {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 9px;
                       padding: 8px 34px 8px 12px; font-size: 13px; min-width: 190px; }}
 QComboBox#catCombo:hover {{ border-color: {C['border2']}; }}
+QComboBox#colFilter {{ background: transparent; border: 1px solid {C['border']}; border-radius: 7px;
+                      padding: 2px 26px 2px 9px; color: {C['muted']}; font-size: 11px; font-weight: 600; min-height: 20px; }}
+QComboBox#colFilter:hover {{ border-color: {C['border2']}; color: {C['text']}; }}
+QComboBox#colFilter[active="true"] {{ border-color: {C['accent']}; color: {C['accent']}; background: {C['surface']}; }}
+QComboBox#colFilter::drop-down {{ border: none; width: 22px; }}
+QComboBox#colFilter::down-arrow {{ image: none; width: 0; height: 0; }}
+QPushButton#linkBtn {{ background: transparent; border: none; color: {C['accent']}; padding: 4px 6px; }}
+QPushButton#linkBtn:hover {{ text-decoration: underline; }}
+QFrame#colHandle {{ background: transparent; border: none; }}
 QComboBox#catCombo::drop-down {{ border: none; width: 30px; }}
 QComboBox#catCombo::down-arrow {{ image: none; width: 0; height: 0; }}
 QPushButton#folderBtn {{ background: transparent; border: 1px solid transparent; border-radius: 6px;
@@ -1385,16 +2261,53 @@ def state_text(st: str) -> str:
 
 
 GROUP_STATE_KEY = {ON: "grp_on", OFF: "grp_off", UNKNOWN: "grp_unknown", CONFLICT: "grp_conflict"}
-MODE_KEY = {"rename": "mode_rename", "variant": "mode_variant", "conflict": "mode_conflict"}
-MODE_NOTE_KEY = {"rename": "note_rename", "variant": "note_variant", "conflict": "note_conflict"}
+MODE_KEY = {"rename": "mode_rename", "variant": "mode_variant", "swap": "mode_swap", "rswap": "mode_swap", "pair": "mode_pair",
+            "conflict": "mode_conflict"}
+MODE_NOTE_KEY = {"rename": "note_rename", "variant": "note_variant", "swap": "note_swap", "rswap": "note_swap", "pair": "note_pair",
+                 "conflict": "note_conflict"}
+
+
+def mode_note(groups: list, mode: str) -> str:
+    if mode == "rswap":
+        return tr("note_swap_x", alt=".bgl.nostatic / .static")
+    if mode == "swap":
+        alts = sorted({"." + parse_form(g.off_file.name)[1] for g in groups if g.mode == "swap" and g.off_file})
+        return tr("note_swap_x", alt=" / ".join(alts))
+    if mode == "rename":
+        forms = {g.off_form for g in groups if g.mode == "rename" and g.off_form}
+        if forms and forms != {"bgl.off"}:
+            return tr("note_rename_x", off=" / ".join("." + f for f in sorted(forms)))
+    return tr(MODE_NOTE_KEY[mode])
 GSX_TEXT_KEY = {GSX_MISSING: "gsx_copy", GSX_SAME: "gsx_same", GSX_DIFF: "gsx_diff"}
 GSX_INFO_KEY = {GSX_MISSING: "gsx_info_missing", GSX_SAME: "gsx_info_same", GSX_DIFF: "gsx_info_diff"}
 
 FILTER_KEYS = ("all", "on", "off", "new", "check")
 CATEGORY_KEYS = ("all", "statics", "gsx_scene", "gsx_manual", "gsx_none")
 
-COL_STATICS_W = 220
-COL_GSX_W = 300
+COL_STATICS_W = 330          # largeurs de départ (×1,5 depuis la v0.7)
+COL_GSX_W = 450
+COL_STATICS_MIN = 250        # minimums : bascule, boutons et icônes toujours visibles
+COL_GSX_MIN = 320
+COL_SCENE_MIN = 230
+COL_REF_W = 1200             # largeur de liste de référence pour les proportions par défaut
+STATICS_FILTERS = ("all", "on", "off", "check", "none")
+GSX_FILTERS = ("all", "installed", "todo", "manual", "none", "check")
+
+
+def column_widths(avail: int, fs: float, fg: float) -> tuple[int, int]:
+    """Largeurs des colonnes Statics et GSX pour une liste de `avail` px, proportions fs / fg,
+    minimums respectés et colonne scène jamais sous son minimum."""
+    overhead = ROW_MARGINS[0] + ROW_MARGINS[2] + 4 * ROW_SPACING + 4
+    ws, wg = max(COL_STATICS_MIN, round(avail * fs)), max(COL_GSX_MIN, round(avail * fg))
+    excess = ws + wg + COL_SCENE_MIN + overhead - avail
+    if excess > 0:                         # fenêtre étroite : on réduit Statics et GSX jusqu'à leurs minimums
+        room_s, room_g = ws - COL_STATICS_MIN, wg - COL_GSX_MIN
+        room = room_s + room_g
+        if room > 0:
+            cut = min(excess, room)
+            ws -= round(cut * room_s / room)
+            wg -= cut - round(cut * room_s / room)
+    return ws, wg
 ROW_MARGINS = (16, 11, 14, 11)
 ROW_SPACING = 16
 
@@ -1421,33 +2334,117 @@ def column(width: int):
     return w, v
 
 
+class ColHandle(QFrame):
+    """Séparateur d'en-tête qu'on peut tirer pour régler la largeur des colonnes."""
+    dragged = Signal(int)
+    released = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("colHandle")
+        self.setCursor(Qt.SplitHCursor)
+        self.setFixedWidth(9)
+        self.setToolTip(tr("tip_col_resize"))
+        self._x = None
+
+    def mousePressEvent(self, e):
+        self._x = e.globalPosition().x()
+
+    def mouseMoveEvent(self, e):
+        if self._x is None:
+            return
+        x = e.globalPosition().x()
+        dx = round(x - self._x)
+        if dx:
+            self._x = x
+            self.dragged.emit(-dx if self.layoutDirection() == Qt.RightToLeft else dx)
+
+    def mouseReleaseEvent(self, _e):
+        self._x = None
+        self.released.emit()
+
+    def mouseDoubleClickEvent(self, _e):
+        self.released.emit()
+
+    def enterEvent(self, e):
+        self.update()
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self.update()
+        super().leaveEvent(e)
+
+    def paintEvent(self, _e):
+        # trait au centre, exactement sous le séparateur des lignes ; plus épais et coloré au survol
+        p = QPainter(self)
+        hover = self.underMouse() or self._x is not None
+        w = 2 if hover else 1
+        p.fillRect(QRectF((self.width() - w) / 2, 4, w, self.height() - 8),
+                   QColor(C["accent"] if hover else C["border"]))
+
+
 class ColumnHeader(QWidget):
-    """En-têtes alignés sur les colonnes des lignes."""
+    """En-têtes alignés sur les colonnes des lignes, avec un filtre identique pour Statics et GSX
+    et des poignées pour régler les largeurs."""
+    filter_changed = Signal(str, str)          # colonne ("statics" / "gsx"), clé du filtre
 
     def __init__(self):
         super().__init__()
         h = QHBoxLayout(self)
         l, _t, r, _b = ROW_MARGINS
         h.setContentsMargins(l + 1, 0, r + 1, 0)
-        h.setSpacing(ROW_SPACING)
-        for key, width in (("col_scene", None), (None, 0), ("col_statics", COL_STATICS_W),
-                           (None, 0), ("col_gsx", COL_GSX_W)):
-            if key is None:
-                h.addWidget(vsep(False))
-                continue
+        h.setSpacing(ROW_SPACING - 4)        # poignée de 9 px : son trait central tombe sur le séparateur des lignes
+        scene = QLabel(tr("col_scene"))
+        scene.setObjectName("colHead")
+        h.addWidget(scene, 1)
+        self.handles = [ColHandle(), ColHandle()]
+        self.boxes, self.combos = {}, {}
+        for i, (col, key, filters) in enumerate((("statics", "col_statics", STATICS_FILTERS),
+                                                  ("gsx", "col_gsx", GSX_FILTERS))):
+            h.addWidget(self.handles[i])
+            box = QWidget()
+            bl = QHBoxLayout(box)
+            bl.setContentsMargins(0, 0, 0, 0)
+            bl.setSpacing(8)
             lbl = QLabel(tr(key))
             lbl.setObjectName("colHead")
-            if width:
-                lbl.setFixedWidth(width)
-                h.addWidget(lbl)
-            else:
-                h.addWidget(lbl, 1)
+            combo = ChevronCombo()
+            combo.setObjectName("colFilter")
+            combo.setCursor(Qt.PointingHandCursor)
+            combo.setToolTip(tr("tip_col_filter"))
+            prefix = "fst_" if col == "statics" else "fgx_"
+            for k in filters:
+                combo.addItem(tr(prefix + k), k)
+            combo.currentIndexChanged.connect(lambda _i, c=col, cb=combo: self._changed(c, cb))
+            bl.addWidget(lbl)
+            bl.addWidget(combo)
+            bl.addStretch()
+            h.addWidget(box)
+            self.boxes[col], self.combos[col] = box, combo
+
+    def _changed(self, col, combo):
+        key = combo.currentData() or "all"
+        polish(combo, active=key != "all")
+        self.filter_changed.emit(col, key)
+
+    def set_filter(self, col: str, key: str):
+        combo = self.combos[col]
+        i = max(0, combo.findData(key))
+        combo.blockSignals(True)
+        combo.setCurrentIndex(i)
+        combo.blockSignals(False)
+        polish(combo, active=(combo.currentData() or "all") != "all")
+
+    def set_widths(self, ws: int, wg: int):
+        self.boxes["statics"].setFixedWidth(ws)
+        self.boxes["gsx"].setFixedWidth(wg)
 
 
 class SceneRow(QFrame):
     toggle_requested = Signal(object, bool)
     gsx_requested = Signal(object, int, str)    # scène, index de variante, dossier GSX
     search_requested = Signal(object)
+    restore_requested = Signal(object)
 
     def __init__(self, scene: Scene, gsx_folder_fn=None, choices: dict | None = None, on_auto_choice=None,
                  gsx_index_fn=None):
@@ -1490,6 +2487,7 @@ class SceneRow(QFrame):
 
         # ── Colonne statics
         col, cv = column(COL_STATICS_W)
+        self.st_col = col
         line = QHBoxLayout()
         line.setSpacing(10)
         self.state_lbl = QLabel()
@@ -1518,6 +2516,8 @@ class SceneRow(QFrame):
 
         # ── Colonne GSX
         col, gv = column(COL_GSX_W)
+        self.gsx_col = col
+        self.gsx_state = "none"
         self.gsx_line = QHBoxLayout()
         self.gsx_line.setSpacing(6)
         self.gsx_none = QLabel(tr("gsx_none"))
@@ -1566,7 +2566,7 @@ class SceneRow(QFrame):
             if notes:
                 note, is_warn = tr(notes[0]), True
             elif len(modes) == 1:
-                note = tr(MODE_NOTE_KEY[modes.pop()])
+                note = mode_note(s.groups, modes.pop())
                 is_warn = "conflict" in {g.mode for g in s.groups}
             else:
                 note = tr("note_mixed_methods")
@@ -1616,9 +2616,21 @@ class SceneRow(QFrame):
         b.clicked.connect(lambda _=False: self.search_requested.emit(self.scene))
         self._add_gsx_widget(b)
 
+    def set_col_widths(self, ws: int, wg: int):
+        self.st_col.setFixedWidth(ws)
+        self.gsx_col.setFixedWidth(wg)
+
+    def statics_state(self) -> str:
+        """Clé du filtre Statics : on / off / check / none."""
+        s = self.scene
+        if not s.groups:
+            return "none"
+        return {ON: "on", OFF: "off"}.get(s.state, "check")
+
     def refresh_gsx(self):
         s = self.scene
         self._clear_gsx()
+        self.gsx_state = "none"
         self.manual = gsx_manual_profiles(s, self.gsx_index_fn()) if self.gsx_index_fn else []
         if self.gsx_folder_fn is None:
             self.gsx_none.show()
@@ -1627,6 +2639,7 @@ class SceneRow(QFrame):
         if not s.gsx_variants:
             # ── Aucun profil fourni avec la scène : profil installé à la main ? sinon recherche
             if self.manual:
+                self.gsx_state = "manual"
                 self.gsx_none.hide()
                 lbl = QLabel(tr("gsx_manual_lbl"))
                 lbl.setObjectName("gsxManual")
@@ -1643,6 +2656,7 @@ class SceneRow(QFrame):
         self.gsx_none.hide()
         self._refresh_scene_profile()
         if self.manual:      # un autre profil pour le même aéroport : GSX risque de choisir le mauvais
+            self.gsx_state = "check"
             txt = tr("gsx_other_installed", files=", ".join(self.manual))
             self._note(txt, is_warn=True, tip=txt)
 
@@ -1664,6 +2678,7 @@ class SceneRow(QFrame):
         if len(s.gsx_variants) == 1:
             v = s.gsx_variants[0]
             st = gsx_status(v.files, dest)
+            self.gsx_state = {GSX_SAME: "installed", GSX_MISSING: "todo"}.get(st, "check")
             b = QPushButton(tr(GSX_TEXT_KEY[st]))
             b.setObjectName("gsx")
             b.setCursor(Qt.PointingHandCursor)
@@ -1680,6 +2695,7 @@ class SceneRow(QFrame):
 
         # ── Plusieurs versions : une seule active, choix mémorisé
         state, act, why, why_name = gsx_variant_state(s, dest, self.choices.get(s.key))
+        self.gsx_state = {VAR_CHOSEN: "installed", VAR_NONE: "todo"}.get(state, "check")
         if state == VAR_CHOSEN and why == "auto" and self.on_auto_choice:
             self.on_auto_choice(s, variant_id(s, s.gsx_variants[act]))
 
@@ -1750,6 +2766,22 @@ class SceneRow(QFrame):
 
     def mouseDoubleClickEvent(self, _e):
         self.open_folder()
+
+    def can_restore(self) -> bool:
+        if has_origin(self.scene.root):
+            return True
+        folder = self.gsx_folder_fn() if self.gsx_folder_fn else ""
+        return bool(folder) and gsx_has_origin(Path(folder), [f.name for f in self.scene.gsx_files])
+
+    def contextMenuEvent(self, e):
+        menu = QMenu(self)
+        menu.addAction(tr("tip_open_folder"), self.open_folder)
+        menu.addSeparator()
+        a = menu.addAction(tr("ctx_restore"), lambda: self.restore_requested.emit(self.scene))
+        if not self.can_restore():
+            a.setEnabled(False)
+            a.setText(tr("ctx_restore_none"))
+        menu.exec(e.globalPos())
 
 
 class ScanWorker(QThread):
@@ -1952,7 +2984,6 @@ class MainWindow(QMainWindow):
         self.scenes: dict = {}
         self.rows: dict = {}
         self.session_new: set = set()
-        self.filter = "all"
         self.worker = None
         self.busy = False
         sim = self.config.sim
@@ -2012,26 +3043,21 @@ class MainWindow(QMainWindow):
         ch = QHBoxLayout(chips)
         ch.setContentsMargins(3, 3, 3, 3)
         ch.setSpacing(2)
-        self.chip_group = QButtonGroup(self)
-        for key in FILTER_KEYS:
-            b = QPushButton(tr("f_" + key))
-            b.setObjectName("chipBtn")
-            b.setCheckable(True)
-            b.setCursor(Qt.PointingHandCursor)
-            b.setChecked(key == "all")
-            b.clicked.connect(lambda _=False, k=key: self.set_filter(k))
-            self.chip_group.addButton(b)
-            ch.addWidget(b)
+        self.new_chip = QPushButton(tr("f_new"))
+        self.new_chip.setObjectName("chipBtn")
+        self.new_chip.setCheckable(True)
+        self.new_chip.setCursor(Qt.PointingHandCursor)
+        self.new_chip.setToolTip(tr("tip_new_filter"))
+        self.new_chip.toggled.connect(lambda _c: self.apply_filter())
+        ch.addWidget(self.new_chip)
         bar.addWidget(chips)
-        self.category = "all"
-        self.cat_combo = ChevronCombo()
-        self.cat_combo.setObjectName("catCombo")
-        self.cat_combo.setToolTip(tr("cat_tip"))
-        self.cat_combo.setCursor(Qt.PointingHandCursor)
-        for key in CATEGORY_KEYS:
-            self.cat_combo.addItem(tr("cat_" + key), key)
-        self.cat_combo.currentIndexChanged.connect(self._category_changed)
-        bar.addWidget(self.cat_combo)
+        self.reset_btn = QPushButton(tr("btn_reset_filters"))
+        self.reset_btn.setObjectName("linkBtn")
+        self.reset_btn.setCursor(Qt.PointingHandCursor)
+        self.reset_btn.clicked.connect(self.reset_filters)
+        self.reset_btn.hide()
+        bar.addWidget(self.reset_btn)
+        self.st_filter, self.gsx_filter = "all", "all"
         root.addLayout(bar)
 
         # Actions
@@ -2111,6 +3137,11 @@ class MainWindow(QMainWindow):
         self.list_l.setContentsMargins(0, 0, 6, 0)
         self.list_l.setSpacing(8)
         self.col_header = ColumnHeader()
+        self.col_header.filter_changed.connect(self._column_filter_changed)
+        self.col_fs, self.col_fg = self.config.col_fs, self.config.col_fg
+        for i, hd in enumerate(self.col_header.handles):
+            hd.dragged.connect(lambda dx, i=i: self._drag_column(i, dx))
+            hd.released.connect(self._save_columns)
         self.list_l.addWidget(self.col_header)
         self.empty = QLabel(tr("empty_scanning"))
         self.empty.setObjectName("empty")
@@ -2118,6 +3149,7 @@ class MainWindow(QMainWindow):
         self.list_l.addWidget(self.empty)
         self.list_l.addStretch()
         self.scroll.setWidget(self.list_w)
+        self.scroll.viewport().installEventFilter(self)
         root.addWidget(self.scroll, 1)
 
         sep = QFrame()
@@ -2131,11 +3163,11 @@ class MainWindow(QMainWindow):
             self.sources = state["sources"]
             self.session_new = state["session_new"]
             self.scenes = state["scenes"]
-            self.filter = state.get("filter", "all")
-            for b, key in zip(self.chip_group.buttons(), FILTER_KEYS):
-                b.setChecked(key == self.filter)
-            cat = state.get("category", "all")
-            self.cat_combo.setCurrentIndex(max(0, list(CATEGORY_KEYS).index(cat) if cat in CATEGORY_KEYS else 0))
+            self.st_filter = state.get("st_filter", "all")
+            self.gsx_filter = state.get("gsx_filter", "all")
+            self.col_header.set_filter("statics", self.st_filter)
+            self.col_header.set_filter("gsx", self.gsx_filter)
+            self.new_chip.setChecked(state.get("new_only", False))
             self.search.setText(state.get("search", ""))
             self._scan_time = state.get("scan_time", "")
             self.rebuild_rows()
@@ -2182,6 +3214,14 @@ class MainWindow(QMainWindow):
         a.setChecked(self.config.check_downloads)
         a.toggled.connect(self.set_check_downloads)
         m_set.addAction(a)
+        m_clean = m_set.addMenu(tr("m_arch_cleanup"))
+        cgrp = QActionGroup(self)
+        for mode in ARCHIVE_CLEANUP:
+            a = QAction(tr("m_arch_cleanup_" + mode), self, checkable=True)
+            a.setChecked(self.config.archive_cleanup == mode)
+            a.triggered.connect(lambda _=False, md=mode: self.set_archive_cleanup(md))
+            cgrp.addAction(a)
+            m_clean.addAction(a)
         a = QAction(tr("m_install_arch"), self)
         a.triggered.connect(self.choose_archives)
         m_set.addAction(a)
@@ -2195,7 +3235,8 @@ class MainWindow(QMainWindow):
         for key, fn, shortcut in (("m_guide", self.show_guide, "F1"),
                                   ("m_disclaimer", self.show_disclaimer, None),
                                   ("m_licenses", self.show_licenses, None),
-                                  ("m_backups", self.open_backups, None)):
+                                  ("m_backups", self.open_backups, None),
+                                  ("m_restore_all", self.restore_all, None)):
             a = QAction(tr(key), self)
             if shortcut:
                 a.setShortcut(shortcut)
@@ -2206,6 +3247,9 @@ class MainWindow(QMainWindow):
             a = QAction(tr(key), self)
             a.triggered.connect(lambda _=False, k=kind: self.open_report(k))
             m_help.addAction(a)
+        a = QAction(tr("m_stats_report"), self)
+        a.triggered.connect(self.make_statics_report)
+        m_help.addAction(a)
         m_help.addSeparator()
         for key, fn in (("m_donate", self.donate), ("m_about", self.about)):
             a = QAction(tr(key), self)
@@ -2254,7 +3298,8 @@ class MainWindow(QMainWindow):
         QApplication.instance().setLayoutDirection(Qt.RightToLeft if code in RTL_LANGS else Qt.LeftToRight)
         state = None if self.busy else {
             "sources": self.sources, "session_new": self.session_new, "scenes": self.scenes,
-            "filter": self.filter, "category": self.category, "search": self.search.text(),
+            "st_filter": self.st_filter, "gsx_filter": self.gsx_filter, "new_only": self.new_chip.isChecked(),
+            "search": self.search.text(),
             "status_fn": self._status_done_text,
             "scan_time": self._scan_time,
         }
@@ -2313,13 +3358,96 @@ class MainWindow(QMainWindow):
             doc += f"<p><i>{tr('licenses_missing')}</i></p>"
         DocDialog(tr("m_licenses").rstrip("…"), doc, "", self).exec()
 
+    # ── Restauration de l'état d'origine
+    def on_restore(self, scene: Scene):
+        if not self.ensure_sim_closed():
+            return
+        if not ask(self, tr("restore_confirm", name=scene.title), default_yes=False):
+            return
+        msgs = []
+        if has_origin(scene.root):
+            try:
+                restore_scene_statics(scene.root)
+            except RestoreError as e:
+                msgs.append(str(e))
+        folder = self.config.gsx_folder()
+        if folder and gsx_restore(Path(folder), [f.name for f in scene.gsx_files]):
+            self.config.gsx_choices.pop(scene.key, None)
+            self.config.save()
+        self.refresh_gsx_index()
+        self.refresh_scene(scene)
+        self.update_stats()
+        self.status.setText(tr("restore_done", name=scene.title))
+        if msgs:
+            warn(self, "\n\n".join(msgs))
+
+    def restore_all(self):
+        roots = origin_roots()
+        dests = gsx_journal_dests()
+        if not roots and not dests:
+            warn(self, tr("restore_nothing"))
+            return
+        if not self.ensure_sim_closed():
+            return
+        if not ask(self, tr("restore_all_confirm", n=len(roots)), default_yes=False):
+            return
+        errors = []
+        for root in roots:
+            try:
+                restore_scene_statics(root)
+            except RestoreError as e:
+                errors.append(f"• {root.name} : {e}")
+        for d in dests:
+            gsx_restore(d)
+        self.config.gsx_choices.clear()
+        self.config.save()
+        self.status.setText(tr("restore_all_done", n=len(roots)))
+        if errors:
+            warn(self, tr("all_errors") + "\n\n" + "\n".join(errors[:15]) + ("\n…" if len(errors) > 15 else ""))
+        self.start_scan()
+
+    def make_statics_report(self):
+        """Rapport en lecture seule : aucun fichier de scène n'est modifié."""
+        res = self._create_report()
+        if res:
+            path, report = res
+            QMessageBox.information(self, APP_NAME, tr("report_done", n=report["summary"]["scenes_with_candidates"],
+                                                       name=path.name))
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
+
+    def _create_report(self):
+        if self.busy:
+            return None
+        self.set_busy(True)
+        try:
+            def prog(i, n, name):
+                self.status.setText(tr("report_progress", i=i, n=n, name=name))
+                QApplication.processEvents()
+            report = build_statics_report(find_sources(self.config), self.config.sim, prog)
+            path = write_statics_report(report)
+        except Exception as e:
+            self.set_busy(False)
+            warn(self, tr("report_fail", err=e))
+            return None
+        self.set_busy(False)
+        self.status.setText(tr("report_saved", name=path.name))
+        return path, report
+
     def open_backups(self):
         d = data_dir() / "backups"
         d.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(d)))
 
     def open_report(self, kind: str):
-        QDesktopServices.openUrl(QUrl(report_url(kind, self.config.sim, get_lang())))
+        attachment = ""
+        if kind == "bug" and ask(self, tr("report_attach_q")):
+            res = self._create_report()
+            if res:
+                path, _report = res
+                attachment = path.name
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
+                QMessageBox.information(self, APP_NAME, tr("report_attach_how", name=path.name))
+        QDesktopServices.openUrl(QUrl(report_url(kind, self.config.sim, get_lang(), attachment)))
 
     def donate(self):
         if DONATE_URL:
@@ -2417,14 +3545,22 @@ class MainWindow(QMainWindow):
     def install_paths(self, paths: list):
         archives = [Path(p) for p in paths if Path(p).suffix.lower() in ARCHIVE_EXT]
         loose = [Path(p) for p in paths if Path(p).suffix.lower() in (".ini", ".py")]
-        installed = []
+        installed, outcomes, errors = [], {}, []
         for a in archives:
             tmp = Path(tempfile.mkdtemp(prefix="sgm_"))
             try:
                 extract_profiles(a, tmp)
-                installed += self._install_from_folder(tmp, a.name)
+                status, files, why = self._install_from_folder(tmp, a.name)
+                outcomes[a] = status
+                installed += files
+                if status == ARCH_ERROR:
+                    errors.append((a.name, why))
             except ArchiveError as err:
-                warn(self, tr(err.key, **err.kw))
+                outcomes[a] = ARCH_ERROR
+                errors.append((a.name, tr(err.key, **err.kw)))
+            except Exception as err:
+                outcomes[a] = ARCH_ERROR
+                errors.append((a.name, str(err)))
             finally:
                 shutil.rmtree(tmp, ignore_errors=True)
         if loose:
@@ -2433,7 +3569,10 @@ class MainWindow(QMainWindow):
                 for f in loose:
                     if f.is_file() and f.stat().st_size <= MAX_MEMBER_SIZE:
                         shutil.copy2(f, tmp / f.name)
-                installed += self._install_from_folder(tmp, loose[0].name)
+                status, files, why = self._install_from_folder(tmp, loose[0].name)
+                installed += files
+                if status == ARCH_ERROR:
+                    errors.append((loose[0].name, why))
             finally:
                 shutil.rmtree(tmp, ignore_errors=True)
         self._mark_seen(archives)
@@ -2443,24 +3582,51 @@ class MainWindow(QMainWindow):
                 r.refresh_gsx()
             self.apply_filter()
             self.status.setText(tr("arch_done", files=", ".join(installed)))
+        if errors:      # jamais supprimée : on le dit clairement
+            warn(self, tr("arch_errors_kept") + "\n\n" + "\n".join(f"• {n} — {w}" for n, w in errors))
+        self._cleanup_archives(outcomes)
 
-    def _install_from_folder(self, folder: Path, name: str) -> list:
+    def _cleanup_archives(self, outcomes: dict):
+        """Suppression (Corbeille) des archives de Téléchargements installées sans erreur, selon le réglage."""
+        mode = self.config.archive_cleanup
+        cands = cleanup_candidates(outcomes)
+        if mode == "never" or not cands:
+            return
+        listing = "\n".join(f"• {p.name}" for p in cands)
+        if mode == "ask" and not ask(self, tr("arch_delete_q", n=len(cands)) + "\n\n" + listing):
+            return
+        failed = trash_archives(cands)
+        done = len(cands) - len(failed)
+        if done:
+            self.status.setText(tr("arch_deleted", n=done))
+        if failed:
+            warn(self, tr("arch_delete_fail") + "\n\n" + "\n".join(f"• {n} — {w}" for n, w in failed))
+
+    def set_archive_cleanup(self, mode: str):
+        if mode in ARCHIVE_CLEANUP:
+            self.config.archive_cleanup = mode
+            self.config.save()
+
+    def _install_from_folder(self, folder: Path, name: str) -> tuple:
+        """Installe le profil trouvé dans `folder`. Renvoie (état, fichiers installés, raison d'erreur)."""
         variants = profiles_in_folder(folder)
         if not variants:
-            QMessageBox.information(self, APP_NAME, tr("arch_none", name=name))
-            return []
+            return ARCH_ERROR, [], tr("arch_none_short")
         v = variants[0]
         if len(variants) > 1:
             labels = [vlabel(x) or x.folder.name for x in variants]
             item, ok = QInputDialog.getItem(self, tr("arch_pick_title"), tr("arch_pick_version", name=name),
                                             labels, 0, False)
             if not ok:
-                return []
+                return ARCH_CANCEL, [], ""
             v = variants[labels.index(item)]
         dest = Path(self.config.gsx_folder())
+        if dest.is_dir() and all((dest / f.name).is_file() and same_content(f, dest / f.name) for f in v.files):
+            self.status.setText(tr("arch_already", name=name))
+            return ARCH_OK, [], ""              # déjà installé à l'identique : compte comme un succès
         if not dest.is_dir() and not ask(self, tr("gsx_dir_create", path=dest, what=tr("what_profile")),
                                          default_yes=False):
-            return []
+            return ARCH_CANCEL, [], ""
         codes = icaos_of(v.files)
         matches = sorted({s.title for s in self.scenes.values() if s.icao and s.icao in codes})
         replaced = [f.name for f in v.files if (dest / f.name).is_file() and not same_content(f, dest / f.name)]
@@ -2472,12 +3638,11 @@ class MainWindow(QMainWindow):
             msg += "\n\n" + tr("gsx_replaced") + "\n" + "\n".join(f"• {n}" for n in replaced) \
                    + "\n" + tr("gsx_backup_note")
         if not ask(self, msg):
-            return []
+            return ARCH_CANCEL, [], ""
         try:
-            return install_profile_files(v.files, dest)
+            return ARCH_OK, install_profile_files(v.files, dest), ""
         except Exception as err:
-            warn(self, tr("gsx_copy_fail", err=err))
-            return []
+            return ARCH_ERROR, [], tr("gsx_copy_fail", err=err)
 
     # ── Bandeau
     def show_banner(self, html: str, kind: str = "info"):
@@ -2567,18 +3732,27 @@ class MainWindow(QMainWindow):
             row.toggle_requested.connect(self.on_toggle)
             row.gsx_requested.connect(self.on_gsx)
             row.search_requested.connect(self.search_profile)
+            row.restore_requested.connect(self.on_restore)
+            row.set_col_widths(*column_widths(self._avail_width(), self.col_fs, self.col_fg))
             self.list_l.insertWidget(2 + i, row)
             self.rows[s.key] = row
         self.apply_filter()
         self.update_stats()
 
-    # ── Filtres
-    def set_filter(self, key: str):
-        self.filter = key
+    # ── Filtres (un par colonne, même logique pour Statics et GSX)
+    def _column_filter_changed(self, col: str, key: str):
+        if col == "statics":
+            self.st_filter = key
+        else:
+            self.gsx_filter = key
         self.apply_filter()
 
-    def _category_changed(self, _i):
-        self.category = self.cat_combo.currentData() or "all"
+    def reset_filters(self):
+        self.st_filter = self.gsx_filter = "all"
+        self.col_header.set_filter("statics", "all")
+        self.col_header.set_filter("gsx", "all")
+        self.new_chip.setChecked(False)
+        self.search.clear()
         self.apply_filter()
 
     def row_matches(self, row: SceneRow) -> bool:
@@ -2586,19 +3760,13 @@ class MainWindow(QMainWindow):
         q = self.search.text().strip().lower()
         if q and q not in f"{s.title} {s.folder} {s.creator} {s.icao}".lower():
             return False
-        c = self.category
-        if c == "statics" and not s.groups:
+        if self.new_chip.isChecked() and not s.is_new:
             return False
-        if c == "gsx_scene" and not s.gsx_variants:
+        if self.st_filter != "all" and row.statics_state() != self.st_filter:
             return False
-        if c == "gsx_manual" and (s.gsx_variants or not row.manual):
+        if self.gsx_filter != "all" and row.gsx_state != self.gsx_filter:
             return False
-        if c == "gsx_none" and (s.gsx_variants or row.manual):
-            return False
-        f = self.filter
-        st = s.state
-        return (f == "all" or (f == "on" and st == ON) or (f == "off" and st == OFF)
-                or (f == "new" and s.is_new) or (f == "check" and st in (MIXED, CONFLICT)))
+        return True
 
     def apply_filter(self):
         visible = 0
@@ -2611,6 +3779,46 @@ class MainWindow(QMainWindow):
         self.col_header.setVisible(visible > 0)
         filtered = visible != len(self.rows)
         self.scope_lbl.setText(tr("shown", n=visible) if filtered else "")
+        active = (self.st_filter != "all" or self.gsx_filter != "all" or self.new_chip.isChecked()
+                  or bool(self.search.text().strip()))
+        self.reset_btn.setVisible(active)
+        if visible == 0 and self.rows:
+            self.col_header.setVisible(True)      # garder les filtres de colonne accessibles
+
+    # ── Largeur des colonnes : proportionnelle à la fenêtre, réglable avec les poignées de l'en-tête
+    def eventFilter(self, obj, ev):
+        if obj is self.scroll.viewport() and ev.type() == QEvent.Resize:
+            self.layout_columns()
+        return super().eventFilter(obj, ev)
+
+    def _avail_width(self) -> int:
+        return max(400, self.scroll.viewport().width() - self.list_l.contentsMargins().left()
+                   - self.list_l.contentsMargins().right())
+
+    def layout_columns(self):
+        ws, wg = column_widths(self._avail_width(), self.col_fs, self.col_fg)
+        self.col_header.set_widths(ws, wg)
+        for row in self.rows.values():
+            row.set_col_widths(ws, wg)
+
+    def _drag_column(self, handle: int, dx: int):
+        avail = self._avail_width()
+        ws, wg = column_widths(avail, self.col_fs, self.col_fg)
+        if handle == 0:                    # bord gauche de Statics : la colonne s'élargit vers la gauche
+            ws = max(COL_STATICS_MIN, ws - dx)
+        else:                              # entre Statics et GSX
+            new_ws = max(COL_STATICS_MIN, min(ws + dx, ws + wg - COL_GSX_MIN))
+            wg -= new_ws - ws
+            ws = new_ws
+        overhead = ROW_MARGINS[0] + ROW_MARGINS[2] + 4 * ROW_SPACING + 4
+        if ws + wg + COL_SCENE_MIN + overhead > avail:      # la colonne scène garde son minimum
+            return
+        self.col_fs, self.col_fg = ws / avail, wg / avail
+        self.layout_columns()
+
+    def _save_columns(self):
+        self.config.col_fs, self.config.col_fg = round(self.col_fs, 4), round(self.col_fg, 4)
+        self.config.save()
 
     def update_stats(self):
         sc = list(self.scenes.values())
@@ -2821,26 +4029,58 @@ def heart_icon() -> QIcon:
     return icon
 
 
-def make_icon() -> QIcon:
-    pm = QPixmap(64, 64)
-    pm.fill(Qt.transparent)
-    p = QPainter(pm)
+ICON_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
+
+
+def paint_logo(p: QPainter, size: int):
+    """Icône de SGM (proposition C, choisie par Fabian) : « SGM » sur trois marques de piste,
+    vert = statics, bleu = GSX. Sous 32 px, seul le « S » reste (les trois lettres deviennent illisibles)."""
+    s = size / 256.0
     p.setRenderHint(QPainter.Antialiasing)
-    p.setPen(Qt.NoPen)
-    p.setBrush(QColor(C["surface2"]))
-    p.drawRoundedRect(QRectF(2, 2, 60, 60), 14, 14)
-    p.setBrush(QColor(C["accent"]))
-    p.drawRoundedRect(QRectF(12, 38, 40, 14), 7, 7)
-    p.setBrush(QColor("#F3F5F7"))
-    p.drawEllipse(QRectF(36, 40, 10, 10))
-    p.setPen(QColor(C["text"]))
+    p.setRenderHint(QPainter.TextAntialiasing)
+    pen = QPen(QColor(C["border2"]))
+    pen.setWidthF(max(1.0, 6 * s))
+    p.setPen(pen)
+    p.setBrush(QColor(C["surface"]))
+    p.drawRoundedRect(QRectF(8 * s, 8 * s, 240 * s, 240 * s), 54 * s, 54 * s)
+    small = size < 32
+    text = "S" if small else "SGM"
     f = QFont()
-    f.setPixelSize(22)
-    f.setBold(True)
+    f.setFamilies(["Segoe UI", "Inter", "DejaVu Sans", "Arial"])
+    f.setWeight(QFont.ExtraBold)
+    f.setPixelSize(max(6, round((150 if small else 92) * s)))
+    if not small:
+        f.setLetterSpacing(QFont.AbsoluteSpacing, -2 * s)
+    # Le texte doit tenir dans 76 % de la largeur, quelle que soit la police disponible.
+    w = QFontMetricsF(f).horizontalAdvance(text)
+    if w > 0.76 * size:
+        f.setPixelSize(max(6, int(f.pixelSize() * 0.76 * size / w)))
     p.setFont(f)
-    p.drawText(QRectF(0, 6, 64, 30), Qt.AlignCenter, "✈")
+    p.setPen(QColor(C["text"]))
+    top = (8 if small else 40) * s
+    bottom = (168 if small else 170) * s
+    p.drawText(QRectF(0, top, size, bottom - top), Qt.AlignHCenter | Qt.AlignBottom, text)
+    p.setPen(Qt.NoPen)
+    y, h = 176 * s, max(2.0, 12 * s)
+    for x, col in ((44, C["accent"]), (108, C["accent"]), (172, C["blue"])):
+        p.setBrush(QColor(col))
+        p.drawRoundedRect(QRectF(x * s, y, 40 * s, h), h / 2, h / 2)
+
+
+def logo_image(size: int) -> QImage:
+    img = QImage(size, size, QImage.Format_ARGB32)
+    img.fill(Qt.transparent)
+    p = QPainter(img)
+    paint_logo(p, size)
     p.end()
-    return QIcon(pm)
+    return img
+
+
+def make_icon() -> QIcon:
+    icon = QIcon()
+    for n in ICON_SIZES:
+        icon.addPixmap(QPixmap.fromImage(logo_image(n)))
+    return icon
 
 
 def dark_title_bar(win: QWidget):

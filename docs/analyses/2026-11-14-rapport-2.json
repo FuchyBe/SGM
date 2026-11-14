@@ -1,0 +1,3774 @@
+{
+ "schema": 1,
+ "app": "SGM beta v0.6",
+ "sim": "MSFS 2024",
+ "created": "2026-11-14 11:18",
+ "packages_scanned": 2218,
+ "summary": {
+  "scenes_with_candidates": 89,
+  "by_sgm_state": {
+   "off": 47,
+   "none": 6,
+   "on": 25,
+   "mixed": 7,
+   "conflict": 4
+  },
+  "candidate_files_not_used_by_sgm": 38
+ },
+ "scenes": [
+  {
+   "folder": "drzewieckidesign-airport-rjaa-narita",
+   "title": "Tokyo Narita International Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.3.0",
+   "content_type": "SCENERY",
+   "icao": "RJAA",
+   "source": "Community",
+   "bgl_count": 11,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/RJAA_Narita"
+   ],
+   "files": [
+    {
+     "path": "scenery/RJAA_Narita/RJAA_Static.off",
+     "size": 92898962,
+     "sha1": "8845002757a0",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/RJAA_Narita/RJAA_Static.off"
+     ],
+     "active": "scenery/RJAA_Narita/RJAA_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-eggw-luton",
+   "title": "EGGW Luton",
+   "creator": "inibuilds",
+   "version": "1.1.1",
+   "content_type": "SCENERY",
+   "icao": "EGGW",
+   "source": "Community",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "Scenery/airport-eggw-luton/eggw-modelLib-gse",
+    "Scenery/airport-eggw-luton/eggw-modellib",
+    "Scenery/airport-eggw-luton/eggw-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-eggw-luton/eggw-scene/eggw-scene-statics.bgl.off",
+     "size": 220,
+     "sha1": "13ad49addfb7",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-eggw-luton/eggw-scene/eggw-scene-statics.bgl.off"
+     ],
+     "active": "Scenery/airport-eggw-luton/eggw-scene/eggw-scene-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-faor-johannesburg",
+   "title": "FAOR Johannesburg",
+   "creator": "inibuilds",
+   "version": "1.0.2",
+   "content_type": "SCENERY",
+   "icao": "FAOR",
+   "source": "Community",
+   "bgl_count": 6,
+   "bgl_dirs": [
+    "Scenery/airport-inibuilds-johannesburg/inibuilds-modellib",
+    "Scenery/airport-inibuilds-johannesburg/inibuilds-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-inibuilds-johannesburg/inibuilds-scene/faor-scene-statics.off",
+     "size": 1308,
+     "sha1": "570101110e86",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-inibuilds-johannesburg/inibuilds-scene/faor-scene-statics.off"
+     ],
+     "active": "Scenery/airport-inibuilds-johannesburg/inibuilds-scene/faor-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-kdfw-dallas",
+   "title": "KDFW Dallas Fort Worth International",
+   "creator": "iniBuilds",
+   "version": "1.0.3",
+   "content_type": "SCENERY",
+   "icao": "KDFW",
+   "source": "Community",
+   "bgl_count": 14,
+   "bgl_dirs": [
+    "Scenery/airport-inibuilds-dallas/inibuilds-modellib",
+    "Scenery/airport-inibuilds-dallas/inibuilds-modellib-Clutter",
+    "Scenery/airport-inibuilds-dallas/inibuilds-modellib-gse",
+    "Scenery/airport-inibuilds-dallas/inibuilds-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-inibuilds-dallas/inibuilds-scene/kdfw-scene-statics.off",
+     "size": 540,
+     "sha1": "3b19f18866e7",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-inibuilds-dallas/inibuilds-scene/kdfw-scene-statics.off"
+     ],
+     "active": "Scenery/airport-inibuilds-dallas/inibuilds-scene/kdfw-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-kjfk-new-york",
+   "title": "KJFK New York JFK International Airport",
+   "creator": "iniBuilds",
+   "version": "1.1.1",
+   "content_type": "SCENERY",
+   "icao": "KJFK",
+   "source": "Community",
+   "bgl_count": 13,
+   "bgl_dirs": [
+    "Scenery/airport-kjfk-newyork/kjfk-modellib",
+    "Scenery/airport-kjfk-newyork/kjfk-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-kjfk-newyork/kjfk-scene/kjfk-scene-statics.bgl.off",
+     "size": 1196,
+     "sha1": "e22c59b3360d",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-kjfk-newyork/kjfk-scene/kjfk-scene-statics.bgl.off"
+     ],
+     "active": "Scenery/airport-kjfk-newyork/kjfk-scene/kjfk-scene-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-klax-los-angeles",
+   "title": "KLAX Los Angeles International Airport",
+   "creator": "iniBuilds",
+   "version": "1.0.2",
+   "content_type": "SCENERY",
+   "icao": "KLAX",
+   "source": "Community",
+   "bgl_count": 12,
+   "bgl_dirs": [
+    "Scenery/airport-klax-losangeles/klax-modelLib",
+    "Scenery/airport-klax-losangeles/klax-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-klax-losangeles/klax-scene/klax-scene-statics.off",
+     "size": 732,
+     "sha1": "8217b8227b37",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-klax-losangeles/klax-scene/klax-scene-statics.off"
+     ],
+     "active": "Scenery/airport-klax-losangeles/klax-scene/klax-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-kokc-oklahoma-city",
+   "title": "KOKC Will Rogers World Airport",
+   "creator": "iniBuilds",
+   "version": "1.0.4",
+   "content_type": "SCENERY",
+   "icao": "KOKC",
+   "source": "Community",
+   "bgl_count": 5,
+   "bgl_dirs": [
+    "Scenery/airport-kokc-oklahomacity/kokc-modellib",
+    "Scenery/airport-kokc-oklahomacity/kokc-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-kokc-oklahomacity/kokc-scene/kokc-scene-statics.off",
+     "size": 3036,
+     "sha1": "d5f939fcec99",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-kokc-oklahomacity/kokc-scene/kokc-scene-statics.off"
+     ],
+     "active": "Scenery/airport-kokc-oklahomacity/kokc-scene/kokc-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-ksat-san-antonio",
+   "title": "KSAT San Antonio International Airport",
+   "creator": "iniBuilds",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "KSAT",
+   "source": "Community",
+   "bgl_count": 6,
+   "bgl_dirs": [
+    "Scenery/airport-inibuilds-sanantonio/inibuilds-modellib",
+    "Scenery/airport-inibuilds-sanantonio/inibuilds-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-inibuilds-sanantonio/inibuilds-scene/ksat-scene-statics.off",
+     "size": 684,
+     "sha1": "505b79d13136",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-inibuilds-sanantonio/inibuilds-scene/ksat-scene-statics.off"
+     ],
+     "active": "Scenery/airport-inibuilds-sanantonio/inibuilds-scene/ksat-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-lclk-larnaca",
+   "title": "LCLK Larnaca International",
+   "creator": "iniBuilds",
+   "version": "1.0.3",
+   "content_type": "SCENERY",
+   "icao": "LCLK",
+   "source": "Community",
+   "bgl_count": 5,
+   "bgl_dirs": [
+    "scenery/airport-inibuilds-larnaca/inibuilds-modellib",
+    "scenery/airport-inibuilds-larnaca/inibuilds-scene"
+   ],
+   "files": [
+    {
+     "path": "scenery/airport-inibuilds-larnaca/inibuilds-scene/lclk-scene-statics.bgl.off",
+     "size": 1500,
+     "sha1": "c33b07640baf",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/airport-inibuilds-larnaca/inibuilds-scene/lclk-scene-statics.bgl.off"
+     ],
+     "active": "scenery/airport-inibuilds-larnaca/inibuilds-scene/lclk-scene-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-omdb-dubai",
+   "title": "OMDB Dubai International Airport",
+   "creator": "iniBuilds",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "OMDB",
+   "source": "Community",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "Scenery/airport-omdb-dubai/omdb-modellib",
+    "Scenery/airport-omdb-dubai/omdb-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-omdb-dubai/omdb-scene/omdb-scene-statics.off",
+     "size": 2268,
+     "sha1": "b4dc8a5ef156",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-omdb-dubai/omdb-scene/omdb-scene-statics.off"
+     ],
+     "active": "Scenery/airport-omdb-dubai/omdb-scene/omdb-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-phnl-honolulu",
+   "title": "PHNL Honolulu International Airport",
+   "creator": "iniBuilds",
+   "version": "1.2.3",
+   "content_type": "SCENERY",
+   "icao": "PHNL",
+   "source": "Community",
+   "bgl_count": 13,
+   "bgl_dirs": [
+    "Scenery/airport-phnl-honolulu/phnl-modellib",
+    "Scenery/airport-phnl-honolulu/phnl-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-phnl-honolulu/phnl-scene/phnl-scene-statics.bgl.off",
+     "size": 1820,
+     "sha1": "9c0796d27fe3",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-phnl-honolulu/phnl-scene/phnl-scene-statics.bgl.off"
+     ],
+     "active": "Scenery/airport-phnl-honolulu/phnl-scene/phnl-scene-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-vhhh-hong-kong",
+   "title": "VHHH Hong Kong International",
+   "creator": "iniBuilds",
+   "version": "1.0.2",
+   "content_type": "SCENERY",
+   "icao": "VHHH",
+   "source": "Community",
+   "bgl_count": 8,
+   "bgl_dirs": [
+    "Scenery/airport-inibuilds-hongkong/inibuilds-modellib",
+    "Scenery/airport-inibuilds-hongkong/inibuilds-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-inibuilds-hongkong/inibuilds-scene/vhhh-scene-statics.bgl.off",
+     "size": 476,
+     "sha1": "a3bb1a43256d",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-inibuilds-hongkong/inibuilds-scene/vhhh-scene-statics.bgl.off"
+     ],
+     "active": "Scenery/airport-inibuilds-hongkong/inibuilds-scene/vhhh-scene-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "ipdc-stiz-staticac",
+   "title": "IPDC_STIZ_STATICAC",
+   "creator": "IPDC-Stiz",
+   "version": "2.0.0",
+   "content_type": "SCENERY",
+   "icao": "STIZ",
+   "source": "Community",
+   "bgl_count": 1,
+   "bgl_dirs": [
+    "scenery/IPDC_STIZ_STATICAC/ModelLibrary"
+   ],
+   "files": [
+    {
+     "path": "scenery/IPDC_STIZ_STATICAC/ModelLibrary/IPDC_STIZ_STATICAC.BGL",
+     "size": 2741078,
+     "sha1": "60701c01e6cd",
+     "in_layout": true,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [],
+   "sgm_state": "none"
+  },
+  {
+   "folder": "jetstream-airport-lsgg-geneva",
+   "title": "LSGG Geneva Airport",
+   "creator": "JetStream Designs",
+   "version": "1.1.5",
+   "content_type": "SCENERY",
+   "icao": "LSGG",
+   "source": "Community",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/jetstream-LSGG",
+    "scenery/jetstream-LSGG-Geneva"
+   ],
+   "files": [
+    {
+     "path": "scenery/jetstream-LSGG-Geneva/statics.off",
+     "size": 876,
+     "sha1": "feb5c53d5d7b",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/jetstream-LSGG-Geneva/statics.off"
+     ],
+     "active": "scenery/jetstream-LSGG-Geneva/statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "LFPG_fix",
+   "title": "LFPG_fix",
+   "creator": "TIGERSHARK85000",
+   "version": "31.0.0",
+   "content_type": "SCENERY",
+   "icao": "LFPG",
+   "source": "Community",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery/fedex/fedexlogo",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/scenery/static-cargo.bgl",
+     "size": 541,
+     "sha1": "a1818aea1714",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/static-cargo.bgl"
+     ],
+     "active": "scenery/world/scenery/static-cargo.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "orbx-airport-katl-atlanta",
+   "title": "KATL Atlanta International Airport",
+   "creator": "orbx",
+   "version": "1.0.4",
+   "content_type": "SCENERY",
+   "icao": "KATL",
+   "source": "Community",
+   "bgl_count": 8,
+   "bgl_dirs": [
+    "Scenery/katl/modelLib",
+    "Scenery/katl/placement"
+   ],
+   "files": [
+    {
+     "path": "Scenery/katl/placement/placement_full_gse_rampguy_static.bgl.off",
+     "size": 610076,
+     "sha1": "16aebe46dae7",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "Scenery/katl/placement/placement_full_gse_rampguy_static_flatten.bgl",
+     "size": 609628,
+     "sha1": "bbce76c81aa2",
+     "in_layout": true,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/katl/placement/placement_full_gse_rampguy_static.bgl.off"
+     ],
+     "active": "Scenery/katl/placement/placement_full_gse_rampguy_static.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "pilotplus-airport-egkb-london-biggin-hill",
+   "title": "EGKB Biggin Hill",
+   "creator": "Pilot Plus",
+   "version": "1.0.1",
+   "content_type": "SCENERY",
+   "icao": "EGKB",
+   "source": "Community",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/PilotPlus/PPEGKB"
+   ],
+   "files": [
+    {
+     "path": "scenery/PilotPlus/PPEGKB/PP-EGKB-StaticAircraft.bgl.off",
+     "size": 3756,
+     "sha1": "ea4b4060b2a5",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/PilotPlus/PPEGKB/PP-EGKB-StaticAircraft.bgl.off"
+     ],
+     "active": "scenery/PilotPlus/PPEGKB/PP-EGKB-StaticAircraft.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "uk2000scenery-airport-ktex-telluride",
+   "title": "KTEX Telluride Airport",
+   "creator": "UK2000 Scenery",
+   "version": "1.0.2",
+   "content_type": "SCENERY",
+   "icao": "KTEX",
+   "source": "Community",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/UK2000Scenery/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/UK2000Scenery/scenery/ktex-airport.bgl",
+     "size": 158428,
+     "sha1": "cacaa8d14eec",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/UK2000Scenery/scenery/ktex-airport.bgl.nostatic",
+     "size": 155676,
+     "sha1": "9e57e5eeee4a",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/UK2000Scenery/scenery/ktex-airport.bgl",
+      "scenery/UK2000Scenery/scenery/ktex-airport.bgl.nostatic"
+     ],
+     "active": "scenery/UK2000Scenery/scenery/ktex-airport.bgl",
+     "on": "scenery/UK2000Scenery/scenery/ktex-airport.bgl.bak",
+     "off": "scenery/UK2000Scenery/scenery/ktex-airport.bgl.nostatic"
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "miltechsimulations-missionhub",
+   "title": "Miltech Mission Hub",
+   "creator": "Miltech Simulations",
+   "version": "1.2.2",
+   "content_type": "MISC",
+   "icao": "",
+   "source": "Community",
+   "bgl_count": 1,
+   "bgl_dirs": [
+    "scenery/MMHModelLib"
+   ],
+   "files": [
+    {
+     "path": "html_ui/Miltech/MissionHub/ScenarioDefinitions/MMHStaticObjectLibrary.json",
+     "size": 924,
+     "sha1": "77c721e6f36c",
+     "in_layout": true,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [],
+   "sgm_state": "none"
+  },
+  {
+   "folder": "simfocus-autogen-helipads-world-2024",
+   "title": "Autogen Helipads World",
+   "creator": "simfocus",
+   "version": "0.1.7",
+   "content_type": "SCENERY",
+   "icao": "",
+   "source": "Community",
+   "bgl_count": 49236,
+   "bgl_dirs": [
+    "Scenery/autogen-helipads-World-2024/models",
+    "Scenery/simfocus-autogen-helipads-World-2024/scenery"
+   ],
+   "files": [
+    {
+     "path": "Scenery/simfocus-autogen-helipads-World-2024/scenery/CH_E5OFF.bgl",
+     "size": 1591,
+     "sha1": "92fb7a90cb20",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "Scenery/simfocus-autogen-helipads-World-2024/scenery/IR_OFF0K.bgl",
+     "size": 1292,
+     "sha1": "f32bbd4c1ad5",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "Scenery/simfocus-autogen-helipads-World-2024/scenery/RU_51BAK.bgl",
+     "size": 1339,
+     "sha1": "447f114d4155",
+     "in_layout": true,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [],
+   "sgm_state": "none"
+  },
+  {
+   "folder": "net-airport-daat-aguenar",
+   "title": "DAAT Aguenar Tamanrasset Airport",
+   "creator": "NetDesign",
+   "version": "2.2.0",
+   "content_type": "SCENERY",
+   "icao": "DAAT",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery/airport-daat-aguenar/daat-static",
+    "scenery/global/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/airport-daat-aguenar/daat-static/net-daat-aguenar-static.BGL",
+     "size": 15449874,
+     "sha1": "f7aa521f780b",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/airport-daat-aguenar/daat-static/net-daat-aguenar-static.BGL"
+     ],
+     "active": "scenery/airport-daat-aguenar/daat-static/net-daat-aguenar-static.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "simpixel-airport-gmtt-tanger",
+   "title": "Simpixel-GMTT-Tangier-Airport",
+   "creator": "SimPixel",
+   "version": "1.0.3",
+   "content_type": "SCENERY",
+   "icao": "GMTT",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "Scenery/airport-gmtt-tanger/GMTT-Tangier-Airport-BGL",
+    "Scenery/airport-gmtt-tanger/GMTT-Tangier-Airport-Model",
+    "Scenery/airport-gmtt-tanger/static"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-gmtt-tanger/static/static.bgl",
+     "size": 3740,
+     "sha1": "d28153594206",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "Scenery/airport-gmtt-tanger/static/static.bgl"
+     ],
+     "active": "Scenery/airport-gmtt-tanger/static/static.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "fsimstudios-airport-cyyc-calgary",
+   "title": "CYYC Calgary International Airport",
+   "creator": "FSimstudios",
+   "version": "1.2.0",
+   "content_type": "SCENERY",
+   "icao": "CYYC",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "scenery/FSS_CYYC/yyc-modelib",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/scenery/statics.bgl.off",
+     "size": 796,
+     "sha1": "276cb845998f",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/statics.bgl.off"
+     ],
+     "active": "scenery/world/scenery/statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "axonos-airport-kric-richmond",
+   "title": "KRIC",
+   "creator": "Axonos",
+   "version": "1.0.1",
+   "content_type": "SCENERY",
+   "icao": "KRIC",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/axonos"
+   ],
+   "files": [
+    {
+     "path": "scenery/kric/StaticAcft/StaticAcft.off",
+     "size": 988,
+     "sha1": "042e253fc74e",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/kric/StaticAcft/StaticAcft.off"
+     ],
+     "active": "scenery/kric/StaticAcft/StaticAcft.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "c3d-airport-kopf-miami",
+   "title": "Miami-Opa Locka Executive Airport",
+   "creator": "cat3dual",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "KOPF",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "Scenery"
+   ],
+   "files": [
+    {
+     "path": "Scenery/staticAircraft.off",
+     "size": 17094530,
+     "sha1": "d0bf39e13369",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/staticAircraft.off"
+     ],
+     "active": "Scenery/staticAircraft.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "drzewieckidesign-airport-kbfi-boeing-field",
+   "title": "KBFI Boeing Field",
+   "creator": "Drzewiecki Design",
+   "version": "1.2.0",
+   "content_type": "SCENERY",
+   "icao": "KBFI",
+   "source": "ajouté",
+   "bgl_count": 9,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/Boeing Field Airport MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/Boeing Field Airport MSFS/KBFI_STATIC.BGL",
+     "size": 81347936,
+     "sha1": "2937d69084e3",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/Boeing Field Airport MSFS/KBFI_STATIC.BGL"
+     ],
+     "active": "scenery/Boeing Field Airport MSFS/KBFI_STATIC.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "drzewieckidesign-airport-kbfm-mobile",
+   "title": "KBFM Mobile International Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "KBFM",
+   "source": "ajouté",
+   "bgl_count": 9,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/Mobile International Airport MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/Mobile International Airport MSFS/KBFM_Static.BGL",
+     "size": 24904762,
+     "sha1": "58661cc6aa01",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/Mobile International Airport MSFS/KBFM_Static.BGL"
+     ],
+     "active": "scenery/Mobile International Airport MSFS/KBFM_Static.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "drzewieckidesign-airport-kdca-washington",
+   "title": "Washington National MSFS MSFS",
+   "creator": "Drzewiecki Design",
+   "version": "1.4.0",
+   "content_type": "SCENERY",
+   "icao": "",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/Washington National MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/Washington National MSFS/KDCA_Static.off",
+     "size": 16444940,
+     "sha1": "f89dddbc4b8c",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/Washington National MSFS/KDCA_Static.off"
+     ],
+     "active": "scenery/Washington National MSFS/KDCA_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "drzewieckidesign-airport-kewr-newark-liberty",
+   "title": "KEWR Newark Intl MSFS",
+   "creator": "Drzewiecki Design",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "KEWR",
+   "source": "ajouté",
+   "bgl_count": 10,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/KEWR Newark Intl MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/KEWR Newark Intl MSFS/KEWR_STATIC.off",
+     "size": 77057380,
+     "sha1": "c75259c05d41",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/KEWR Newark Intl MSFS/KEWR_STATIC.off"
+     ],
+     "active": "scenery/KEWR Newark Intl MSFS/KEWR_STATIC.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "drzewieckidesign-airport-kmdw-chicago-midway",
+   "title": "KMDW Chicago Midway Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.3.0",
+   "content_type": "SCENERY",
+   "icao": "KMDW",
+   "source": "ajouté",
+   "bgl_count": 9,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/Chicago Midway MFS"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 217491,
+     "sha1": "bbeaec154aab",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/Chicago Midway MFS/KMDW_Static.off",
+     "size": 56406708,
+     "sha1": "655050def65c",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/KMDW_PLC.bgl",
+     "size": 329112,
+     "sha1": "22ccaca74de6",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/KMDW_PLC.bgl.nostatic",
+     "size": 331264,
+     "sha1": "b4d82448df16",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/KMDW_PLC.bgl",
+      "scenery/KMDW_PLC.bgl.nostatic"
+     ],
+     "active": "scenery/KMDW_PLC.bgl",
+     "on": "scenery/KMDW_PLC.bgl.bak",
+     "off": "scenery/KMDW_PLC.bgl.nostatic"
+    },
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/Chicago Midway MFS/KMDW_Static.off"
+     ],
+     "active": "scenery/Chicago Midway MFS/KMDW_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "mixed"
+  },
+  {
+   "folder": "drzewieckidesign-airport-kpae-paine-field",
+   "title": "KPAE Paine Field & Boeing Factory",
+   "creator": "Drzewiecki Design",
+   "version": "1.2.0",
+   "content_type": "SCENERY",
+   "icao": "KPAE",
+   "source": "ajouté",
+   "bgl_count": 10,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/Paine Field Airport MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/Paine Field Airport MSFS/KPAE_STATIC.BGL",
+     "size": 107430778,
+     "sha1": "648fd2db3b10",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/Paine Field Airport MSFS/KPAE_STATIC.BGL"
+     ],
+     "active": "scenery/Paine Field Airport MSFS/KPAE_STATIC.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "drzewieckidesign-airport-krnt-renton",
+   "title": "KRNT Renton MSFS",
+   "creator": "Drzewiecki Design",
+   "version": "1.3.0",
+   "content_type": "SCENERY",
+   "icao": "KRNT",
+   "source": "ajouté",
+   "bgl_count": 10,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/KRNT Renton MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/KRNT Renton MSFS/KRNT_Static.off",
+     "size": 29420998,
+     "sha1": "79a475d5e237",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/KRNT Renton MSFS/KRNT_Static.off"
+     ],
+     "active": "scenery/KRNT Renton MSFS/KRNT_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "drzewieckidesign-landmarks-washington",
+   "title": "Washington Landmarks MSFS V2",
+   "creator": "Drzewiecki Design",
+   "version": "2.0.0",
+   "content_type": "SCENERY",
+   "icao": "",
+   "source": "ajouté",
+   "bgl_count": 8,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/Washington Landmarks MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/Washington Landmarks MSFS/WASH_STATIC.BGL",
+     "size": 25205128,
+     "sha1": "a61174d53b86",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/Washington Landmarks MSFS/WASH_STATIC.BGL"
+     ],
+     "active": "scenery/Washington Landmarks MSFS/WASH_STATIC.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "inibuilds-airport-kbuf-buffalo-niagara",
+   "title": "KBUF Buffalo Niagara International Airport",
+   "creator": "inibuilds",
+   "version": "1.1.1",
+   "content_type": "SCENERY",
+   "icao": "KBUF",
+   "source": "ajouté",
+   "bgl_count": 4,
+   "bgl_dirs": [
+    "Scenery/airport-kbuf-buffalo/kbuf-modellib",
+    "Scenery/airport-kbuf-buffalo/kbuf-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-kbuf-buffalo/kbuf-scene/kbuf-scene-statics.off",
+     "size": 156,
+     "sha1": "10cc012f79e1",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-kbuf-buffalo/kbuf-scene/kbuf-scene-statics.off"
+     ],
+     "active": "Scenery/airport-kbuf-buffalo/kbuf-scene/kbuf-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-kdtw-detroit",
+   "title": "KDTW Detro Metro Wayne County Airport",
+   "creator": "inibuilds",
+   "version": "1.0.5",
+   "content_type": "SCENERY",
+   "icao": "KDTW",
+   "source": "ajouté",
+   "bgl_count": 10,
+   "bgl_dirs": [
+    "Scenery/airport-kdtw-detroit/kdtw-modelib",
+    "Scenery/airport-kdtw-detroit/kdtw-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-kdtw-detroit/kdtw-scene/kdtw-scene-statics.off",
+     "size": 988,
+     "sha1": "0fc111228c8c",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-kdtw-detroit/kdtw-scene/kdtw-scene-statics.off"
+     ],
+     "active": "Scenery/airport-kdtw-detroit/kdtw-scene/kdtw-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-kpsp-palm-springs",
+   "title": "KPSP Palm Springs Airport",
+   "creator": "iniBuilds",
+   "version": "1.0.1",
+   "content_type": "SCENERY",
+   "icao": "KPSP",
+   "source": "ajouté",
+   "bgl_count": 6,
+   "bgl_dirs": [
+    "Scenery/airport-kpsp-palmsprings/kpsp-modellib",
+    "Scenery/airport-kpsp-palmsprings/kpsp-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-kpsp-palmsprings/kpsp-scene/kpsp-scene-statics.off",
+     "size": 1308,
+     "sha1": "2c39ce5e9e83",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-kpsp-palmsprings/kpsp-scene/kpsp-scene-statics.off"
+     ],
+     "active": "Scenery/airport-kpsp-palmsprings/kpsp-scene/kpsp-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-kpvd-providence",
+   "title": "KPVD Providence T.F. Green Airport",
+   "creator": "iniBuilds",
+   "version": "1.0.2",
+   "content_type": "SCENERY",
+   "icao": "KPVD",
+   "source": "ajouté",
+   "bgl_count": 5,
+   "bgl_dirs": [
+    "Scenery/airport-inibuilds-providence/inibuilds-modellib",
+    "Scenery/airport-inibuilds-providence/inibuilds-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-inibuilds-providence/inibuilds-scene/kpvd-scene-airport_nostatic.bgl",
+     "size": 1809441,
+     "sha1": "8374778d819b",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "Scenery/airport-inibuilds-providence/inibuilds-scene/kpvd-scene-airport_static.bgl.disabled",
+     "size": 1808649,
+     "sha1": "cc59fcc5f0d7",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "pair",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-inibuilds-providence/inibuilds-scene/kpvd-scene-airport_nostatic.bgl",
+      "Scenery/airport-inibuilds-providence/inibuilds-scene/kpvd-scene-airport_static.bgl.disabled"
+     ],
+     "active": "Scenery/airport-inibuilds-providence/inibuilds-scene/kpvd-scene-airport_nostatic.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "orbx-airport-kbur-hollywood-burbank",
+   "title": "KBUR Burbank Bob Hope Airport",
+   "creator": "Orbx",
+   "version": "2.1.0",
+   "content_type": "SCENERY",
+   "icao": "KBUR",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/Orbx/kbur"
+   ],
+   "files": [
+    {
+     "path": "layout.json.static",
+     "size": 133746,
+     "sha1": "3b63437449d8",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/Orbx/kbur/Xml Placements_Without_Static_Aircraft.bgl.nostatic",
+     "size": 698579,
+     "sha1": "55dedbc7562d",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/Orbx/kbur/Xml_Placements_With_Static_Aircraft.bgl",
+     "size": 717399,
+     "sha1": "39a1cdf12936",
+     "in_layout": false,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/Orbx/kbur/Xml Placements_Without_Static_Aircraft.bgl.nostatic"
+     ],
+     "active": "scenery/Orbx/kbur/Xml Placements_Without_Static_Aircraft.bgl.nostatic",
+     "on": "",
+     "off": ""
+    },
+    {
+     "mode": "conflict",
+     "state": "conflict",
+     "note": "note_not_in_layout",
+     "paths": [
+      "scenery/Orbx/kbur/Xml_Placements_With_Static_Aircraft.bgl"
+     ],
+     "active": "scenery/Orbx/kbur/Xml_Placements_With_Static_Aircraft.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "uk2000scenery-airport-khnd-henderson",
+   "title": "KHND Henderson Airport",
+   "creator": "UK2000 Scenery",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "KHND",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/UK2000Scenery/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/UK2000Scenery/scenery/khnd-airport.bgl",
+     "size": 382666,
+     "sha1": "b98696091324",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/UK2000Scenery/scenery/khnd-airport.bgl.staticq",
+     "size": 400873,
+     "sha1": "9e44c268ca67",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/UK2000Scenery/scenery/khnd-airport.bgl",
+      "scenery/UK2000Scenery/scenery/khnd-airport.bgl.staticq"
+     ],
+     "active": "scenery/UK2000Scenery/scenery/khnd-airport.bgl",
+     "on": "scenery/UK2000Scenery/scenery/khnd-airport.bgl.bak",
+     "off": "scenery/UK2000Scenery/scenery/khnd-airport.bgl.staticq"
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "permille-airport-rjoi-iwakuni-aircraft",
+   "title": "RJOI_Iwakuni_aircraft",
+   "creator": "Permille",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "RJOI",
+   "source": "ajouté",
+   "bgl_count": 1,
+   "bgl_dirs": [
+    "Scenery/airport-rjoi-iwakuni-aircraft/Scenery"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-rjoi-iwakuni-aircraft/Scenery/RJOI_static aircraft.bgl",
+     "size": 5148,
+     "sha1": "aab1718c5073",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "Scenery/airport-rjoi-iwakuni-aircraft/Scenery/RJOI_static aircraft.bgl"
+     ],
+     "active": "Scenery/airport-rjoi-iwakuni-aircraft/Scenery/RJOI_static aircraft.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "siamflight-airport-vtsm-samui",
+   "title": "VTSM Samui Airport",
+   "creator": "SiamFlight",
+   "version": "1.0.4",
+   "content_type": "SCENERY",
+   "icao": "VTSM",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery/global/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/global/scenery/SF_VTSM_staticA.BGL",
+     "size": 4207628,
+     "sha1": "0cf14d72a4ec",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/global/scenery/SF_VTSM_staticA.BGL"
+     ],
+     "active": "scenery/global/scenery/SF_VTSM_staticA.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "imaginesim-airport-tbpb-grantley-adams",
+   "title": "TBPB Grantley Adams Intl",
+   "creator": "imaginesim",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "TBPB",
+   "source": "ajouté",
+   "bgl_count": 16,
+   "bgl_dirs": [
+    "scenery/global/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/global/scenery/modelLib-parked-aircraft.BGL",
+     "size": 56,
+     "sha1": "6d3281ef4125",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/global/scenery/modelLib-parked-vehicles.BGL",
+     "size": 1197648,
+     "sha1": "f4f575d5e88e",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/world/scenery/objects-parked-aircraft.bgl",
+     "size": 604,
+     "sha1": "a45cf13c0012",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/world/scenery/objects-parked-vehicles.bgl",
+     "size": 10652,
+     "sha1": "91b7a3735aee",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/objects-parked-aircraft.bgl"
+     ],
+     "active": "scenery/world/scenery/objects-parked-aircraft.bgl",
+     "on": "",
+     "off": ""
+    },
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/objects-parked-vehicles.bgl"
+     ],
+     "active": "scenery/world/scenery/objects-parked-vehicles.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "orbx-airport-lyni-nis-constantine-the-great",
+   "title": "LYNI Nis Constantine the Great Airport",
+   "creator": "Orbx",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "LYNI",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery/Orbx/LYNI",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 98259,
+     "sha1": "d3a6755afc88",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/world/scenery/lyni_place.bgl",
+     "size": 220149,
+     "sha1": "e1a696617850",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/world/scenery/lyni_place.bgl.nostatic",
+     "size": 220605,
+     "sha1": "b37942b7108c",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/lyni_place.bgl",
+      "scenery/world/scenery/lyni_place.bgl.nostatic"
+     ],
+     "active": "scenery/world/scenery/lyni_place.bgl",
+     "on": "scenery/world/scenery/lyni_place.bgl.bak",
+     "off": "scenery/world/scenery/lyni_place.bgl.nostatic"
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "aerosoft-airport-eddb-berlin-brandenburg",
+   "title": "Aerosoft Airport Berlin Brandenburg",
+   "creator": "LIMESIM",
+   "version": "3.4.0",
+   "content_type": "SCENERY",
+   "icao": "EDDB",
+   "source": "ajouté",
+   "bgl_count": 10,
+   "bgl_dirs": [
+    "scenery/EDDB_VDGS/scenery",
+    "scenery/global/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/scenery/eddb_ls_airport.bgl",
+     "size": 718854,
+     "sha1": "c76ade6983f6",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/world/scenery/eddb_ls_airport_static.bgl.off",
+     "size": 1116,
+     "sha1": "119459ac9f14",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/eddb_ls_airport_static.bgl.off"
+     ],
+     "active": "scenery/world/scenery/eddb_ls_airport_static.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "aerosoft-airport-eddf-frankfurt",
+   "title": "Aerosoft Frankfurt Airport",
+   "creator": "Aerosoft",
+   "version": "1.1.2",
+   "content_type": "SCENERY",
+   "icao": "EDDF",
+   "source": "ajouté",
+   "bgl_count": 13,
+   "bgl_dirs": [
+    "scenery/EDDF/scenery",
+    "scenery/EDDF_VDGS/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/EDDF/scenery/EDDF_Placements_staticAC.bgl.off",
+     "size": 604,
+     "sha1": "4f31adf4637a",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/EDDF/scenery/EDDF_Placements_staticAC.bgl.off"
+     ],
+     "active": "scenery/EDDF/scenery/EDDF_Placements_staticAC.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "aerosoft-airport-eddn-nuernberg",
+   "title": "Captain7_EDDN",
+   "creator": "LimeSim",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "EDDN",
+   "source": "ajouté",
+   "bgl_count": 11,
+   "bgl_dirs": [
+    "scenery/global/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/scenery/EDDN_LS_StaticEC135.bgl.off",
+     "size": 156,
+     "sha1": "8d36c08da92d",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/world/scenery/EDDN_LS_staticaircraft.off",
+     "size": 1372,
+     "sha1": "4b4d4aabc04f",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/EDDN_LS_staticaircraft.off"
+     ],
+     "active": "scenery/world/scenery/EDDN_LS_staticaircraft.off",
+     "on": "",
+     "off": ""
+    },
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/EDDN_LS_StaticEC135.bgl.off"
+     ],
+     "active": "scenery/world/scenery/EDDN_LS_StaticEC135.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "aviationsimdesign-airport-edaz-schonhagen",
+   "title": "EDAZ",
+   "creator": "Dennis Passolt",
+   "version": "1.3.0",
+   "content_type": "SCENERY",
+   "icao": "EDAZ",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "Scenery/global/scenery",
+    "Scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "Scenery/world/scenery/ASD_Static-Aircrafts-placement.bgl",
+     "size": 2104,
+     "sha1": "cc759150a5d5",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "Scenery/world/scenery/ASD_Static-Aircrafts-placement.bgl"
+     ],
+     "active": "Scenery/world/scenery/ASD_Static-Aircrafts-placement.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "simpixel-airport-edlv-weeze",
+   "title": "Weeze",
+   "creator": "simpixel",
+   "version": "1.0.2",
+   "content_type": "SCENERY",
+   "icao": "",
+   "source": "ajouté",
+   "bgl_count": 4,
+   "bgl_dirs": [
+    "Scenery/EDLV-weeze",
+    "Scenery/simpixel-airport-edlv-weeze/3DPeople",
+    "Scenery/simpixel-airport-edlv-weeze/StaticAircraft",
+    "Scenery/simpixel-airport-edlv-weeze/scenery"
+   ],
+   "files": [
+    {
+     "path": "Scenery/simpixel-airport-edlv-weeze/StaticAircraft/StaticAircraft.bgl",
+     "size": 2460,
+     "sha1": "4f9aab752e13",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "Scenery/simpixel-airport-edlv-weeze/StaticAircraft/StaticAircraft.bgl"
+     ],
+     "active": "Scenery/simpixel-airport-edlv-weeze/StaticAircraft/StaticAircraft.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "burningbluedesign-airport-egbo-wolverhampton",
+   "title": "EGBO Wolverhampton Halfpenny Green Airport",
+   "creator": "Burning Blue Design",
+   "version": "1.5.2",
+   "content_type": "SCENERY",
+   "icao": "EGBO",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/egbo/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/scenery/EGBO.bgl",
+     "size": 413799,
+     "sha1": "0e970c498cb2",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/world/scenery/EGBOstatics.bgl.off",
+     "size": 1775,
+     "sha1": "e286108ab820",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/EGBOstatics.bgl.off"
+     ],
+     "active": "scenery/world/scenery/EGBOstatics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "burningbluedesign-airport-egbp-cotswold",
+   "title": "EGBP Cotswold Airport (Kemble)",
+   "creator": "Burning Blue Design",
+   "version": "1.5.2",
+   "content_type": "SCENERY",
+   "icao": "EGBP",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/egbp/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/scenery/EGBP.bgl",
+     "size": 442712,
+     "sha1": "96c57fd23557",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/world/scenery/EGBPstatics.bgl.off",
+     "size": 3493,
+     "sha1": "f1066fe8c06c",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/EGBPstatics.bgl.off"
+     ],
+     "active": "scenery/world/scenery/EGBPstatics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-egcc-manchester",
+   "title": "EGCC Manchester International",
+   "creator": "iniBuilds",
+   "version": "1.2.0",
+   "content_type": "SCENERY",
+   "icao": "EGCC",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "Scenery/airport-inibuilds-manchester/inibuilds-modellib",
+    "Scenery/airport-inibuilds-manchester/inibuilds-modellib-gse",
+    "Scenery/airport-inibuilds-manchester/inibuilds-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-inibuilds-manchester/inibuilds-scene/egcc-scene-statics.bgl.off",
+     "size": 644,
+     "sha1": "a7c913eff058",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-inibuilds-manchester/inibuilds-scene/egcc-scene-statics.bgl.off"
+     ],
+     "active": "Scenery/airport-inibuilds-manchester/inibuilds-scene/egcc-scene-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-eghi-southampton",
+   "title": "EGHI Southampton",
+   "creator": "inibuilds",
+   "version": "1.0.5",
+   "content_type": "SCENERY",
+   "icao": "EGHI",
+   "source": "ajouté",
+   "bgl_count": 5,
+   "bgl_dirs": [
+    "Scenery/airport-eghi-southampton/eghi-modellib",
+    "Scenery/airport-eghi-southampton/eghi-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-eghi-southampton/eghi-scene/eghi-scene-statics.off",
+     "size": 284,
+     "sha1": "ec8f294b285c",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-eghi-southampton/eghi-scene/eghi-scene-statics.off"
+     ],
+     "active": "Scenery/airport-eghi-southampton/eghi-scene/eghi-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-eglc-london-city",
+   "title": "EGLC London City Airport",
+   "creator": "iniBuilds",
+   "version": "1.0.1",
+   "content_type": "SCENERY",
+   "icao": "EGLC",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "Scenery/airport-inibuilds-londoncity/inibuilds-modellib",
+    "Scenery/airport-inibuilds-londoncity/inibuilds-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-inibuilds-londoncity/inibuilds-scene/eglc-scene-statics.bgl.off",
+     "size": 156,
+     "sha1": "acde951f4ac6",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-inibuilds-londoncity/inibuilds-scene/eglc-scene-statics.bgl.off"
+     ],
+     "active": "Scenery/airport-inibuilds-londoncity/inibuilds-scene/eglc-scene-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-egss-london",
+   "title": "EGSS Stansted",
+   "creator": "iniBuilds",
+   "version": "1.1.1",
+   "content_type": "SCENERY",
+   "icao": "EGSS",
+   "source": "ajouté",
+   "bgl_count": 9,
+   "bgl_dirs": [
+    "Scenery/airport-egss-stansted/egss-modellib",
+    "Scenery/airport-egss-stansted/egss-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-egss-stansted/egss-scene/egss-scene-statics.off",
+     "size": 620,
+     "sha1": "ca2247c5d5a2",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-egss-stansted/egss-scene/egss-scene-statics.off"
+     ],
+     "active": "Scenery/airport-egss-stansted/egss-scene/egss-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "pyreegue-airport-egaa-belfast",
+   "title": "EGAA Belfast International Airport",
+   "creator": "PYREEGUE DEV Co.",
+   "version": "1.1.6",
+   "content_type": "SCENERY",
+   "icao": "EGAA",
+   "source": "ajouté",
+   "bgl_count": 4,
+   "bgl_dirs": [
+    "Contrail/src/statics-off",
+    "Contrail/src/statics-on",
+    "scenery",
+    "scenery/global/scenery"
+   ],
+   "files": [
+    {
+     "path": "Contrail/src/statics-off.config.off",
+     "size": 0,
+     "sha1": "da39a3ee5e6b",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "Contrail/src/statics-on.config",
+     "size": 0,
+     "sha1": "da39a3ee5e6b",
+     "in_layout": false,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [],
+   "sgm_state": "none"
+  },
+  {
+   "folder": "pyreegue-airport-egnx-east-midlands",
+   "title": "EGNX East Midlands Airport",
+   "creator": "PYREEGUE DEV Co.",
+   "version": "1.0.31",
+   "content_type": "SCENERY",
+   "icao": "EGNX",
+   "source": "ajouté",
+   "bgl_count": 5,
+   "bgl_dirs": [
+    "Contrail/src/statics-off",
+    "Contrail/src/statics-on",
+    "Contrail/src/ultra-perf",
+    "scenery",
+    "scenery/global/scenery"
+   ],
+   "files": [
+    {
+     "path": "Contrail/src/statics-off.config.off",
+     "size": 0,
+     "sha1": "da39a3ee5e6b",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "Contrail/src/statics-on.config",
+     "size": 0,
+     "sha1": "da39a3ee5e6b",
+     "in_layout": true,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [],
+   "sgm_state": "none"
+  },
+  {
+   "folder": "uk2000scenery-airport-egns-isle-of-man",
+   "title": "EGNS Isle Of Man Airport",
+   "creator": "UK2000 Scenery",
+   "version": "1.4.2",
+   "content_type": "SCENERY",
+   "icao": "EGNS",
+   "source": "ajouté",
+   "bgl_count": 1,
+   "bgl_dirs": [
+    "scenery/Global/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/World/scenery/egns-static.off",
+     "size": 279280,
+     "sha1": "d4c6e549207c",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/World/scenery/egns-static.off"
+     ],
+     "active": "scenery/World/scenery/egns-static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-lowi-innsbruck",
+   "title": "LOWI Innsbruck",
+   "creator": "inibuilds",
+   "version": "1.0.3",
+   "content_type": "SCENERY",
+   "icao": "LOWI",
+   "source": "ajouté",
+   "bgl_count": 8,
+   "bgl_dirs": [
+    "Scenery/airport-lowi-innsbruck/lowi-modellib",
+    "Scenery/airport-lowi-innsbruck/lowi-modellib-veg",
+    "Scenery/airport-lowi-innsbruck/lowi-scene"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-lowi-innsbruck/lowi-scene/lowi-scene-airport-statics.bgl.disabled",
+     "size": 1595504,
+     "sha1": "d06f3b6aec00",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "Scenery/airport-lowi-innsbruck/lowi-scene/lowi-scene-airport.bgl",
+     "size": 1594496,
+     "sha1": "f3510305559a",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "pair",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "Scenery/airport-lowi-innsbruck/lowi-scene/lowi-scene-airport.bgl",
+      "Scenery/airport-lowi-innsbruck/lowi-scene/lowi-scene-airport-statics.bgl.disabled"
+     ],
+     "active": "Scenery/airport-lowi-innsbruck/lowi-scene/lowi-scene-airport.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "propairflight-airport-ebci-charleroi",
+   "title": "EBCI Brussels Charleroi",
+   "creator": "Propair Flight",
+   "version": "1.2.0",
+   "content_type": "SCENERY",
+   "icao": "EBCI",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/global/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/EBCI_NoStaticAircraft.bgl",
+     "size": 395731,
+     "sha1": "b0c62618d342",
+     "in_layout": true,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "conflict",
+     "state": "conflict",
+     "note": "note_negation",
+     "paths": [
+      "scenery/EBCI_NoStaticAircraft.bgl"
+     ],
+     "active": "scenery/EBCI_NoStaticAircraft.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "conflict"
+  },
+  {
+   "folder": "orbx-airport-ldzd-zadar",
+   "title": "LDZD Zadar Airport",
+   "creator": "Orbx",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "LDZD",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery/Orbx/LDZD"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 172463,
+     "sha1": "e0f29f523356",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/Orbx/LDZD/orbx-ldzd-scen.bgl",
+     "size": 234366,
+     "sha1": "6a885b196d79",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/Orbx/LDZD/orbx-ldzd-scen.bgl.nostatic",
+     "size": 233570,
+     "sha1": "d6cd689616f5",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/Orbx/LDZD/orbx-ldzd-scen.bgl",
+      "scenery/Orbx/LDZD/orbx-ldzd-scen.bgl.nostatic"
+     ],
+     "active": "scenery/Orbx/LDZD/orbx-ldzd-scen.bgl",
+     "on": "scenery/Orbx/LDZD/orbx-ldzd-scen.bgl.bak",
+     "off": "scenery/Orbx/LDZD/orbx-ldzd-scen.bgl.nostatic"
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "pilotexperiencesim-airport-ldri-rijeka",
+   "title": "LDRI Rijeka Airport",
+   "creator": "Pilot Experience Sim",
+   "version": "1.0.2",
+   "content_type": "SCENERY",
+   "icao": "LDRI",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "scenery/global/pesimldri",
+    "scenery/world/pesimldri"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/pesimldri/staticslib_pesimldri.bgl.off",
+     "size": 220,
+     "sha1": "15cb9c2a478d",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/pesimldri/staticslib_pesimldri.bgl.off"
+     ],
+     "active": "scenery/world/pesimldri/staticslib_pesimldri.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "inibuilds-airport-lghi-chios",
+   "title": "LGHI Chios Airport Omiros",
+   "creator": "iniBuilds",
+   "version": "1.0.4",
+   "content_type": "SCENERY",
+   "icao": "LGHI",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery/airport-lghi-chios/lghi-modellib",
+    "scenery/airport-lghi-chios/lghi-scene"
+   ],
+   "files": [
+    {
+     "path": "scenery/airport-lghi-chios/lghi-scene/lghi-scene-statics.off",
+     "size": 220,
+     "sha1": "b6c45bf4156a",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/airport-lghi-chios/lghi-scene/lghi-scene-statics.off"
+     ],
+     "active": "scenery/airport-lghi-chios/lghi-scene/lghi-scene-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "orbx-airport-lgsk-skiathos",
+   "title": "LGKS Skiathos Airport",
+   "creator": "Orbx",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "LGKS",
+   "source": "ajouté",
+   "bgl_count": 4,
+   "bgl_dirs": [
+    "scenery/Orbx/LGSK"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 93923,
+     "sha1": "92953353d7cd",
+     "in_layout": true,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/Orbx/LGSK/xml placements_Aircraft.bgl",
+     "size": 113221,
+     "sha1": "8431b2c8db92",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/Orbx/LGSK/xml placements_Aircraft.bgl.nostatic",
+     "size": 113345,
+     "sha1": "b58a95ccec50",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/Orbx/LGSK/xml placements_Aircraft.bgl",
+      "scenery/Orbx/LGSK/xml placements_Aircraft.bgl.nostatic"
+     ],
+     "active": "scenery/Orbx/LGSK/xml placements_Aircraft.bgl",
+     "on": "scenery/Orbx/LGSK/xml placements_Aircraft.bgl.bak",
+     "off": "scenery/Orbx/LGSK/xml placements_Aircraft.bgl.nostatic"
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "atelic-airport-lipz-venice",
+   "title": "LIPZ VENICE AIRPORT",
+   "creator": "Atelic",
+   "version": "1.0.4",
+   "content_type": "SCENERY",
+   "icao": "LIPZ",
+   "source": "ajouté",
+   "bgl_count": 5,
+   "bgl_dirs": [
+    "Scenery/atelic"
+   ],
+   "files": [
+    {
+     "path": "Scenery/atelic/modelib_People_static.BGL",
+     "size": 13220908,
+     "sha1": "3d2a45b3a112",
+     "in_layout": true,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [],
+   "sgm_state": "none"
+  },
+  {
+   "folder": "simpixel-airport-lirn-naples",
+   "title": "naples",
+   "creator": "simpixel",
+   "version": "1.0.1",
+   "content_type": "SCENERY",
+   "icao": "",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery/global/scenery/SP_LIRN",
+    "scenery/lirn-naples/SP_LIRN_Static",
+    "scenery/world/scenery/SP_LIRN"
+   ],
+   "files": [
+    {
+     "path": "scenery/lirn-naples/SP_LIRN_Static/SP_LIRN_Static.bgl",
+     "size": 3100,
+     "sha1": "a4b72b71e861",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/lirn-naples/SP_LIRN_Static/SP_LIRN_Static.bgl"
+     ],
+     "active": "scenery/lirn-naples/SP_LIRN_Static/SP_LIRN_Static.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "drzewieckidesign-airport-epby-bydgoszcz",
+   "title": "EPBY Bydgoszcz Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.3.0",
+   "content_type": "SCENERY",
+   "icao": "EPBY",
+   "source": "ajouté",
+   "bgl_count": 5,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/EPBY bydgoszcz MSFS"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 167397,
+     "sha1": "8721e409061c",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/EPBY bydgoszcz MSFS/EPBY_Static.off",
+     "size": 13513990,
+     "sha1": "52fcf4cdd7a6",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPBY_PLC.bgl",
+     "size": 133761,
+     "sha1": "5fc41aeceda2",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPBY_PLC.bgl.nostatic",
+     "size": 133685,
+     "sha1": "9295264569aa",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPBY_PLC.bgl",
+      "scenery/EPBY_PLC.bgl.nostatic"
+     ],
+     "active": "scenery/EPBY_PLC.bgl",
+     "on": "scenery/EPBY_PLC.bgl.bak",
+     "off": "scenery/EPBY_PLC.bgl.nostatic"
+    },
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/EPBY bydgoszcz MSFS/EPBY_Static.off"
+     ],
+     "active": "scenery/EPBY bydgoszcz MSFS/EPBY_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "mixed"
+  },
+  {
+   "folder": "drzewieckidesign-airport-epgd-gdansk-lech-walesa",
+   "title": "EPGD Gdansk Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.6.0",
+   "content_type": "SCENERY",
+   "icao": "EPGD",
+   "source": "ajouté",
+   "bgl_count": 8,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/EPGD Gdansk Airport"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 276459,
+     "sha1": "0df352474512",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/EPGD Gdansk Airport/EPGD_Static.off",
+     "size": 18603146,
+     "sha1": "e72b62c3e571",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPGD_PLC.bgl",
+     "size": 182127,
+     "sha1": "1f305cfd59c8",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPGD_PLC.bgl.nostatic",
+     "size": 181821,
+     "sha1": "ed5d36489310",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPGD_PLC.bgl",
+      "scenery/EPGD_PLC.bgl.nostatic"
+     ],
+     "active": "scenery/EPGD_PLC.bgl",
+     "on": "scenery/EPGD_PLC.bgl.bak",
+     "off": "scenery/EPGD_PLC.bgl.nostatic"
+    },
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/EPGD Gdansk Airport/EPGD_Static.off"
+     ],
+     "active": "scenery/EPGD Gdansk Airport/EPGD_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "mixed"
+  },
+  {
+   "folder": "drzewieckidesign-airport-epkk-krakow",
+   "title": "EPKK Krakow",
+   "creator": "Drzewiecki Design",
+   "version": "2.0.0",
+   "content_type": "SCENERY",
+   "icao": "EPKK",
+   "source": "ajouté",
+   "bgl_count": 10,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/EPKK Krakow MSFS",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/EPKK Krakow MSFS/EPKK_Static.BGL",
+     "size": 31488912,
+     "sha1": "9fcd8ad1ccce",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPKK Krakow MSFS/EPKK_Static.BGL"
+     ],
+     "active": "scenery/EPKK Krakow MSFS/EPKK_Static.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "drzewieckidesign-airport-epkt-katowice",
+   "title": "EPKT Katowice Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "EPKT",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/EPKT Katowice Airport MSFS"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 332108,
+     "sha1": "7680c42e729c",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/EPKT Katowice Airport MSFS/EPKT_Static.off",
+     "size": 32279180,
+     "sha1": "64bff3421de2",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPKT_PLC.bgl",
+     "size": 295375,
+     "sha1": "5e03cc9f18f9",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPKT_PLC.bgl.nostatic",
+     "size": 289566,
+     "sha1": "f7adfc98d094",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPKT_PLC.bgl",
+      "scenery/EPKT_PLC.bgl.nostatic"
+     ],
+     "active": "scenery/EPKT_PLC.bgl",
+     "on": "scenery/EPKT_PLC.bgl.bak",
+     "off": "scenery/EPKT_PLC.bgl.nostatic"
+    },
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/EPKT Katowice Airport MSFS/EPKT_Static.off"
+     ],
+     "active": "scenery/EPKT Katowice Airport MSFS/EPKT_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "mixed"
+  },
+  {
+   "folder": "drzewieckidesign-airport-eplb-lublin",
+   "title": "EPLB Lublin Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.3.0",
+   "content_type": "SCENERY",
+   "icao": "EPLB",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/PAvol1 EPLB Lublin MSFS"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 85265,
+     "sha1": "d9797cc9e3e2",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/EPLB_PLC.bgl",
+     "size": 61393,
+     "sha1": "20a79adea43e",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPLB_PLC.bgl.nostatic",
+     "size": 61537,
+     "sha1": "6b7a7872952c",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/PAvol1 EPLB Lublin MSFS/EPLB_Static.off",
+     "size": 3945886,
+     "sha1": "c788e641482c",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPLB_PLC.bgl",
+      "scenery/EPLB_PLC.bgl.nostatic"
+     ],
+     "active": "scenery/EPLB_PLC.bgl",
+     "on": "scenery/EPLB_PLC.bgl.bak",
+     "off": "scenery/EPLB_PLC.bgl.nostatic"
+    },
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/PAvol1 EPLB Lublin MSFS/EPLB_Static.off"
+     ],
+     "active": "scenery/PAvol1 EPLB Lublin MSFS/EPLB_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "mixed"
+  },
+  {
+   "folder": "drzewieckidesign-airport-epmo-warsaw-modlin",
+   "title": "EPMO Warsaw Modlin",
+   "creator": "Drzewiecki Design",
+   "version": "1.2.0",
+   "content_type": "SCENERY",
+   "icao": "EPMO",
+   "source": "ajouté",
+   "bgl_count": 6,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/Warsaw Modlin MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/Warsaw Modlin MSFS/EPMO_Static.off",
+     "size": 8143068,
+     "sha1": "cd4c8b2681eb",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/Warsaw Modlin MSFS/EPMO_Static.off"
+     ],
+     "active": "scenery/Warsaw Modlin MSFS/EPMO_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "drzewieckidesign-airport-eprz-rzeszow-jasionka",
+   "title": "EPRZ Rzeszow",
+   "creator": "Drzewiecki Design",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "EPRZ",
+   "source": "ajouté",
+   "bgl_count": 8,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/PAvol1 EPRZ Rzeszow MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/PAvol1 EPRZ Rzeszow MSFS/EPRZ_Static.BGL",
+     "size": 11417354,
+     "sha1": "3cf547c34718",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/PAvol1 EPRZ Rzeszow MSFS/EPRZ_Static.BGL"
+     ],
+     "active": "scenery/PAvol1 EPRZ Rzeszow MSFS/EPRZ_Static.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "drzewieckidesign-airport-epsc-szczecin",
+   "title": "EPSC Szczecin Airport MSFS",
+   "creator": "Drzewiecki Design",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "EPSC",
+   "source": "ajouté",
+   "bgl_count": 7,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/EPSC Szczecin Airport MSFS"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 222944,
+     "sha1": "8d126d69db11",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/EPSC Szczecin Airport MSFS/EPSC_Static.off",
+     "size": 8926850,
+     "sha1": "ec66510ceec0",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPSC_PLC.bgl",
+     "size": 116460,
+     "sha1": "9aa4ea786140",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPSC_PLC.bgl.nostatic",
+     "size": 115601,
+     "sha1": "52f762c914a9",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPSC_PLC.bgl",
+      "scenery/EPSC_PLC.bgl.nostatic"
+     ],
+     "active": "scenery/EPSC_PLC.bgl",
+     "on": "scenery/EPSC_PLC.bgl.bak",
+     "off": "scenery/EPSC_PLC.bgl.nostatic"
+    },
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/EPSC Szczecin Airport MSFS/EPSC_Static.off"
+     ],
+     "active": "scenery/EPSC Szczecin Airport MSFS/EPSC_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "mixed"
+  },
+  {
+   "folder": "drzewieckidesign-airport-epwa-warsaw",
+   "title": "EPWA Warsaw Chopin Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.2.0",
+   "content_type": "SCENERY",
+   "icao": "EPWA",
+   "source": "ajouté",
+   "bgl_count": 10,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/EPWA Warsaw MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/EPWA Warsaw MSFS/EPWA_Static.BGL",
+     "size": 121469302,
+     "sha1": "e8a5931b9f91",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPWA Warsaw MSFS/EPWA_Static.BGL"
+     ],
+     "active": "scenery/EPWA Warsaw MSFS/EPWA_Static.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "drzewieckidesign-airport-epwr-wroclaw",
+   "title": "EPWR Wroclaw Copernicus Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.3.0",
+   "content_type": "SCENERY",
+   "icao": "EPWR",
+   "source": "ajouté",
+   "bgl_count": 9,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/EPWR Wroclaw Airport MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/EPWR Wroclaw Airport MSFS/EPWR_Static.BGL",
+     "size": 20122472,
+     "sha1": "0ba8d2227076",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/EPWR Wroclaw Airport MSFS/EPWR_Static.off",
+     "size": 20122472,
+     "sha1": "0ba8d2227076",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPWR Wroclaw Airport MSFS/EPWR_Static.BGL",
+      "scenery/EPWR Wroclaw Airport MSFS/EPWR_Static.off"
+     ],
+     "active": "scenery/EPWR Wroclaw Airport MSFS/EPWR_Static.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "drzewieckidesign-landmarks-warsaw",
+   "title": "Warsaw Landmarks MSFS",
+   "creator": "Drzewiecki Design",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "",
+   "source": "ajouté",
+   "bgl_count": 12,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/EPBC Babice MSFS",
+    "scenery/Warsaw Landmarks MSFS"
+   ],
+   "files": [
+    {
+     "path": "scenery/EPBC Babice MSFS/EPBC_STATIC.BGL",
+     "size": 9961280,
+     "sha1": "53869d85535c",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/EPBC Babice MSFS/EPBC_STATIC.BGL"
+     ],
+     "active": "scenery/EPBC Babice MSFS/EPBC_STATIC.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "aerosoft-airport-lzib-bratislava",
+   "title": "Bratislava-Airport",
+   "creator": "Pavel Movzer",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "LZIB",
+   "source": "ajouté",
+   "bgl_count": 17,
+   "bgl_dirs": [
+    "Scenery/airport-lzib/LZIB-Airport",
+    "Scenery/airport-lzib/LZIB-Airport-Unit",
+    "Scenery/airport-lzib/LZIB-AirportBuild",
+    "Scenery/airport-lzib/LZIB-AirportFuels",
+    "Scenery/airport-lzib/LZIB-AirportGP-3D",
+    "Scenery/airport-lzib/LZIB-Animate-Airport",
+    "Scenery/airport-lzib/LZIB-Animate-Train",
+    "Scenery/airport-lzib/LZIB-Hangar",
+    "Scenery/airport-lzib/LZIB-HasiciBuild",
+    "Scenery/airport-lzib/LZIB-Mast",
+    "Scenery/airport-lzib/LZIB-Sings",
+    "Scenery/airport-lzib/LZIB-Statick-Car",
+    "Scenery/airport-lzib/LZIB-Statick-CarLight",
+    "Scenery/airport-lzib/LZIB-Unit",
+    "Scenery/airport-lzib/LZIBGP",
+    "Scenery/airport-lzib/MPLightModelLib",
+    "Scenery/mpscenery"
+   ],
+   "files": [
+    {
+     "path": "Scenery/airport-lzib/LZIB-Statick-Car/LZIB-Statick-Car.BGL",
+     "size": 7534004,
+     "sha1": "9f8e4b4dd16a",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "Scenery/airport-lzib/LZIB-Statick-CarLight/LZIB-Statick-CarLight.BGL",
+     "size": 1438756,
+     "sha1": "cd11199e1b57",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "Scenery/airport-lzib/LZIB-Statick-Car/LZIB-Statick-Car.BGL"
+     ],
+     "active": "Scenery/airport-lzib/LZIB-Statick-Car/LZIB-Statick-Car.BGL",
+     "on": "",
+     "off": ""
+    },
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "Scenery/airport-lzib/LZIB-Statick-CarLight/LZIB-Statick-CarLight.BGL"
+     ],
+     "active": "Scenery/airport-lzib/LZIB-Statick-CarLight/LZIB-Statick-CarLight.BGL",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "orbx-airport-esgg-gothenburg",
+   "title": "ESGG Gothenburg Landvetter",
+   "creator": "ORBX",
+   "version": "1.4.2",
+   "content_type": "SCENERY",
+   "icao": "ESGG",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/orbx/esgg"
+   ],
+   "files": [
+    {
+     "path": "scenery/orbx/esgg/esgg-statics.off",
+     "size": 156,
+     "sha1": "7e02235b4d68",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/orbx/esgg/esgg-statics.off"
+     ],
+     "active": "scenery/orbx/esgg/esgg-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "orbx-airport-esks-scandinavian-mountains",
+   "title": "ESKS Scandinavian Mountains Airport",
+   "creator": "ORBX",
+   "version": "1.0.3",
+   "content_type": "SCENERY",
+   "icao": "ESKS",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/global/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/scenery/esks-statics.off",
+     "size": 156,
+     "sha1": "bf52fba7ba62",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/esks-statics.off"
+     ],
+     "active": "scenery/world/scenery/esks-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "orbx-airport-esnq-kiruna",
+   "title": "ESNQ Kiruna",
+   "creator": "ORBX",
+   "version": "1.0.3",
+   "content_type": "SCENERY",
+   "icao": "ESNQ",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/ORBX/esnq"
+   ],
+   "files": [
+    {
+     "path": "scenery/ORBX/esnq/esnq-statics.off",
+     "size": 732,
+     "sha1": "a94b577eba97",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/ORBX/esnq/esnq-statics.off"
+     ],
+     "active": "scenery/ORBX/esnq/esnq-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "orbx-airport-esnu-umea",
+   "title": "ESNU Umea Airport",
+   "creator": "ORBX",
+   "version": "1.0.3",
+   "content_type": "SCENERY",
+   "icao": "ESNU",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/ORBX/esnu"
+   ],
+   "files": [
+    {
+     "path": "scenery/ORBX/esnu/esnu-statics.off",
+     "size": 1052,
+     "sha1": "ecac89f5b00e",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/ORBX/esnu/esnu-statics.off"
+     ],
+     "active": "scenery/ORBX/esnu/esnu-statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "homasim-airport-oiaw-ahvaz",
+   "title": "OIAW Ahvaz",
+   "creator": "Homa Sim",
+   "version": "1.0.3",
+   "content_type": "SCENERY",
+   "icao": "OIAW",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery"
+   ],
+   "files": [
+    {
+     "path": "nostatic_layout.json",
+     "size": 147708,
+     "sha1": "03476e7e53aa",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/oiaw-airport-nostatics.off",
+     "size": 169598,
+     "sha1": "80ea9da3dac4",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/oiaw-airport-statics.bgl.off",
+     "size": 169906,
+     "sha1": "0a26076b5c61",
+     "in_layout": false,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "conflict",
+     "state": "conflict",
+     "note": "note_negation",
+     "paths": [
+      "scenery/oiaw-airport-statics.bgl.off"
+     ],
+     "active": "scenery/oiaw-airport-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "conflict"
+  },
+  {
+   "folder": "homasim-airport-oiie-tehran-imam-khomeini",
+   "title": "OIIE Tehran IKA Airport",
+   "creator": "Homa Sim",
+   "version": "1.1.4",
+   "content_type": "SCENERY",
+   "icao": "OIIE",
+   "source": "ajouté",
+   "bgl_count": 5,
+   "bgl_dirs": [
+    "scenery"
+   ],
+   "files": [
+    {
+     "path": "nostatic_layout.json",
+     "size": 453845,
+     "sha1": "992756b7d04d",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/oiie-airport-nostatics.off",
+     "size": 857912,
+     "sha1": "8af063a24227",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/oiie-airport-statics.bgl.off",
+     "size": 857492,
+     "sha1": "7a6902a25066",
+     "in_layout": false,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "conflict",
+     "state": "conflict",
+     "note": "note_negation",
+     "paths": [
+      "scenery/oiie-airport-statics.bgl.off"
+     ],
+     "active": "scenery/oiie-airport-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "conflict"
+  },
+  {
+   "folder": "homasim-airport-oiii-mehrabad",
+   "title": "OIII Tehran Merhabad Intl",
+   "creator": "Yohann Baptiste",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "OIII",
+   "source": "ajouté",
+   "bgl_count": 3,
+   "bgl_dirs": [
+    "scenery"
+   ],
+   "files": [
+    {
+     "path": "nostatic_layout.json",
+     "size": 512344,
+     "sha1": "9935d8f425d7",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/oiii-airport-nostatics.off",
+     "size": 704763,
+     "sha1": "e82ddd6d7a7c",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/oiii-airport-statics.bgl.off",
+     "size": 704488,
+     "sha1": "85e0132b0001",
+     "in_layout": false,
+     "used_by_sgm": false
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "conflict",
+     "state": "conflict",
+     "note": "note_negation",
+     "paths": [
+      "scenery/oiii-airport-statics.bgl.off"
+     ],
+     "active": "scenery/oiii-airport-statics.bgl.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "conflict"
+  },
+  {
+   "folder": "drzewieckidesign-airport-ysws-western-sydney",
+   "title": "YSWS Western Sydney Airport",
+   "creator": "Drzewiecki Design",
+   "version": "1.1.0",
+   "content_type": "SCENERY",
+   "icao": "YSWS",
+   "source": "ajouté",
+   "bgl_count": 8,
+   "bgl_dirs": [
+    "scenery",
+    "scenery/YSWS Sydney Western Airport MSFS"
+   ],
+   "files": [
+    {
+     "path": "layout.json.nostatic",
+     "size": 266107,
+     "sha1": "2b4f363901a8",
+     "in_layout": false,
+     "used_by_sgm": false
+    },
+    {
+     "path": "scenery/YSWS Sydney Western Airport MSFS/YSWS_Static.off",
+     "size": 32439524,
+     "sha1": "bf3cd2a925c6",
+     "in_layout": false,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/YSWS_PLC.bgl",
+     "size": 408462,
+     "sha1": "3b10b70164bf",
+     "in_layout": true,
+     "used_by_sgm": true
+    },
+    {
+     "path": "scenery/YSWS_PLC.bgl.nostatic",
+     "size": 406246,
+     "sha1": "aeca284532aa",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "swap",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/YSWS_PLC.bgl",
+      "scenery/YSWS_PLC.bgl.nostatic"
+     ],
+     "active": "scenery/YSWS_PLC.bgl",
+     "on": "scenery/YSWS_PLC.bgl.bak",
+     "off": "scenery/YSWS_PLC.bgl.nostatic"
+    },
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/YSWS Sydney Western Airport MSFS/YSWS_Static.off"
+     ],
+     "active": "scenery/YSWS Sydney Western Airport MSFS/YSWS_Static.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "mixed"
+  },
+  {
+   "folder": "orbx-airport-ymml-melbourne",
+   "title": "YMML Melbourne International Airport",
+   "creator": "Orbx",
+   "version": "1.2.0",
+   "content_type": "SCENERY",
+   "icao": "YMML",
+   "source": "ajouté",
+   "bgl_count": 27,
+   "bgl_dirs": [
+    "scenery/Orbx/YMML",
+    "scenery/orbx-airport-ymml-melbourne"
+   ],
+   "files": [
+    {
+     "path": "scenery/orbx-airport-ymml-melbourne/YMML_static_aircraft.off",
+     "size": 402,
+     "sha1": "f039c35d73e2",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/orbx-airport-ymml-melbourne/YMML_static_aircraft.off"
+     ],
+     "active": "scenery/orbx-airport-ymml-melbourne/YMML_static_aircraft.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "nzasimulations-airport-nzmf-milford-sound",
+   "title": "NZMF Milford Sound Region",
+   "creator": "NZA Simulations",
+   "version": "1.0.0",
+   "content_type": "SCENERY",
+   "icao": "NZMF",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "scenery/global/scenery",
+    "scenery/world/scenery"
+   ],
+   "files": [
+    {
+     "path": "scenery/world/scenery/Milford Statics.off",
+     "size": 367,
+     "sha1": "121d0ced8241",
+     "in_layout": false,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "off",
+     "note": "",
+     "paths": [
+      "scenery/world/scenery/Milford Statics.off"
+     ],
+     "active": "scenery/world/scenery/Milford Statics.off",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "off"
+  },
+  {
+   "folder": "orbx-jurassic-world-worldscript-placements",
+   "title": "Jurassic World WorldScript Placements",
+   "creator": "ORBX",
+   "version": "1.2.0",
+   "content_type": "MISSION",
+   "icao": "",
+   "source": "ajouté",
+   "bgl_count": 2,
+   "bgl_dirs": [
+    "Scenery/jwworldscriptplacements/JW_WorldScriptScenery"
+   ],
+   "files": [
+    {
+     "path": "Scenery/jwworldscriptplacements/JW_WorldScriptScenery/JW_Static_PLCMTS.bgl",
+     "size": 13174,
+     "sha1": "27504eef0bf3",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "Scenery/jwworldscriptplacements/JW_WorldScriptScenery/JW_Static_PLCMTS.bgl"
+     ],
+     "active": "Scenery/jwworldscriptplacements/JW_WorldScriptScenery/JW_Static_PLCMTS.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  },
+  {
+   "folder": "seafront-livingworld-vessels-globalshipping",
+   "title": "Vessels: Global Shipping 24",
+   "creator": "Seafront Simulations",
+   "version": "1.3.0",
+   "content_type": "SCENERY",
+   "icao": "",
+   "source": "ajouté",
+   "bgl_count": 14,
+   "bgl_dirs": [
+    "scenery/seafront-global24/anchorage",
+    "scenery/seafront-global24/global",
+    "scenery/seafront-global24/great_lakes",
+    "scenery/seafront-global24/large_ports",
+    "scenery/seafront-global24/medium_ports",
+    "scenery/seafront-global24/new_york",
+    "scenery/seafront-global24/norwegian_fjords",
+    "scenery/seafront-global24/panama_canal",
+    "scenery/seafront-global24/pnw",
+    "scenery/seafront-global24/rotterdam",
+    "scenery/seafront-global24/sanfrancisco_commercial",
+    "scenery/seafront-global24/sanfrancisco_leisure",
+    "scenery/seafront-global24/statics",
+    "scenery/seafront-global24/suez_canal"
+   ],
+   "files": [
+    {
+     "path": "scenery/seafront-global24/statics/statics.bgl",
+     "size": 32572,
+     "sha1": "42bdb82d291a",
+     "in_layout": true,
+     "used_by_sgm": true
+    }
+   ],
+   "sgm_groups": [
+    {
+     "mode": "rename",
+     "state": "on",
+     "note": "",
+     "paths": [
+      "scenery/seafront-global24/statics/statics.bgl"
+     ],
+     "active": "scenery/seafront-global24/statics/statics.bgl",
+     "on": "",
+     "off": ""
+    }
+   ],
+   "sgm_state": "on"
+  }
+ ],
+ "note": "Copie nettoyée : libellés de dossiers personnels remplacés par « ajouté »."
+}

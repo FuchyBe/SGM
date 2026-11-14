@@ -84,6 +84,9 @@ class TestGsx(SandboxTest):
         self.assertIn("FuchyBe/SGM", url)
         self.assertNotIn(str(self.tmp), url)
         self.assertNotIn("Users", url)
+        url2 = m.report_url("bug", "MSFS 2024", "en", "sgm-statics-report-20261114-101552.json")
+        self.assertIn("sgm-statics-report-20261114-101552.json", url2)
+        self.assertNotIn("Users", url2)
 
 
 if __name__ == "__main__":

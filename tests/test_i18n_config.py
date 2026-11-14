@@ -80,3 +80,15 @@ class TestConfig(SandboxTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTranslationChecker(unittest.TestCase):
+    def test_no_blocking_translation_error(self):
+        import importlib.util
+        from pathlib import Path
+        spec = importlib.util.spec_from_file_location(
+            "check_i18n", Path(__file__).resolve().parent.parent / "scripts" / "check_i18n.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        errors, _warnings = mod.check()
+        self.assertEqual(errors, [])

@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
       - run: pip install pyside6 pyinstaller
       - name: Compilation (dossier, conforme LGPL)
-        run: python -m PyInstaller --noconfirm --clean --onedir --windowed --name SGM statics_manager.py
+        run: python -m PyInstaller --noconfirm --clean --onedir --windowed --icon assets/SGM.ico --name SGM statics_manager.py
       - name: Licences et README
         shell: pwsh
         run: |
