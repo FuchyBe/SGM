@@ -72,7 +72,7 @@ The full user guide is in the app: **Help › User guide** (F1).
 - A file is only removed from GSX if it is identical to the scenery's copy. A profile you edited by hand is never deleted.
 - **Airports without a profile in the scenery**: SGM looks for a profile matching the ICAO code in the GSX folder.
   - **✓ Installed manually** means a profile you installed yourself was found.
-  - The **flightsim.to ↗** button searches "ICAO GSX" on flightsim.to. In **Settings › GSX profile search**, choose a direct flightsim.to search or a web search limited to flightsim.to.
+  - The **flightsim.to ↗** button opens a web search for "ICAO GSX" limited to flightsim.to.
   - If another profile for the same airport is also installed, an orange warning is shown, because GSX could load the wrong one.
 - The GSX destination folder is detected automatically and can be changed in **Folders**.
 
@@ -176,6 +176,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 
 **Next version (in development)**
 - **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
+- **flightsim.to button**: web search limited to flightsim.to (the site's own search ignored the ICAO from a link); the search setting is removed.
 - **Report a problem / Suggest an idea window**: your text goes straight into the GitHub page, report and log in one `.zip`, exact preview of what is shared.
 
 **beta v0.7**

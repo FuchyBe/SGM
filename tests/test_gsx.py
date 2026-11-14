@@ -67,10 +67,8 @@ class TestGsx(SandboxTest):
         self.assertTrue(sc.is_airport)
         self.assertEqual(m.gsx_manual_profiles(sc, m.gsx_dest_index(self.gsx)), ["lemd-community.ini"])
         self.assertEqual(m.gsx_search_query(sc), "LEMD GSX")
-        self.assertEqual(m.search_url("fsto", m.gsx_search_query(sc)), "https://flightsim.to/discover/LEMD%20GSX")
-        self.assertEqual(m.search_url("web", m.gsx_search_query(sc)),
+        self.assertEqual(m.search_url(m.gsx_search_query(sc)),
                          "https://www.google.com/search?q=site%3Aflightsim.to+LEMD+GSX")
-        self.assertEqual(m.search_url("inconnu", "A/B GSX"), "https://flightsim.to/discover/A%2FB%20GSX")
 
     def test_icao_detection(self):
         self.assertEqual(m.detect_icao("Paris Charles de Gaulle LFPG", "x"), "LFPG")

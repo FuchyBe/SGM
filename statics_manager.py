@@ -33,7 +33,7 @@ import time
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime
-from urllib.parse import quote, quote_plus, urlencode
+from urllib.parse import quote_plus, urlencode
 import platform
 from pathlib import Path, PurePosixPath
 
@@ -56,23 +56,17 @@ APP_VERSION = "0.7"
 APP_AUTHOR = "Fabian Fuchs"
 # Lien de don public (PayPal.me)
 DONATE_URL = "https://paypal.me/Fuchy"
-# Recherche de profils GSX : {q} est remplacé par « OACI GSX » (encodé)
 # Signalements : Issues publiques du dépôt FuchyBe/SGM
 ISSUES_NEW_URL = "https://github.com/FuchyBe/SGM/issues/new"
 
-SEARCH_ENGINES = {
-    # flightsim.to : la recherche est dans le chemin (/discover/EBBR%20GSX) ; « /search/?keyword= » n'applique
-    # pas le mot-clé (vérifié par Fabian le 2026-11-14).
-    "fsto": "https://flightsim.to/discover/{q}",
-    "web": "https://www.google.com/search?q=site%3Aflightsim.to+{q}",
-}
+# Recherche de profils GSX : recherche web limitée à flightsim.to. Les recherches directes du site ne marchent
+# pas depuis un lien (vérifié par Fabian le 2026-11-14 : /search/?keyword= ignore le mot-clé, /discover/… = 404).
+SEARCH_URL = "https://www.google.com/search?q=site%3Aflightsim.to+{q}"
 
 
-def search_url(engine: str, query: str) -> str:
-    """Adresse de recherche : espaces en %20 dans un chemin (flightsim.to), en + dans une requête (web)."""
-    tpl = SEARCH_ENGINES.get(engine, SEARCH_ENGINES["fsto"])
-    q = quote(query, safe="") if "{q}" in tpl.split("?")[0] else quote_plus(query)
-    return tpl.format(q=q)
+def search_url(query: str) -> str:
+    return SEARCH_URL.format(q=quote_plus(query))
+
 
 FILETIME_EPOCH = 116444736000000000  # 1601-01-01 -> 1970-01-01 en unités de 100 ns
 MAX_BACKUPS_PER_SCENE = 10
@@ -247,7 +241,6 @@ class Config:
     def __init__(self):
         self.file = data_dir() / "config.json"
         self.lang = "en"
-        self.search = "fsto"
         self.check_downloads = True
         self.archive_cleanup = "ask"          # après installation depuis Téléchargements : ask / auto / never
         self.seen_archives: list = []
@@ -261,7 +254,6 @@ class Config:
         if isinstance(data, dict):
             if int(data.get("version", 1)) >= 3:
                 self.lang = str(data.get("lang") or "en")
-                self.search = data.get("search") if data.get("search") in SEARCH_ENGINES else "fsto"
                 self.check_downloads = bool(data.get("check_downloads", True))
                 if data.get("archive_cleanup") in ARCHIVE_CLEANUP:
                     self.archive_cleanup = data["archive_cleanup"]
@@ -341,7 +333,7 @@ class Config:
         return self.gsx_override or default_gsx_folder(self.sim)
 
     def save(self):
-        data = {"version": 3, "lang": self.lang, "sim": self.sim, "search": self.search,
+        data = {"version": 3, "lang": self.lang, "sim": self.sim,
                 "check_downloads": self.check_downloads, "seen_archives": self.seen_archives[-300:],
                 "archive_cleanup": self.archive_cleanup,
                 "columns": {"statics": self.col_fs, "gsx": self.col_fg},
@@ -3596,14 +3588,6 @@ class MainWindow(QMainWindow):
         note.setEnabled(False)
         m_sim.addAction(note)
 
-        m_srch = m_set.addMenu(tr("m_search"))
-        egrp = QActionGroup(self)
-        for key, label in (("fsto", "search_fsto"), ("web", "search_web")):
-            a = QAction(tr(label), self, checkable=True)
-            a.setChecked(self.config.search == key)
-            a.triggered.connect(lambda _=False, k=key: self.set_search_engine(k))
-            egrp.addAction(a)
-            m_srch.addAction(a)
         a = QAction(tr("m_check_dl"), self, checkable=True)
         a.setChecked(self.config.check_downloads)
         a.toggled.connect(self.set_check_downloads)
@@ -4320,12 +4304,8 @@ class MainWindow(QMainWindow):
 
     # ── GSX
     def search_profile(self, scene: Scene):
-        url = search_url(self.config.search, gsx_search_query(scene))
+        url = search_url(gsx_search_query(scene))
         QDesktopServices.openUrl(QUrl(url))
-
-    def set_search_engine(self, key: str):
-        self.config.search = key
-        self.config.save()
 
     def remember_gsx_choice(self, scene: Scene, vid: str):
         if self.config.gsx_choices.get(scene.key) != vid:
