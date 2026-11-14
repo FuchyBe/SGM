@@ -45,7 +45,7 @@ Au premier lancement, SGM crée un dossier `SGM_data` à côté de `SGM.exe`, qu
 
 1. **Ferme le simulateur.**
 2. Lance SGM. Tes dossiers Community sont trouvés et analysés automatiquement.
-3. Utilise l'interrupteur de chaque ligne pour passer les statics en ON ou OFF, ou filtre la liste et utilise **Tout ON** / **Tout OFF**.
+3. Utilise l'interrupteur de chaque ligne pour passer les statics en ON ou OFF, ou filtre la liste et utilise **Tout OFF** / **Tout ON** dans l'en-tête de la colonne Statics (cas simples uniquement : les scènes à vérifier ne sont jamais basculées en bloc).
 4. Dans la colonne **Profil GSX**, clique sur **Copier dans GSX** ou choisis la version à activer.
 5. Lance le simulateur.
 
@@ -95,7 +95,7 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 ### Interface
 - 12 langues : English, Français, Deutsch, Español, Italiano, Português, Nederlands, Polski, Русский, 中文, 日本語, العربية (de droite à gauche).
 - Recherche (nom, OACI, éditeur), bouton **Nouvelles**, et un **filtre par colonne** dans les en-têtes, avec la même logique : Statics (Toutes, ON, OFF, À vérifier, Sans statics) et Profil GSX (Tous, Installé, À installer, Installé à la main, Sans profil, À vérifier).
-- Les colonnes Statics et GSX suivent la taille de la fenêtre et se règlent en tirant les traits entre les en-têtes (réglage mémorisé).
+- Les colonnes Statics et GSX s'ajustent automatiquement à leur texte (une ligne) et laissent toute la place restante aux noms de scènes. Tire les traits entre les en-têtes pour les régler toi-même (réglage mémorisé) ; double-clic sur un trait pour revenir à l'ajustement automatique.
 - Infobulles détaillant chaque fichier.
 - Icône de dossier sur chaque ligne pour ouvrir le dossier de la scène.
 - Menu Aide : guide d'utilisation, avertissement, licences, dossier des sauvegardes.
@@ -184,6 +184,8 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - **Profils de statics** : enregistre l'état ON/OFF de tes scènes sous un nom (par ex. « Trafic IA dense », « Vols photo ») et applique-le d'un clic (cas simples uniquement, annulable).
 - **Annuler la dernière action** (bouton ou Ctrl+Z, 10 actions gardées) : bascules, Tout ON/OFF, profils GSX, restaurations ; fichiers remis exactement, refus s'ils ont changé depuis.
 - **Analyser vérifie aussi tes dossiers de téléchargement** (archives de profils GSX) ; dossiers modifiables et ajoutables dans **Dossiers**.
+- **Tout OFF / Tout ON** déplacés dans l'en-tête de la colonne Statics ; cas simples uniquement, les scènes à vérifier ne sont pas touchées.
+- **Colonnes ajustées automatiquement à leur texte** (une ligne), les noms de scènes prennent le reste ; réglage à la main mémorisé, double-clic pour revenir à l'automatique.
 - **Fenêtre Signaler un problème / Proposer une idée** : ton texte arrive directement dans la page GitHub, rapport et journal dans un seul `.zip`, aperçu exact de ce qui est partagé.
 
 **beta v0.7**

@@ -63,37 +63,40 @@ class TestGui(SandboxTest):
         self.assertEqual(visible(), ["EBBR"])
         w.reset_filters()
 
-        # colonnes : ×1,5 à 1280 px, proportionnelles, minimums respectés, réglables à la poignée
-        w.resize(1280, 800)
-        for _ in range(5):
-            APP.processEvents()
-        w.layout_columns()
+        # colonnes : ajustées au texte sur une ligne (automatique), réglables à la main, double-clic = automatique
+        def settle(wd, ht):
+            w.resize(wd, ht)
+            for _ in range(5):
+                APP.processEvents()
+            w.layout_columns()
         row = lambda: next(iter(w.rows.values()))   # relue : une analyse peut reconstruire les lignes
+        settle(1280, 800)
+        self.assertTrue(w._col_auto)
+        ns, ng = w._natural_widths()
         ws0, wg0 = row().st_col.width(), row().gsx_col.width()
-        self.assertGreaterEqual(ws0, 300)
-        self.assertGreaterEqual(wg0, 400)
-        w.resize(1900, 900)
-        for _ in range(5):
-            APP.processEvents()
-        w.layout_columns()
-        self.assertGreater(row().st_col.width(), ws0)
-        self.assertGreater(row().gsx_col.width(), wg0)
-        w.resize(820, 600)
-        for _ in range(5):
-            APP.processEvents()
-        w.layout_columns()
-        self.assertGreaterEqual(row().st_col.width(), m.COL_STATICS_MIN)
-        self.assertGreaterEqual(row().gsx_col.width(), m.COL_GSX_MIN)
-        w.resize(1280, 800)
-        for _ in range(5):                      # laisser la mise en page se terminer
-            APP.processEvents()
-        w.layout_columns()
-        self.assertGreater(w._avail_width(), 1000)
+        self.assertEqual((ws0, wg0), (max(ns, w._floors()[0]), max(ng, w._floors()[1])))
+        for r in w.rows.values():                  # aucun texte de colonne coupé
+            if not r.isHidden():
+                self.assertEqual(r.st_note.text(), r.st_note._full)
+                self.assertEqual(r.gsx_note.text(), r.gsx_note._full)
+        settle(1900, 900)                          # plus large : les colonnes gardent leur largeur, la scène grandit
+        self.assertEqual((row().st_col.width(), row().gsx_col.width()), (ws0, wg0))
+        settle(700, 600)                           # très étroit : jamais sous l'en-tête lisible
+        fs_, fg_ = w._floors()
+        self.assertGreaterEqual(row().st_col.width(), fs_)
+        self.assertGreaterEqual(row().gsx_col.width(), fg_)
+        settle(1280, 800)
         before = row().st_col.width()
-        w._drag_column(1, 40)
+        w._drag_column(0, -40)                     # trait scène | Statics tiré vers la gauche
         w._save_columns()
+        self.assertFalse(w._col_auto)
         self.assertEqual(row().st_col.width(), before + 40)
-        self.assertEqual(m.Config().col_fs, w.config.col_fs)  # réglage mémorisé
+        cfg = m.Config()
+        self.assertFalse(cfg.col_auto)              # réglage à la main mémorisé
+        self.assertEqual(cfg.col_fs, w.config.col_fs)
+        w.col_header.handles[1].reset.emit()        # double-clic : retour à l'automatique
+        self.assertTrue(w._col_auto and m.Config().col_auto)
+        self.assertEqual(row().st_col.width(), before)
 
         # fenêtres d'aide et dossiers
         for html in ("help_html", "disclaimer_html", "licenses_html"):

@@ -257,6 +257,7 @@ class Config:
         self.seen_archives: list = []
         self.download_folders: list = []      # vide = dossier Téléchargements de Windows
         self.col_fs, self.col_fg = COL_STATICS_W / COL_REF_W, COL_GSX_W / COL_REF_W
+        self.col_auto = True                  # colonnes ajustées au texte ; False après un réglage à la main
         self.sim = DEFAULT_SIM
         self.profiles: dict = {}
         try:
@@ -270,6 +271,7 @@ class Config:
                 if data.get("archive_cleanup") in ARCHIVE_CLEANUP:
                     self.archive_cleanup = data["archive_cleanup"]
                 cols = data.get("columns") or {}
+                self.col_auto = cols.get("auto", True) is not False
                 try:
                     fs, fg = float(cols.get("statics", self.col_fs)), float(cols.get("gsx", self.col_fg))
                     if 0.1 <= fs <= 0.6 and 0.1 <= fg <= 0.7 and fs + fg <= 0.85:
@@ -359,7 +361,7 @@ class Config:
         data = {"version": 3, "lang": self.lang, "sim": self.sim,
                 "check_downloads": self.check_downloads, "seen_archives": self.seen_archives[-300:],
                 "archive_cleanup": self.archive_cleanup, "download_folders": self.download_folders,
-                "columns": {"statics": self.col_fs, "gsx": self.col_fg},
+                "columns": {"auto": self.col_auto, "statics": self.col_fs, "gsx": self.col_fg},
                 "profiles": {}}
         for sim, p in self.profiles.items():
             q = dict(p)
@@ -2547,6 +2549,7 @@ QPushButton#gsx[gsx="diff"] {{ color: {C['warn']}; border-color: #4A3A1E; }}
 QFrame#vsep {{ background: {C['border']}; min-width: 1px; max-width: 1px; border: none; }}
 QFrame#vsepHidden {{ background: transparent; min-width: 1px; max-width: 1px; border: none; }}
 QLabel#colHead {{ color: {C['faint']}; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }}
+QLabel#colHead[plain="true"] {{ font-size: 11px; letter-spacing: 0px; }}
 QLabel#note {{ color: {C['faint']}; font-size: 11px; }}
 QLabel#note[warn="true"] {{ color: {C['warn']}; }}
 QLabel#none {{ color: {C['faint']}; font-size: 12px; }}
@@ -2570,6 +2573,17 @@ QPlainTextEdit {{ background: {C['surface']}; border: 1px solid {C['border']}; b
                   padding: 5px 8px; color: {C['text']}; selection-background-color: {C['accent']}; }}
 QPlainTextEdit:focus {{ border-color: {C['border2']}; background: {C['surface2']}; }}
 QPlainTextEdit#preview {{ color: {C['muted']}; font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; }}
+QFrame#bulkSeg {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 13px;
+                  min-height: 24px; max-height: 24px; }}
+QFrame#bulkSeg:hover {{ border-color: {C['border2']}; }}
+QFrame#bulkDiv {{ background: {C['border2']}; min-width: 1px; max-width: 1px; border: none; margin: 5px 0; }}
+QPushButton#bulkOff, QPushButton#bulkOn {{ background: transparent; border: none; border-radius: 11px;
+    padding: 0 7px; min-height: 22px; max-height: 22px; font-size: 11px; font-weight: 600; color: {C['muted']}; }}
+QPushButton#bulkOff:hover {{ color: #E07A72; background: #1F1413; }}
+QPushButton#bulkOn:hover {{ color: {C['accent']}; background: #12241E; }}
+QPushButton#bulkOff:pressed {{ background: #2A1817; }}
+QPushButton#bulkOn:pressed {{ background: #183026; }}
+QPushButton#bulkOff:disabled, QPushButton#bulkOn:disabled {{ color: {C['faint']}; }}
 QLabel#fieldLabel {{ color: {C['muted']}; font-size: 12px; }}
 QCheckBox {{ color: {C['text']}; spacing: 8px; }}
 QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {C['border2']}; border-radius: 4px;
@@ -2749,22 +2763,40 @@ STATICS_FILTERS = ("all", "on", "off", "check", "none")
 GSX_FILTERS = ("all", "installed", "todo", "manual", "none", "check")
 
 
-def column_widths(avail: int, fs: float, fg: float) -> tuple[int, int]:
+ROW_MARGINS = (16, 11, 14, 11)
+ROW_SPACING = 16
+COL_OVERHEAD = ROW_MARGINS[0] + ROW_MARGINS[2] + 4 * ROW_SPACING + 4
+
+
+def fit_widths(avail: int, natural: tuple, floors: tuple) -> tuple[int, int]:
+    """Mode automatique : chaque colonne prend la largeur de son texte sur une ligne, la colonne scène
+    garde tout le reste. Fenêtre trop étroite : réduction proportionnelle, jamais sous `floors`."""
+    ns, ng = max(natural[0], floors[0]), max(natural[1], floors[1])
+    room = avail - COL_SCENE_MIN - COL_OVERHEAD
+    if ns + ng <= room:
+        return ns, ng
+    extra_s, extra_g = ns - floors[0], ng - floors[1]
+    cut = min(ns + ng - room, extra_s + extra_g)
+    if extra_s + extra_g <= 0:
+        return ns, ng
+    cs = round(cut * extra_s / (extra_s + extra_g))
+    return ns - cs, ng - (cut - cs)
+
+
+def column_widths(avail: int, fs: float, fg: float, mins=(COL_STATICS_MIN, COL_GSX_MIN)) -> tuple[int, int]:
     """Largeurs des colonnes Statics et GSX pour une liste de `avail` px, proportions fs / fg,
     minimums respectés et colonne scène jamais sous son minimum."""
-    overhead = ROW_MARGINS[0] + ROW_MARGINS[2] + 4 * ROW_SPACING + 4
-    ws, wg = max(COL_STATICS_MIN, round(avail * fs)), max(COL_GSX_MIN, round(avail * fg))
-    excess = ws + wg + COL_SCENE_MIN + overhead - avail
+    ms, mg = mins
+    ws, wg = max(ms, round(avail * fs)), max(mg, round(avail * fg))
+    excess = ws + wg + COL_SCENE_MIN + COL_OVERHEAD - avail
     if excess > 0:                         # fenêtre étroite : on réduit Statics et GSX jusqu'à leurs minimums
-        room_s, room_g = ws - COL_STATICS_MIN, wg - COL_GSX_MIN
+        room_s, room_g = ws - ms, wg - mg
         room = room_s + room_g
         if room > 0:
             cut = min(excess, room)
             ws -= round(cut * room_s / room)
             wg -= cut - round(cut * room_s / room)
     return ws, wg
-ROW_MARGINS = (16, 11, 14, 11)
-ROW_SPACING = 16
 
 
 def vsep(visible=True) -> QFrame:
@@ -2816,10 +2848,25 @@ def profile_plan(profile: dict, scenes) -> tuple:
     return todo, check, missing
 
 
+def bulk_targets(rows, target: str) -> tuple:
+    """Tout ON / Tout OFF : seulement les cas simples (scène entièrement ON ou OFF, aucun fichier à vérifier).
+    Rend (scènes à basculer, nombre de scènes « À vérifier » laissées telles quelles)."""
+    targets, skipped = [], 0
+    for r in rows:
+        st = r.statics_state()
+        if st == "check":
+            skipped += 1
+        elif st in ("on", "off") and r.scene.state != target and r.scene.toggleable \
+                and not any(g.mode == "conflict" for g in r.scene.groups):
+            targets.append(r.scene)
+    return targets, skipped
+
+
 class ColHandle(QFrame):
     """Séparateur d'en-tête qu'on peut tirer pour régler la largeur des colonnes."""
     dragged = Signal(int)
     released = Signal()
+    reset = Signal()                           # double-clic : retour à l'ajustement automatique
 
     def __init__(self):
         super().__init__()
@@ -2846,7 +2893,8 @@ class ColHandle(QFrame):
         self.released.emit()
 
     def mouseDoubleClickEvent(self, _e):
-        self.released.emit()
+        self._x = None
+        self.reset.emit()
 
     def enterEvent(self, e):
         self.update()
@@ -2869,6 +2917,7 @@ class ColumnHeader(QWidget):
     """En-têtes alignés sur les colonnes des lignes, avec un filtre identique pour Statics et GSX
     et des poignées pour régler les largeurs."""
     filter_changed = Signal(str, str)          # colonne ("statics" / "gsx"), clé du filtre
+    bulk_requested = Signal(str)               # Tout OFF / Tout ON (cas simples affichés)
 
     def __init__(self):
         super().__init__()
@@ -2878,6 +2927,9 @@ class ColumnHeader(QWidget):
         h.setSpacing(ROW_SPACING - 4)        # poignée de 9 px : son trait central tombe sur le séparateur des lignes
         scene = QLabel(tr("col_scene"))
         scene.setObjectName("colHead")
+        # Arabe, chinois, japonais : pas de capitales ; l'espacement des lettres casserait la liaison arabe
+        plain = get_lang() in ("ar", "zh", "ja")
+        scene.setProperty("plain", plain)
         h.addWidget(scene, 1)
         self.handles = [ColHandle(), ColHandle()]
         self.boxes, self.combos = {}, {}
@@ -2890,6 +2942,7 @@ class ColumnHeader(QWidget):
             bl.setSpacing(8)
             lbl = QLabel(tr(key))
             lbl.setObjectName("colHead")
+            lbl.setProperty("plain", plain)
             combo = ChevronCombo()
             combo.setObjectName("colFilter")
             combo.setCursor(Qt.PointingHandCursor)
@@ -2901,6 +2954,30 @@ class ColumnHeader(QWidget):
             bl.addWidget(lbl)
             bl.addWidget(combo)
             bl.addStretch()
+            if col == "statics":
+                self.bulk_btns = {}
+                seg = QFrame()
+                seg.setObjectName("bulkSeg")
+                seg.setAttribute(Qt.WA_Hover)
+                sl = QHBoxLayout(seg)
+                sl.setContentsMargins(1, 1, 1, 1)
+                sl.setSpacing(0)
+                for target, key, tip, name in ((OFF, "btn_all_off", "tip_all_off", "bulkOff"),
+                                               (ON, "btn_all_on", "tip_all_on", "bulkOn")):
+                    if target == ON:
+                        div = QFrame()
+                        div.setObjectName("bulkDiv")
+                        sl.addWidget(div)
+                    b = QPushButton("\u2009" + tr(key))     # espace fine : un peu d'air entre la pastille et le texte
+                    b.setObjectName(name)
+                    b.setIcon(dot_icon("#E07A72" if target == OFF else C["accent"]))
+                    b.setIconSize(QSize(6, 6))
+                    b.setCursor(Qt.PointingHandCursor)
+                    b.setToolTip(tr(tip))
+                    b.clicked.connect(lambda _c=False, tg=target: self.bulk_requested.emit(tg))
+                    sl.addWidget(b)
+                    self.bulk_btns[target] = b
+                bl.addWidget(seg)
             h.addWidget(box)
             self.boxes[col], self.combos[col] = box, combo
 
@@ -2916,6 +2993,15 @@ class ColumnHeader(QWidget):
         combo.setCurrentIndex(i)
         combo.blockSignals(False)
         polish(combo, active=(combo.currentData() or "all") != "all")
+
+    def natural_widths(self) -> tuple[int, int]:
+        """Largeur minimale lisible de chaque en-tête (titre + filtre)."""
+        out = []
+        for col in ("statics", "gsx"):
+            lay = self.boxes[col].layout()
+            ws = [lay.itemAt(i).widget() for i in range(lay.count()) if lay.itemAt(i).widget()]
+            out.append(sum(w.sizeHint().width() for w in ws) + lay.spacing() * (len(ws) - 1))
+        return out[0], out[1]
 
     def set_widths(self, ws: int, wg: int):
         self.boxes["statics"].setFixedWidth(ws)
@@ -3097,6 +3183,19 @@ class SceneRow(QFrame):
         b.setToolTip(tr("gsx_search_tip", q=q))
         b.clicked.connect(lambda _=False: self.search_requested.emit(self.scene))
         self._add_gsx_widget(b)
+
+    def natural_widths(self) -> tuple[int, int]:
+        """Largeur de chaque colonne quand tout son texte tient sur une ligne."""
+        def line(lay) -> int:
+            ws = [lay.itemAt(i).widget() for i in range(lay.count())]
+            ws = [w for w in ws if w is not None and (not w.isHidden() or w is self.switch)]
+            return sum(w.sizeHint().width() for w in ws) + lay.spacing() * max(0, len(ws) - 1)
+
+        def note(lbl) -> int:
+            return lbl.fontMetrics().horizontalAdvance(lbl._full) + 2 if lbl._full else 0
+        st_line = self.st_col.layout().itemAt(0).layout()
+        return (max(line(st_line), note(self.st_note)) + 2,
+                max(line(self.gsx_line), note(self.gsx_note)) + 2)
 
     def set_col_widths(self, ws: int, wg: int):
         self.st_col.setFixedWidth(ws)
@@ -3791,12 +3890,6 @@ class MainWindow(QMainWindow):
         self.btn_install = QPushButton(tr("btn_install"))
         self.btn_install.setToolTip(tr("arch_drop_tip"))
         self.btn_install.clicked.connect(self.choose_archives)
-        self.btn_all_off = QPushButton(tr("btn_all_off"))
-        self.btn_all_off.setObjectName("danger")
-        self.btn_all_off.clicked.connect(lambda: self.set_all(OFF))
-        self.btn_all_on = QPushButton(tr("btn_all_on"))
-        self.btn_all_on.setObjectName("primary")
-        self.btn_all_on.clicked.connect(lambda: self.set_all(ON))
         # Annuler : séparé des boutons d'action (il défait, il ne crée rien)
         # Profils de statics : enregistrer / appliquer un jeu d'états ON/OFF
         self.btn_profiles = QPushButton(tr("btn_profiles"))          # flèche de menu dessinée par Qt
@@ -3807,8 +3900,7 @@ class MainWindow(QMainWindow):
         self.btn_undo = QPushButton("↶  " + tr("btn_undo"))
         self.btn_undo.setObjectName("ghost")
         self.btn_undo.clicked.connect(self.undo_last_action)
-        for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on, self.btn_undo,
-                  self.btn_profiles):
+        for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_undo, self.btn_profiles):
             b.setCursor(Qt.PointingHandCursor)
         self.scope_lbl = QLabel()
         self.scope_lbl.setObjectName("hint")
@@ -3820,8 +3912,6 @@ class MainWindow(QMainWindow):
         bar2.addWidget(self.btn_undo)
         bar2.addStretch()
         bar2.addWidget(self.scope_lbl)
-        bar2.addWidget(self.btn_all_off)
-        bar2.addWidget(self.btn_all_on)
         root.addLayout(bar2)
 
         # Bandeau
@@ -3873,10 +3963,16 @@ class MainWindow(QMainWindow):
         self.list_l.setSpacing(8)
         self.col_header = ColumnHeader()
         self.col_header.filter_changed.connect(self._column_filter_changed)
+        self.col_header.bulk_requested.connect(self.set_all)
+        # Tout OFF / Tout ON : dans l'en-tête de la colonne Statics, cas simples uniquement
+        self.btn_all_off, self.btn_all_on = self.col_header.bulk_btns[OFF], self.col_header.bulk_btns[ON]
         self.col_fs, self.col_fg = self.config.col_fs, self.config.col_fg
         for i, hd in enumerate(self.col_header.handles):
             hd.dragged.connect(lambda dx, i=i: self._drag_column(i, dx))
             hd.released.connect(self._save_columns)
+            hd.reset.connect(self._auto_columns)
+        self._col_auto = self.config.col_auto
+        self._natural = None                  # largeurs du texte (mode automatique), recalculées si besoin
         self.list_l.addWidget(self.col_header)
         self.empty = QLabel(tr("empty_scanning"))
         self.empty.setObjectName("empty")
@@ -4529,7 +4625,6 @@ class MainWindow(QMainWindow):
             row.gsx_requested.connect(self.on_gsx)
             row.search_requested.connect(self.search_profile)
             row.restore_requested.connect(self.on_restore)
-            row.set_col_widths(*column_widths(self._avail_width(), self.col_fs, self.col_fg))
             self.list_l.insertWidget(2 + i, row)
             self.rows[s.key] = row
         self.apply_filter()
@@ -4580,6 +4675,8 @@ class MainWindow(QMainWindow):
         self.reset_btn.setVisible(active)
         if visible == 0 and self.rows:
             self.col_header.setVisible(True)      # garder les filtres de colonne accessibles
+        self._natural = None
+        self.layout_columns()
 
     # ── Largeur des colonnes : proportionnelle à la fenêtre, réglable avec les poignées de l'en-tête
     def eventFilter(self, obj, ev):
@@ -4591,30 +4688,58 @@ class MainWindow(QMainWindow):
         return max(400, self.scroll.viewport().width() - self.list_l.contentsMargins().left()
                    - self.list_l.contentsMargins().right())
 
+    def _floors(self) -> tuple[int, int]:
+        hs, hg = self.col_header.natural_widths()
+        return max(120, hs), max(120, hg)
+
+    def _natural_widths(self) -> tuple[int, int]:
+        if self._natural is None:
+            ns = ng = 0
+            for row in self.rows.values():
+                if not row.isHidden():
+                    s, g = row.natural_widths()
+                    ns, ng = max(ns, s), max(ng, g)
+            self._natural = (ns, ng)
+        return self._natural
+
+    def current_col_widths(self) -> tuple[int, int]:
+        avail = self._avail_width()
+        if self._col_auto:
+            return fit_widths(avail, self._natural_widths(), self._floors())
+        return column_widths(avail, self.col_fs, self.col_fg, self._floors())
+
     def layout_columns(self):
-        ws, wg = column_widths(self._avail_width(), self.col_fs, self.col_fg)
+        ws, wg = self.current_col_widths()
         self.col_header.set_widths(ws, wg)
         for row in self.rows.values():
             row.set_col_widths(ws, wg)
 
     def _drag_column(self, handle: int, dx: int):
         avail = self._avail_width()
-        ws, wg = column_widths(avail, self.col_fs, self.col_fg)
+        ws, wg = self.current_col_widths()
+        ms, mg = self._floors()
         if handle == 0:                    # bord gauche de Statics : la colonne s'élargit vers la gauche
-            ws = max(COL_STATICS_MIN, ws - dx)
+            ws = max(ms, ws - dx)
         else:                              # entre Statics et GSX
-            new_ws = max(COL_STATICS_MIN, min(ws + dx, ws + wg - COL_GSX_MIN))
+            new_ws = max(ms, min(ws + dx, ws + wg - mg))
             wg -= new_ws - ws
             ws = new_ws
-        overhead = ROW_MARGINS[0] + ROW_MARGINS[2] + 4 * ROW_SPACING + 4
-        if ws + wg + COL_SCENE_MIN + overhead > avail:      # la colonne scène garde son minimum
+        if ws + wg + COL_SCENE_MIN + COL_OVERHEAD > avail:      # la colonne scène garde son minimum
             return
+        self._col_auto = False
         self.col_fs, self.col_fg = ws / avail, wg / avail
         self.layout_columns()
 
     def _save_columns(self):
+        self.config.col_auto = self._col_auto
         self.config.col_fs, self.config.col_fg = round(self.col_fs, 4), round(self.col_fg, 4)
         self.config.save()
+
+    def _auto_columns(self):
+        self._col_auto = True
+        self._natural = None
+        self.layout_columns()
+        self._save_columns()
 
     def update_stats(self):
         sc = list(self.scenes.values())
@@ -4650,6 +4775,8 @@ class MainWindow(QMainWindow):
         self.scenes[scene.key] = new
         if row:
             row.refresh(new)
+            self._natural = None
+            self.layout_columns()
 
     def on_toggle(self, scene: Scene, checked: bool):
         target = ON if checked else OFF
@@ -4670,13 +4797,16 @@ class MainWindow(QMainWindow):
             self.status.setText(tr("toggled", name=scene.title, state=state_text(self.scenes[scene.key].state)))
 
     def set_all(self, target: str):
-        targets = [r.scene for r in self.rows.values()
-                   if r.isVisible() and r.scene.toggleable and r.scene.state != target]
+        targets, skipped = bulk_targets([r for r in self.rows.values() if not r.isHidden()], target)
         label = "ON" if target == ON else "OFF"
+        note = ("\n\n" + tr("all_skipped", n=skipped)) if skipped else ""
         if not targets:
-            self.status.setText(tr("all_already", label=label))
+            if skipped:
+                QMessageBox.information(self, APP_NAME, tr("all_already", label=label) + note)
+            else:
+                self.status.setText(tr("all_already", label=label))
             return
-        if not ask(self, tr("all_confirm", n=len(targets), label=label)) or not self.ensure_sim_closed():
+        if not ask(self, tr("all_confirm", n=len(targets), label=label) + note) or not self.ensure_sim_closed():
             return
         self.set_busy(True)
         errors = []
@@ -4938,6 +5068,22 @@ def folder_icon() -> QIcon:
         p.end()
         icon.addPixmap(pm, mode)
     _FOLDER_ICON = icon
+    return icon
+
+
+def dot_icon(color: str) -> QIcon:
+    """Pastille de couleur (Tout OFF rouge, Tout ON vert), grisée quand le bouton est désactivé."""
+    icon = QIcon()
+    for mode, c in ((QIcon.Normal, color), (QIcon.Active, color), (QIcon.Disabled, C["border2"])):
+        pm = QPixmap(24, 24)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(c))
+        p.drawEllipse(QRectF(2, 2, 20, 20))
+        p.end()
+        icon.addPixmap(pm, mode)
     return icon
 
 
