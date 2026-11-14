@@ -52,10 +52,12 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 ## Fonctions
 
 ### Avions statiques
-- Les fichiers sont détectés quand leur nom contient `statics` et se termine par `.bgl` ou `.bgl.off`, à n'importe quelle profondeur dans la scène.
-- Deux méthodes sont gérées :
-  - **Renommage** : `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off` (OFF).
-  - **Variantes** : `statics_on.bgl` + `statics_off.bgl` à côté d'un `statics.bgl` actif. La variante choisie est copiée sur `statics.bgl`.
+- Les fichiers sont détectés quand leur nom contient `static`, `statics` ou `parked`, à n'importe quelle profondeur dans la scène. Les bibliothèques de modèles (`modelLib…`) et les aplanissements de terrain sont ignorés.
+- Les méthodes des éditeurs sont reconnues (à partir d'une vraie bibliothèque de plus de 2 000 paquets) :
+  - **Renommage** : `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` ou `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM garde la convention de l'éditeur.
+  - **Variantes** : `statics_on.bgl` + `statics_off.bgl` à côté d'un `statics.bgl` actif. La variante choisie est copiée sur `statics.bgl`. Aussi `xxx-airport-statics` / `xxx-airport-nostatics` à côté du `xxx-airport.bgl` actif (Homa Sim).
+  - **Version sans statics** : `xxx.bgl` + `xxx.bgl.nostatic` (placements Orbx, UK2000, Drzewiecki). Les deux fichiers sont échangés ; `xxx.bgl.static` garde la version avec statics.
+  - **Paire avec / sans** : `xxx_static` + `xxx_nostatic` (iniBuilds), ou un fichier d'aéroport complet `xxx-statics` qui remplace `xxx`. Un seul des deux est actif : l'aéroport n'est jamais chargé deux fois.
 - Le `layout.json` de la scène (et le `total_package_size` du `manifest.json`) est mis à jour automatiquement, comme le fait MSFSLayoutGenerator. Sans cela, le simulateur ignorerait le changement.
 - Les cas ambigus ne sont jamais modifiés automatiquement. Ils apparaissent en orange, « À vérifier ».
 
@@ -130,6 +132,8 @@ La version de SGM, le simulateur et la version de Windows sont ajoutés automati
 
 **Aide › Créer un rapport d'analyse des statics…** parcourt toutes tes scènes sans rien modifier et enregistre un fichier `.json` dans `SGM_data\reports`. Il liste les fichiers de type statics trouvés dans chaque scène (noms à l'intérieur de la scène, tailles, empreintes, présence dans `layout.json`, interprétation de SGM). Il ne contient aucun chemin personnel ni nom d'utilisateur. Joins-le à une issue GitHub pour aider à améliorer les règles de détection de SGM.
 
+Quand tu signales un problème, SGM propose de créer ce rapport en même temps : glisse le fichier dans la page GitHub avant d'envoyer.
+
 ## Soutenir le projet
 
 SGM est gratuit. S'il te fait gagner du temps, tu peux soutenir son développement :
@@ -167,6 +171,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Installation de profils GSX depuis une archive téléchargée : glisser-déposer, bouton Installer, détection dans Téléchargements au lancement (.zip ; .7z/.rar avec 7-Zip).
 - Les avions et livrées sont ignorés pendant l'analyse (plus rapide).
 - Rapport d'analyse des statics (menu Aide) : analyse en lecture seule pour améliorer les règles de détection.
+- Beaucoup plus de méthodes de statics reconnues (`.off`, `.disabled`, `.nostatic`, paires static/nostatic, fichiers d'aéroport complets), à partir d'une vraie bibliothèque de plus de 2 000 paquets. Le signalement de problème peut inclure le rapport d'analyse.
 - Restauration de l'état d'origine : clic droit sur une scène, ou Aide › Tout restaurer à l'origine. SGM enregistre chaque scène et profil GSX tels qu'ils étaient avant sa première modification.
 - Sécurité des statics : un fichier statics au nom différent qui ne correspond à aucune variante on/off n'est jamais écrasé : il est affiché « À vérifier », avec une icône de dossier pour ouvrir le dossier du fichier statics et le faire manuellement.
 - Aide › Signaler un problème / Proposer une idée (issue GitHub préremplie).

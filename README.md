@@ -52,10 +52,12 @@ The full user guide is in the app: **Help › User guide** (F1).
 ## Features
 
 ### Static aircraft
-- Files are detected when their name contains `statics` and ends in `.bgl` or `.bgl.off`, at any depth inside the scenery.
-- Two methods are supported:
-  - **Renaming**: `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off` (OFF).
-  - **Variants**: `statics_on.bgl` + `statics_off.bgl` next to an active `statics.bgl`. The chosen variant is copied onto `statics.bgl`.
+- Files are detected when their name contains `static`, `statics` or `parked`, at any depth inside the scenery. Model libraries (`modelLib…`) and terrain flattens are ignored.
+- The methods used by developers are recognised (based on a real library of more than 2,000 packages):
+  - **Renaming**: `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` or `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM keeps the developer's own naming.
+  - **Variants**: `statics_on.bgl` + `statics_off.bgl` next to an active `statics.bgl`. The chosen variant is copied onto `statics.bgl`. Also `xxx-airport-statics` / `xxx-airport-nostatics` next to the active `xxx-airport.bgl` (Homa Sim).
+  - **No-statics version**: `xxx.bgl` + `xxx.bgl.nostatic` (Orbx, UK2000, Drzewiecki placements). The two files are swapped; `xxx.bgl.static` keeps the version with statics.
+  - **With / without pair**: `xxx_static` + `xxx_nostatic` (iniBuilds), or a complete airport file `xxx-statics` that replaces `xxx`. Only one of the two is ever active, so the airport is never loaded twice.
 - The package `layout.json` (and `total_package_size` in `manifest.json`) is updated automatically, like MSFSLayoutGenerator does. Without this, the simulator would ignore the change.
 - Ambiguous cases are never changed automatically. They are shown in orange as **To check**.
 
@@ -130,6 +132,8 @@ The SGM version, the simulator and the Windows version are added automatically. 
 
 **Help › Create a statics analysis report…** scans all your sceneries without changing anything and saves a `.json` file in `SGM_data\reports`. It lists the statics-like files found in each scenery (names inside the scenery, sizes, fingerprints, whether they are in `layout.json`, and how SGM understood them). It contains no personal path or user name. Attach it to a GitHub issue to help improve SGM's detection rules.
 
+When you report a problem, SGM offers to create this report at the same time: drag the file into the GitHub page before submitting.
+
 ## Support the project
 
 SGM is free. If it saves you time, you can support its development:
@@ -167,6 +171,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Install GSX profiles from downloaded archives: drag & drop, Install button, Downloads folder detection at launch (.zip; .7z/.rar with 7-Zip).
 - Aircraft and liveries are skipped during the scan (faster).
 - Statics analysis report (Help menu): read-only scan to help improve detection rules.
+- Many more statics methods recognised (`.off`, `.disabled`, `.nostatic`, static/nostatic pairs, complete airport files), from a real library of 2,000+ packages. Problem report can include the statics analysis report.
 - Restore original state: right-click a scenery, or Help › Restore everything to original. SGM records each scenery and GSX profile as it was before its first change.
 - Statics safety: a statics file with a different name that matches neither on/off variant is never overwritten: it is shown as "To check", with a folder icon to open the folder of the statics file and do it manually.
 - Help › Report a problem / Suggest an idea (pre-filled GitHub issue).
