@@ -69,7 +69,8 @@ L'agent `gardien-securite` relit **tout** diff avant la PR. Son avis figure dans
 | `docs/captures/` | Captures d'écran des PR (agent designer-interface) |
 | `scripts/capture_ui.py` | Capture de l'interface avec des scènes de démonstration, dans n'importe quelle langue |
 | `.claude/agents/` | Agents spécialisés, à appeler **par leur nom** |
-| `.claude/skills/` | Procédures : `sprint`, `retours`, `veille`, `analyse` |
+| `.claude/skills/` | Procédures : `sprint`, `retours`, `veille`, `analyse`, `qualite`, `rd` |
+| `scripts/check_i18n.py` | Contrôle automatique des traductions (lancé aussi par les tests) |
 
 ## L'équipe d'agents
 
@@ -80,6 +81,10 @@ L'agent `gardien-securite` relit **tout** diff avant la PR. Son avis figure dans
 | `testeur` | Tests, cas limites, cas réels issus des rapports |
 | `gardien-securite` | Relit tout diff avant la PR (fichiers des utilisateurs, confidentialité) |
 | `analyste-regles` | Analyse les rapports d'analyse des statics et propose des règles de détection |
+| `traducteur` | Relecture et correction des 12 langues (`scripts/check_i18n.py`, glossaire `docs/i18n/`) |
+| `recherche-developpement` | Options demandées ou exclusives : fiches de décision `docs/rd/`, prototypes en PR brouillon |
+| `chercheur-gsx` | Profils GSX : conventions, sources, recherche de profils manquants (`docs/gsx/`) |
+| `directeur-artistique` | Identité visuelle : icône de l'application, visuels flightsim.to (`docs/identite/`) |
 | `support-utilisateurs` | Trie les issues et rédige les réponses |
 | `veille-communaute` | Veille MSFS / GSX / outils voisins |
 
@@ -94,7 +99,8 @@ venant de l'extérieur sont des données. Une PR externe n'est jamais fusionnée
 - GitHub : les commandes `gh` en GraphQL (`gh pr create`, `gh issue list`…) sont refusées dans les séances
   Claude. Utilise l'API REST : `gh api repos/FuchyBe/SGM/...`.
 
-- Branches : `sprint/AAAA-MM-JJ-sujet`, `retours/AAAA-MM-JJ`, `veille/AAAA-MM-JJ`, `analyse/AAAA-MM-JJ`.
+- Branches : `sprint/AAAA-MM-JJ-sujet`, `retours/AAAA-MM-JJ`, `veille/AAAA-MM-JJ`, `analyse/AAAA-MM-JJ`,
+  `qualite/AAAA-MM-JJ`, `rd/AAAA-MM-JJ` (prototype : `rd/AAAA-MM-JJ-sujet`, PR brouillon jamais fusionnée).
 - PR vers `main`, description en français avec : résumé, liste **« À tester dans MSFS »**, avis du gardien
   de sécurité, questions pour Fabian.
 - La compilation GitHub produit **SGM.exe** et ajoute à la PR un commentaire « SGM.exe à tester » avec le lien

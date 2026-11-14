@@ -9,6 +9,8 @@ description: Développe le premier sujet de la section « Prêt » de docs/ROADM
    - la section « Prêt » de `docs/ROADMAP.md` est vide ;
    - une PR `sprint/…` est déjà ouverte (`gh api "repos/FuchyBe/SGM/pulls?state=open" --jq '.[] | select(.head.ref|startswith("sprint/")) | .number'`) : Fabian doit d'abord la tester.
 2. **Branche** — `git switch -c sprint/AAAA-MM-JJ-<sujet-court>` depuis `main` à jour.
+2b. **Identité visuelle** — Un sujet d'icône ou de visuel est confié à l'agent **directeur-artistique** (PR en
+   brouillon avec la planche de choix ; l'intégration se fait après le choix de Fabian).
 3. **Interface d'abord** — Si le sujet change quelque chose de visible, appelle l'agent **designer-interface** :
    proposition + maquette/capture. Un nouvel écran ou une réorganisation attend l'accord de Fabian : ouvre alors
    la PR en brouillon avec la question et arrête-toi.

@@ -5,7 +5,19 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 ## Prêt
 
-_(vide — Fabian déplace ici les sujets à développer, dans l'ordre souhaité)_
+Placés par Fabian le 2026-11-14, dans cet ordre.
+
+1. **Harmoniser l'affichage du filtrage des colonnes Statics et GSX** — origine : Fabian. Les deux colonnes doivent
+   présenter leurs états et leurs filtres de la même façon (mêmes libellés, mêmes couleurs, même position de l'état,
+   de la note et des boutons ; filtres et catégories alignés sur les deux colonnes). Agents : `designer-interface`
+   (maquette + captures avant le code), `developpeur`, `traducteur`. M.
+2. **Colonnes Statics et GSX 1,5× plus larges et redimensionnables** — origine : Fabian. Largeur de départ ×1,5
+   (`COL_STATICS_W` 220 → 330, `COL_GSX_W` 300 → 450). Redimensionnement automatique avec la fenêtre en gardant
+   les proportions (nom de la scène / Statics / GSX), largeurs minimales pour que tout reste visible (bascule,
+   boutons, icônes), textes coupés avec info-bulle complète ; poignée pour régler à la main, réglage mémorisé.
+   Vérifier en 1024, 1280, 1920 px et en de, ar, ja. Agents : `designer-interface`, `developpeur`. M.
+3. **Nouvelle icône de l'application** — origine : Fabian. Agent : `directeur-artistique` : 3 à 4 propositions,
+   Fabian choisit, puis intégration (exe, fenêtre, barre des tâches, README, flightsim.to). S.
 
 ## En cours (PR à tester)
 
@@ -14,6 +26,15 @@ _(vide)_
 ## À trier
 
 Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L), risque.
+
+- **Journal local (logs)** — origine : Fabian (2026-11-14). `SGM_data\logs`, rotation, chemins réduits, joint aux
+  rapports de bug. S. Risque nul. Fiche : `docs/rd/2026-11-14-mise-a-jour-et-remontee.md` (étape 1).
+- **Fenêtre « Signaler / Suggérer » intégrée** — origine : Fabian. Formulaire, rapport + journal joints, `.zip` prêt
+  à glisser dans l'issue. M. Risque nul. Fiche, étape 2.
+- **Envoi direct des rapports sans compte GitHub** — origine : Fabian. Relais serveur. M. **Décision de Fabian**
+  (réseau, serveur, confidentialité). Fiche, étape 3.
+- **Mise à jour automatique** — origine : Fabian. GitHub Releases + SHA-256 + programme de mise à jour, `SGM_data`
+  préservé. M. **Décision de Fabian** (réseau optionnel, releases GitHub, signature). Fiche, étape 4.
 
 - **Vérifier l'adresse de recherche flightsim.to** — origine : beta v0.6. Le format
   `flightsim.to/search/?keyword=` n'a pas pu être vérifié. Bénéfice : bouton de recherche fiable. S. Risque faible.
