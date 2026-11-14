@@ -44,7 +44,7 @@ from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFon
                            QIcon, QImage, QPainter, QPainterPath, QPen, QPixmap)
 from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QCheckBox, QComboBox, QCompleter,
                                QInputDialog, QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
-                               QPlainTextEdit,
+                               QPlainTextEdit, QProgressDialog,
                                QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
                                QPushButton, QScrollArea, QSizePolicy, QTextBrowser, QToolButton,
                                QVBoxLayout, QWidget)
@@ -256,6 +256,9 @@ class Config:
         self.archive_cleanup = "ask"          # après installation depuis Téléchargements : ask / auto / never
         self.seen_archives: list = []
         self.download_folders: list = []      # vide = dossier Téléchargements de Windows
+        self.update_check = None              # None = à demander au 1er lancement ; True / False = choix
+        self.update_last = 0.0
+        self.update_skip = ""
         self.col_fs, self.col_fg = COL_STATICS_W / COL_REF_W, COL_GSX_W / COL_REF_W
         self.col_auto = True                  # colonnes ajustées au texte ; False après un réglage à la main
         self.sim = DEFAULT_SIM
@@ -280,6 +283,13 @@ class Config:
                     pass
                 self.seen_archives = [str(x) for x in data.get("seen_archives", [])][-300:]
                 self.download_folders = [str(x) for x in data.get("download_folders", []) if str(x).strip()][:10]
+                uc = data.get("update_check")
+                self.update_check = uc if isinstance(uc, bool) else None
+                try:
+                    self.update_last = float(data.get("update_last") or 0)
+                except (TypeError, ValueError):
+                    self.update_last = 0.0
+                self.update_skip = str(data.get("update_skip") or "")
                 self.sim = data.get("sim") if data.get("sim") in SIMS else DEFAULT_SIM
                 for sim, p in (data.get("profiles") or {}).items():
                     if sim in SIMS and isinstance(p, dict):
@@ -361,6 +371,7 @@ class Config:
         data = {"version": 3, "lang": self.lang, "sim": self.sim,
                 "check_downloads": self.check_downloads, "seen_archives": self.seen_archives[-300:],
                 "archive_cleanup": self.archive_cleanup, "download_folders": self.download_folders,
+                "update_check": self.update_check, "update_last": self.update_last, "update_skip": self.update_skip,
                 "columns": {"auto": self.col_auto, "statics": self.col_fs, "gsx": self.col_fg},
                 "profiles": {}}
         for sim, p in self.profiles.items():
@@ -2424,6 +2435,193 @@ def build_report_package(kind: str, sim: str, lang: str, fields: dict | None = N
     return out
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  Mise à jour automatique (seule connexion Internet de SGM, acceptée par l'utilisateur)
+#  Décision de Fabian du 2026-11-15 : GitHub Releases (Fabian publie), vérification au lancement
+#  demandée au 1er lancement, téléchargement + empreinte SHA-256 + remplacement après fermeture.
+# ════════════════════════════════════════════════════════════════════════════
+
+RELEASES_API = "https://api.github.com/repos/FuchyBe/SGM/releases/latest"
+RELEASES_PAGE = "https://github.com/FuchyBe/SGM/releases/latest"
+DOWNLOAD_PREFIX = "https://github.com/FuchyBe/SGM/releases/download/"
+UPDATE_EVERY = 24 * 3600              # au plus une vérification automatique par jour
+UPDATE_MAX_BYTES = 400 * 1024 * 1024
+UPDATE_TIMEOUT = 15
+UPDATE_DISABLED = bool(os.environ.get("SGM_NO_UPDATE"))   # tests et captures : jamais de réseau
+
+
+class UpdateError(Exception):
+    pass
+
+
+def parse_version(text: str) -> tuple:
+    """« v0.10 », « beta v0.8.1 », « 0.8 » -> (0, 10) / (0, 8, 1) / (0, 8). Vide si illisible."""
+    m = re.search(r"(\d+(?:\.\d+)+)", str(text or ""))
+    return tuple(int(x) for x in m.group(1).split(".")) if m else ()
+
+
+def is_newer(remote: str, local: str = APP_VERSION) -> bool:
+    r, l = parse_version(remote), parse_version(local)
+    if not r or not l:
+        return False
+    n = max(len(r), len(l))
+    return r + (0,) * (n - len(r)) > l + (0,) * (n - len(l))
+
+
+def should_check_updates(enabled, last_check: float, now: float | None = None) -> bool:
+    """`enabled` : None = pas encore demandé, True / False = choix de l'utilisateur."""
+    now = time.time() if now is None else now
+    return enabled is True and now - float(last_check or 0) >= UPDATE_EVERY
+
+
+def release_info(data: dict) -> dict | None:
+    """Release GitHub -> {version, notes, zip_url, sha_url, page, size}. None si pas une version utilisable :
+    brouillon, préversion, pas de .zip SGM, ou adresse de téléchargement hors du dépôt FuchyBe/SGM."""
+    if not isinstance(data, dict) or data.get("draft") or data.get("prerelease"):
+        return None
+    version = ".".join(map(str, parse_version(data.get("tag_name") or data.get("name") or "")))
+    if not version:
+        return None
+    zip_a = sha_a = None
+    for a in data.get("assets") or []:
+        name = str(a.get("name") or "")
+        url = str(a.get("browser_download_url") or "")
+        if not url.startswith(DOWNLOAD_PREFIX):
+            continue
+        low = name.lower()
+        if low.startswith("sgm") and low.endswith(".zip"):
+            zip_a = a
+        elif low.endswith(".sha256") or low in ("sha256sums.txt", "sha256sums"):
+            sha_a = a
+    if zip_a is None:
+        return None
+    return {"version": version, "notes": str(data.get("body") or "")[:20000],
+            "zip_name": zip_a["name"], "zip_url": zip_a["browser_download_url"], "size": int(zip_a.get("size") or 0),
+            "sha_url": sha_a["browser_download_url"] if sha_a else "",
+            "page": str(data.get("html_url") or RELEASES_PAGE)}
+
+
+def _http_get(url: str, limit: int = 2 * 1024 * 1024, progress=None) -> bytes:
+    import urllib.request
+    req = urllib.request.Request(url, headers={"User-Agent": f"SGM/{APP_VERSION}",
+                                               "Accept": "application/vnd.github+json, */*"})
+    with urllib.request.urlopen(req, timeout=UPDATE_TIMEOUT) as r:
+        total = int(r.headers.get("Content-Length") or 0)
+        if total > limit:
+            raise UpdateError("too large")
+        out = bytearray()
+        while True:
+            chunk = r.read(1 << 16)
+            if not chunk:
+                break
+            out += chunk
+            if len(out) > limit:
+                raise UpdateError("too large")
+            if progress:
+                progress(len(out), total)
+    return bytes(out)
+
+
+def fetch_latest_release(getter=None) -> dict | None:
+    getter = getter or _http_get
+    try:
+        data = json.loads(getter(RELEASES_API).decode("utf-8"))
+    except UpdateError:
+        raise
+    except Exception as e:
+        raise UpdateError(str(e))
+    return release_info(data)
+
+
+def expected_sha256(text: str, zip_name: str) -> str:
+    """Empreinte attendue dans un fichier « <hash>  <nom> » (ou un hash seul)."""
+    for line in str(text).splitlines():
+        parts = line.strip().split()
+        if not parts or not re.fullmatch(r"[0-9a-fA-F]{64}", parts[0]):
+            continue
+        if len(parts) == 1 or parts[-1].lstrip("*").lower() == zip_name.lower():
+            return parts[0].lower()
+    return ""
+
+
+def unpack_update(zip_path: Path, dest: Path) -> Path:
+    """Extrait la nouvelle version (chemins sûrs uniquement) et rend le dossier qui contient SGM.exe."""
+    with zipfile.ZipFile(zip_path) as z:
+        total = 0
+        for info in z.infolist():
+            name = info.filename.replace("\\", "/")
+            if name.startswith("/") or ".." in PurePosixPath(name).parts or ":" in name:
+                raise UpdateError(f"unsafe path: {name}")
+            total += info.file_size
+            if total > UPDATE_MAX_BYTES * 2:
+                raise UpdateError("too large")
+        z.extractall(dest)
+    exe = [p for p in dest.rglob("SGM.exe") if "SGM_data" not in p.parts]
+    if len(exe) != 1:
+        raise UpdateError("SGM.exe not found in the archive")
+    return exe[0].parent
+
+
+def updater_script(src: Path, dst: Path, pid: int, backup: Path, log: Path) -> str:
+    """Script Windows lancé après la fermeture de SGM : sauvegarde de la version actuelle, copie de la nouvelle
+    (SGM_data jamais touché), retour à l'ancienne en cas d'échec, puis relance de SGM."""
+    return "\r\n".join([
+        "@echo off",
+        "chcp 65001 >nul",
+        "setlocal",
+        f'set "SRC={src}"',
+        f'set "DST={dst}"',
+        f'set "BAK={backup}"',
+        f'set "LOG={log}"',
+        f'echo SGM : mise a jour en attente de la fermeture (PID {pid}) > "%LOG%"',
+        ":wait",
+        f'tasklist /FI "PID eq {pid}" 2>nul | find "{pid}" >nul && (timeout /t 1 /nobreak >nul & goto wait)',
+        'robocopy "%DST%" "%BAK%" /E /XD SGM_data /R:2 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
+        "if %ERRORLEVEL% GEQ 8 goto fail",
+        'robocopy "%SRC%" "%DST%" /E /XD SGM_data /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
+        "if %ERRORLEVEL% GEQ 8 goto rollback",
+        'echo OK >> "%LOG%"',
+        'start "" "%DST%\\SGM.exe"',
+        "goto end",
+        ":rollback",
+        'echo ECHEC : retour a la version precedente >> "%LOG%"',
+        'robocopy "%BAK%" "%DST%" /E /XD SGM_data /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
+        ":fail",
+        'start "" "%DST%\\SGM.exe"',
+        ":end",
+        "endlocal",
+        "",
+    ])
+
+
+def prepare_update(info: dict, progress=None, getter=None, base: Path | None = None) -> dict:
+    """Télécharge le .zip et son empreinte, vérifie le SHA-256, extrait, écrit le script de remplacement.
+    Ne modifie pas encore l'application. UpdateError("sha") si l'empreinte ne correspond pas."""
+    getter = getter or _http_get
+    if not info.get("sha_url"):
+        raise UpdateError("no_sha")
+    base = base or (data_dir() / "update")
+    work = base / info["version"]
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True, exist_ok=True)
+    want = expected_sha256(getter(info["sha_url"]).decode("utf-8", "replace"), info["zip_name"])
+    if not want:
+        raise UpdateError("no_sha")
+    data = getter(info["zip_url"], UPDATE_MAX_BYTES, progress)
+    if hashlib.sha256(data).hexdigest() != want:
+        raise UpdateError("sha")
+    zp = work / info["zip_name"]
+    zp.write_bytes(data)
+    src = unpack_update(zp, work / "new")
+    script = base / "sgm-update.bat"
+    log = base / "update.log"
+    backup = base / f"backup-v{APP_VERSION}"
+    shutil.rmtree(backup, ignore_errors=True)
+    script.write_text(updater_script(src, app_dir(), os.getpid(), backup, log), encoding="utf-8")
+    LOG.info("Mise à jour v%s préparée (SHA-256 vérifié)", info["version"])
+    return {"version": info["version"], "script": script, "src": src}
+
+
 def sim_running(sim: str) -> bool:
     if os.name != "nt":
         return False
@@ -3381,6 +3579,34 @@ class ScanWorker(QThread):
         self.done.emit(scenes)
 
 
+class UpdateCheckWorker(QThread):
+    done = Signal(object, str)                 # release_info ou None, message d'erreur
+
+    def run(self):
+        try:
+            self.done.emit(fetch_latest_release(), "")
+        except Exception as e:
+            self.done.emit(None, str(e) or e.__class__.__name__)
+
+
+class UpdateDownloadWorker(QThread):
+    """Télécharge, vérifie (SHA-256) et prépare la nouvelle version, sans rien remplacer."""
+    progress = Signal(int, int)
+    done = Signal(object, str)                 # dict (script…) ou None, clé ou message d'erreur
+
+    def __init__(self, info: dict):
+        super().__init__()
+        self.info = info
+
+    def run(self):
+        try:
+            self.done.emit(prepare_update(self.info, lambda a, b: self.progress.emit(a, b)), "")
+        except UpdateError as e:
+            self.done.emit(None, str(e))
+        except Exception as e:
+            self.done.emit(None, str(e) or e.__class__.__name__)
+
+
 class DownloadsWorker(QThread):
     done = Signal(list)
 
@@ -4037,6 +4263,10 @@ class MainWindow(QMainWindow):
         a.setChecked(self.config.check_downloads)
         a.toggled.connect(self.set_check_downloads)
         m_set.addAction(a)
+        a = QAction(tr("m_update_auto"), self, checkable=True)
+        a.setChecked(self.config.update_check is True)
+        a.toggled.connect(self.set_update_check)
+        m_set.addAction(a)
         m_clean = m_set.addMenu(tr("m_arch_cleanup"))
         cgrp = QActionGroup(self)
         for mode in ARCHIVE_CLEANUP:
@@ -4080,6 +4310,9 @@ class MainWindow(QMainWindow):
         a.triggered.connect(self.make_statics_report)
         m_help.addAction(a)
         m_help.addSeparator()
+        a = QAction(tr("m_check_updates"), self)
+        a.triggered.connect(lambda: self.check_updates(manual=True))
+        m_help.addAction(a)
         for key, fn in (("m_donate", self.donate), ("m_about", self.about)):
             a = QAction(tr(key), self)
             a.triggered.connect(fn)
@@ -4603,8 +4836,145 @@ class MainWindow(QMainWindow):
         elif self.config.check_downloads and not self._dl_checked:
             self._dl_checked = True
             self.check_downloads_now(False)
+        if not self._upd_started:
+            self._upd_started = True
+            QTimer.singleShot(800, self.maybe_check_updates)
 
     _scan_time = ""
+    _upd_started = False
+    upd_worker = None
+
+    # ── Mise à jour automatique
+    def set_update_check(self, on: bool):
+        self.config.update_check = bool(on)
+        self._save_config_quiet()
+
+    def _save_config_quiet(self):
+        try:
+            self.config.save()
+        except OSError:
+            pass
+
+    def maybe_check_updates(self):
+        """Au lancement : demande une fois l'autorisation, puis au plus une vérification par jour."""
+        if UPDATE_DISABLED:
+            return
+        if self.config.update_check is None:
+            self.config.update_check = ask(self, tr("update_ask"))
+            self._save_config_quiet()
+        if should_check_updates(self.config.update_check, self.config.update_last):
+            self.check_updates(manual=False)
+
+    def check_updates(self, manual: bool):
+        if UPDATE_DISABLED and not manual:
+            return
+        if self.upd_worker is not None and self.upd_worker.isRunning():
+            return
+        self.upd_worker = UpdateCheckWorker()
+        self.upd_worker.done.connect(lambda info, err, mn=manual: self.on_update_result(info, err, mn))
+        self.upd_worker.start()
+
+    def on_update_result(self, info, err: str, manual: bool):
+        self.config.update_last = time.time()
+        self._save_config_quiet()
+        if err:
+            LOG.info("Vérification des mises à jour impossible : %s", err)
+            if manual:
+                warn(self, tr("update_fail", err=err))
+            return
+        if info and is_newer(info["version"]):
+            LOG.info("Nouvelle version disponible : v%s", info["version"])
+            if manual or info["version"] != self.config.update_skip:
+                self.show_update_dialog(info)
+        elif manual:
+            QMessageBox.information(self, APP_NAME, tr("update_uptodate", ver=APP_VERSION))
+
+    def show_update_dialog(self, info: dict):
+        auto = os.name == "nt" and getattr(sys, "frozen", False)
+        dlg = QDialog(self)
+        dlg.setWindowTitle(APP_NAME)
+        dlg.resize(560, 460)
+        v = QVBoxLayout(dlg)
+        v.setContentsMargins(22, 20, 22, 18)
+        v.setSpacing(10)
+        h = QLabel(tr("update_title", ver=info["version"]))
+        h.setObjectName("h1")
+        h.setStyleSheet("font-size: 17px;")
+        sub_ = QLabel(tr("update_current", cur=APP_VERSION))
+        sub_.setObjectName("hint")
+        notes = QTextBrowser()
+        notes.setObjectName("doc")
+        notes.setOpenExternalLinks(True)
+        notes.setMarkdown(info.get("notes") or info.get("page", ""))
+        v.addWidget(h)
+        v.addWidget(sub_)
+        v.addWidget(notes, 1)
+        row = QHBoxLayout()
+        skip = QPushButton(tr("update_skip"))
+        skip.setObjectName("ghost")
+        later = QPushButton(tr("update_later"))
+        go = QPushButton(tr("update_now") if auto else tr("update_page"))
+        go.setObjectName("primary")
+        go.setDefault(True)
+        row.addWidget(skip)
+        row.addStretch()
+        row.addWidget(later)
+        row.addWidget(go)
+        v.addLayout(row)
+        choice = {"v": ""}
+        skip.clicked.connect(lambda: (choice.update(v="skip"), dlg.accept()))
+        later.clicked.connect(dlg.reject)
+        go.clicked.connect(lambda: (choice.update(v="go"), dlg.accept()))
+        dlg.exec()
+        dlg.deleteLater()
+        if choice["v"] == "skip":
+            self.config.update_skip = info["version"]
+            self._save_config_quiet()
+        elif choice["v"] == "go":
+            if auto:
+                self.start_update(info)
+            else:
+                QDesktopServices.openUrl(QUrl(info["page"]))
+
+    def start_update(self, info: dict):
+        if not info.get("sha_url"):
+            warn(self, tr("update_no_sha"))
+            QDesktopServices.openUrl(QUrl(info["page"]))
+            return
+        prog = QProgressDialog(tr("update_dl", ver=info["version"]), tr("update_later"), 0, 100, self)
+        prog.setWindowTitle(APP_NAME)
+        prog.setWindowModality(Qt.WindowModal)
+        prog.setMinimumDuration(0)
+        prog.setAutoClose(False)
+        self.dl_upd = UpdateDownloadWorker(info)
+        self.dl_upd.progress.connect(lambda a, b: prog.setValue(int(a * 100 / b)) if b else None)
+        cancelled = {"v": False}
+        prog.canceled.connect(lambda: cancelled.update(v=True))
+
+        def finished(res, err):
+            prog.close()
+            prog.deleteLater()
+            if cancelled["v"]:
+                return
+            if err:
+                LOG.warning("Mise à jour non préparée : %s", err)
+                if err == "sha":
+                    warn(self, tr("update_bad"))
+                elif err == "no_sha":
+                    warn(self, tr("update_no_sha"))
+                    QDesktopServices.openUrl(QUrl(info["page"]))
+                else:
+                    warn(self, tr("update_err", err=err))
+                return
+            if not ask(self, tr("update_ready", ver=res["version"])):
+                return
+            LOG.info("Lancement de la mise à jour vers v%s", res["version"])
+            subprocess.Popen(["cmd", "/c", str(res["script"])], cwd=str(res["script"].parent),
+                             creationflags=0x00000008 | 0x08000000)      # DETACHED_PROCESS | CREATE_NO_WINDOW
+            QApplication.instance().quit()
+        self.dl_upd.done.connect(finished)
+        self.dl_upd.start()
+        prog.show()
 
     _gsx_index: list = []
 

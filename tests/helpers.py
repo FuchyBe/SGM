@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+os.environ["SGM_NO_UPDATE"] = "1"   # jamais de réseau
 import statics_manager as m  # noqa: E402
 
 FILETIME_EPOCH = 116444736000000000

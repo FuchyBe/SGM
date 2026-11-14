@@ -1,0 +1,55 @@
+# Prépare une version publiable de SGM, en BROUILLON : seul Fabian la publie (bouton « Publish release »).
+# Lancement : onglet Actions › « Préparer une release (brouillon) » › Run workflow.
+# Contenu : SGM_beta_vX.Y.zip (dossier SGM complet) + SGM_beta_vX.Y.zip.sha256, notes tirées du README.
+# La mise à jour automatique de SGM n'installe que des releases publiées, avec ce fichier .sha256.
+name: Préparer une release (brouillon)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyside6 pyinstaller
+      - name: Version
+        id: v
+        shell: pwsh
+        run: |
+          $ver = (Select-String -Path statics_manager.py -Pattern '^APP_VERSION = "([^"]+)"').Matches[0].Groups[1].Value
+          "ver=$ver" >> $env:GITHUB_OUTPUT
+      - name: Compilation (dossier, conforme LGPL)
+        run: python -m PyInstaller --noconfirm --clean --onedir --windowed --icon assets/SGM.ico --name SGM statics_manager.py
+      - name: Paquet, empreinte et notes
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.v.outputs.ver }}"
+          Copy-Item -Recurse licenses dist/SGM/licenses
+          Copy-Item README.md, README_FR.md dist/SGM/
+          $zip = "SGM_beta_v$ver.zip"
+          Compress-Archive -Path dist/SGM -DestinationPath $zip -Force
+          $h = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$h  $zip" | Out-File -Encoding ascii "$zip.sha256"
+          # notes : section « **beta vX.Y** » de l'historique du README
+          $lines = Get-Content README.md -Encoding utf8
+          $start = [array]::IndexOf($lines, "**beta v$ver**")
+          $notes = @()
+          if ($start -ge 0) {
+            for ($i = $start + 1; $i -lt $lines.Count -and $lines[$i] -ne ""; $i++) { $notes += $lines[$i] }
+          }
+          ($notes -join "`n") | Out-File -Encoding utf8 notes.md
+      - name: Release en brouillon
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.v.outputs.ver }}"
+          gh release create "v$ver" "SGM_beta_v$ver.zip" "SGM_beta_v$ver.zip.sha256" `
+            --draft --title "SGM beta v$ver" --notes-file notes.md --target "${{ github.sha }}"
