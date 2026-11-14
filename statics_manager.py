@@ -33,7 +33,7 @@ import time
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import quote, quote_plus, urlencode
 import platform
 from pathlib import Path, PurePosixPath
 
@@ -61,9 +61,18 @@ DONATE_URL = "https://paypal.me/Fuchy"
 ISSUES_NEW_URL = "https://github.com/FuchyBe/SGM/issues/new"
 
 SEARCH_ENGINES = {
-    "fsto": "https://flightsim.to/search/?keyword={q}",
+    # flightsim.to : la recherche est dans le chemin (/discover/EBBR%20GSX) ; « /search/?keyword= » n'applique
+    # pas le mot-clé (vérifié par Fabian le 2026-11-14).
+    "fsto": "https://flightsim.to/discover/{q}",
     "web": "https://www.google.com/search?q=site%3Aflightsim.to+{q}",
 }
+
+
+def search_url(engine: str, query: str) -> str:
+    """Adresse de recherche : espaces en %20 dans un chemin (flightsim.to), en + dans une requête (web)."""
+    tpl = SEARCH_ENGINES.get(engine, SEARCH_ENGINES["fsto"])
+    q = quote(query, safe="") if "{q}" in tpl.split("?")[0] else quote_plus(query)
+    return tpl.format(q=q)
 
 FILETIME_EPOCH = 116444736000000000  # 1601-01-01 -> 1970-01-01 en unités de 100 ns
 MAX_BACKUPS_PER_SCENE = 10
@@ -4311,7 +4320,7 @@ class MainWindow(QMainWindow):
 
     # ── GSX
     def search_profile(self, scene: Scene):
-        url = SEARCH_ENGINES.get(self.config.search, SEARCH_ENGINES["fsto"]).format(q=quote_plus(gsx_search_query(scene)))
+        url = search_url(self.config.search, gsx_search_query(scene))
         QDesktopServices.openUrl(QUrl(url))
 
     def set_search_engine(self, key: str):
