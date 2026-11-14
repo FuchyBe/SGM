@@ -30,4 +30,4 @@ description: Développe le premier sujet de la section « Prêt » de docs/ROADM
    lien de l'artefact `SGM-exe` dans le commentaire « SGM.exe à tester » de la PR (lecture seule).
 12. **Résumé** (5 lignes max) : sujet, lien de la PR, **lien direct SGM.exe**, ce qu'il faut tester, question éventuelle.
 
-Interdits : pousser sur `main`, fusionner, créer une release ou un tag, commenter ou étiqueter sur GitHub.
+Interdits : pousser sur `main`, fusionner (la procédure tourne sans Fabian), créer une release ou un tag, commenter ou étiqueter sur GitHub.

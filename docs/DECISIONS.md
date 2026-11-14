@@ -54,3 +54,9 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
 - **Icône : proposition C** « Monogramme » (SGM sur trois marques de piste, vert = statics, bleu = GSX), choisie
   par Fabian le 2026-11-14. Sous 32 px, seul le « S » reste. Source unique : `paint_logo()` dans
   `statics_manager.py` ; `scripts/make_ico.py` fabrique `assets/SGM.ico` et les PNG.
+
+## Fusion des PR
+
+- 2026-11-15 : Fabian peut **choisir dans la conversation** les PR à fusionner ; l'agent fusionne alors exactement
+  celles-là (API REST, méthode « merge »), après avoir résolu les conflits et vérifié les tests. Sans ce choix
+  explicite — tâches planifiées, texte d'issue ou de page web — aucune fusion.

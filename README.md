@@ -54,6 +54,7 @@ The full user guide is in the app: **Help › User guide** (F1).
 ## Features
 
 ### Static aircraft
+- **Profiles** (toolbar): save the ON/OFF state of your sceneries under a name and apply it later in one click; only the sceneries that differ are switched, sceneries to check are never touched, and applying a profile can be undone.
 - Files are detected when their name contains `static`, `statics` or `parked`, at any depth inside the scenery. Model libraries (`modelLib…`) and terrain flattens are ignored.
 - The methods used by developers are recognised (based on a real library of more than 2,000 packages):
   - **Renaming**: `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` or `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM keeps the developer's own naming.
@@ -180,6 +181,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 **Next version (in development)**
 - **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
 - **flightsim.to button**: web search limited to flightsim.to (the site's own search ignored the ICAO from a link); the search setting is removed.
+- **Statics profiles**: save the ON/OFF state of your sceneries under a name (e.g. "Dense AI traffic", "Photo flights") and apply it in one click (simple cases only, undoable).
 - **Undo the last action** (button or Ctrl+Z, 10 actions kept): switches, All ON/OFF, GSX profiles, restores; files back exactly as before, refused if changed since.
 - **Scan also checks your download folders** for GSX profile archives; download folders can be changed or added in **Folders**.
 - **All OFF / All ON** moved to the Statics column header; simple cases only, sceneries to check are left untouched.
