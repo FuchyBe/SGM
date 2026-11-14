@@ -138,7 +138,11 @@ La version de SGM, le simulateur et la version de Windows sont ajoutés automati
 
 **Aide › Créer un rapport d'analyse des statics…** parcourt toutes tes scènes sans rien modifier et enregistre un fichier `.json` dans `SGM_data\reports`. Il liste les fichiers de type statics trouvés dans chaque scène (noms à l'intérieur de la scène, tailles, empreintes, présence dans `layout.json`, interprétation de SGM). Il ne contient aucun chemin personnel ni nom d'utilisateur. Joins-le à une issue GitHub pour aider à améliorer les règles de détection de SGM.
 
-Quand tu signales un problème, SGM propose de créer ce rapport en même temps : glisse le fichier dans la page GitHub avant d'envoyer.
+### Journal
+
+SGM note ce qu'il fait (lancement, analyses, chaque bascule avec les fichiers renommés ou copiés, installations GSX, erreurs) dans `SGM_data\logs\sgm.log`. Ton dossier personnel est remplacé par `~` : aucun nom d'utilisateur. Il est limité à 5 fichiers de 1 Mo. **Aide › Ouvrir le dossier du journal** l'ouvre.
+
+Quand tu signales un problème, SGM propose de créer le rapport d'analyse et prépare toujours une copie du journal dans `SGM_data\reports` : glisse ces fichiers dans la page GitHub avant d'envoyer.
 
 ## Soutenir le projet
 
@@ -168,6 +172,9 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Microsoft Flight Simulator est une marque de Microsoft Corporation. GSX est un produit de FSDreamTeam / Virtuali. Les autres noms et marques appartiennent à leurs propriétaires.
 
 ## Historique des versions
+
+**Prochaine version (en développement)**
+- **Journal** (`SGM_data\logs`, sans nom d'utilisateur), joint aux signalements de bug ; Aide › Ouvrir le dossier du journal.
 
 **beta v0.7**
 - **Statics : beaucoup plus de méthodes d'éditeurs reconnues**, à partir d'une vraie bibliothèque de plus de 2 000 paquets et des instructions des éditeurs : `.off`, `.disabled`, fichiers « static » au singulier et « parked », doubles identiques, versions `.nostatic` (méthode officielle Orbx / Drzewiecki, compatible avec le panneau Orbx Central, échange de `layout.json` compris), paires `_static` / `_nostatic`, fichiers d'aéroport complet avec statics, UK2000 `.staticq`. SGM garde la convention de chaque éditeur.
