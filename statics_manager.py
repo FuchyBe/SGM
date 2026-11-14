@@ -35,7 +35,7 @@ from urllib.parse import quote_plus, urlencode
 import platform
 from pathlib import Path, PurePosixPath
 
-from PySide6.QtCore import (Property, QEasingCurve, QPropertyAnimation, QRectF,
+from PySide6.QtCore import (QEvent, Property, QEasingCurve, QPropertyAnimation, QRectF,
                             QSize, Qt, QThread, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont,
                            QIcon, QPainter, QPainterPath, QPen, QPixmap)
@@ -169,6 +169,7 @@ class Config:
         self.search = "fsto"
         self.check_downloads = True
         self.seen_archives: list = []
+        self.col_fs, self.col_fg = COL_STATICS_W / COL_REF_W, COL_GSX_W / COL_REF_W
         self.sim = DEFAULT_SIM
         self.profiles: dict = {}
         try:
@@ -180,6 +181,13 @@ class Config:
                 self.lang = str(data.get("lang") or "en")
                 self.search = data.get("search") if data.get("search") in SEARCH_ENGINES else "fsto"
                 self.check_downloads = bool(data.get("check_downloads", True))
+                cols = data.get("columns") or {}
+                try:
+                    fs, fg = float(cols.get("statics", self.col_fs)), float(cols.get("gsx", self.col_fg))
+                    if 0.1 <= fs <= 0.6 and 0.1 <= fg <= 0.7 and fs + fg <= 0.85:
+                        self.col_fs, self.col_fg = fs, fg
+                except (TypeError, ValueError):
+                    pass
                 self.seen_archives = [str(x) for x in data.get("seen_archives", [])][-300:]
                 self.sim = data.get("sim") if data.get("sim") in SIMS else DEFAULT_SIM
                 for sim, p in (data.get("profiles") or {}).items():
@@ -251,6 +259,7 @@ class Config:
     def save(self):
         data = {"version": 3, "lang": self.lang, "sim": self.sim, "search": self.search,
                 "check_downloads": self.check_downloads, "seen_archives": self.seen_archives[-300:],
+                "columns": {"statics": self.col_fs, "gsx": self.col_fg},
                 "profiles": {}}
         for sim, p in self.profiles.items():
             q = dict(p)
@@ -1975,6 +1984,15 @@ QPushButton#searchBtn:hover {{ color: {C['blue']}; border-color: #2E4670; backgr
 QComboBox#catCombo {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 9px;
                       padding: 8px 34px 8px 12px; font-size: 13px; min-width: 190px; }}
 QComboBox#catCombo:hover {{ border-color: {C['border2']}; }}
+QComboBox#colFilter {{ background: transparent; border: 1px solid {C['border']}; border-radius: 7px;
+                      padding: 2px 26px 2px 9px; color: {C['muted']}; font-size: 11px; font-weight: 600; min-height: 20px; }}
+QComboBox#colFilter:hover {{ border-color: {C['border2']}; color: {C['text']}; }}
+QComboBox#colFilter[active="true"] {{ border-color: {C['accent']}; color: {C['accent']}; background: {C['surface']}; }}
+QComboBox#colFilter::drop-down {{ border: none; width: 22px; }}
+QComboBox#colFilter::down-arrow {{ image: none; width: 0; height: 0; }}
+QPushButton#linkBtn {{ background: transparent; border: none; color: {C['accent']}; padding: 4px 6px; }}
+QPushButton#linkBtn:hover {{ text-decoration: underline; }}
+QFrame#colHandle {{ background: transparent; border: none; }}
 QComboBox#catCombo::drop-down {{ border: none; width: 30px; }}
 QComboBox#catCombo::down-arrow {{ image: none; width: 0; height: 0; }}
 QPushButton#folderBtn {{ background: transparent; border: 1px solid transparent; border-radius: 6px;
@@ -2202,8 +2220,30 @@ GSX_INFO_KEY = {GSX_MISSING: "gsx_info_missing", GSX_SAME: "gsx_info_same", GSX_
 FILTER_KEYS = ("all", "on", "off", "new", "check")
 CATEGORY_KEYS = ("all", "statics", "gsx_scene", "gsx_manual", "gsx_none")
 
-COL_STATICS_W = 220
-COL_GSX_W = 300
+COL_STATICS_W = 330          # largeurs de départ (×1,5 depuis la v0.7)
+COL_GSX_W = 450
+COL_STATICS_MIN = 250        # minimums : bascule, boutons et icônes toujours visibles
+COL_GSX_MIN = 320
+COL_SCENE_MIN = 230
+COL_REF_W = 1200             # largeur de liste de référence pour les proportions par défaut
+STATICS_FILTERS = ("all", "on", "off", "check", "none")
+GSX_FILTERS = ("all", "installed", "todo", "manual", "none", "check")
+
+
+def column_widths(avail: int, fs: float, fg: float) -> tuple[int, int]:
+    """Largeurs des colonnes Statics et GSX pour une liste de `avail` px, proportions fs / fg,
+    minimums respectés et colonne scène jamais sous son minimum."""
+    overhead = ROW_MARGINS[0] + ROW_MARGINS[2] + 4 * ROW_SPACING + 4
+    ws, wg = max(COL_STATICS_MIN, round(avail * fs)), max(COL_GSX_MIN, round(avail * fg))
+    excess = ws + wg + COL_SCENE_MIN + overhead - avail
+    if excess > 0:                         # fenêtre étroite : on réduit Statics et GSX jusqu'à leurs minimums
+        room_s, room_g = ws - COL_STATICS_MIN, wg - COL_GSX_MIN
+        room = room_s + room_g
+        if room > 0:
+            cut = min(excess, room)
+            ws -= round(cut * room_s / room)
+            wg -= cut - round(cut * room_s / room)
+    return ws, wg
 ROW_MARGINS = (16, 11, 14, 11)
 ROW_SPACING = 16
 
@@ -2230,27 +2270,110 @@ def column(width: int):
     return w, v
 
 
+class ColHandle(QFrame):
+    """Séparateur d'en-tête qu'on peut tirer pour régler la largeur des colonnes."""
+    dragged = Signal(int)
+    released = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("colHandle")
+        self.setCursor(Qt.SplitHCursor)
+        self.setFixedWidth(9)
+        self.setToolTip(tr("tip_col_resize"))
+        self._x = None
+
+    def mousePressEvent(self, e):
+        self._x = e.globalPosition().x()
+
+    def mouseMoveEvent(self, e):
+        if self._x is None:
+            return
+        x = e.globalPosition().x()
+        dx = round(x - self._x)
+        if dx:
+            self._x = x
+            self.dragged.emit(-dx if self.layoutDirection() == Qt.RightToLeft else dx)
+
+    def mouseReleaseEvent(self, _e):
+        self._x = None
+        self.released.emit()
+
+    def mouseDoubleClickEvent(self, _e):
+        self.released.emit()
+
+    def enterEvent(self, e):
+        self.update()
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self.update()
+        super().leaveEvent(e)
+
+    def paintEvent(self, _e):
+        # trait au centre, exactement sous le séparateur des lignes ; plus épais et coloré au survol
+        p = QPainter(self)
+        hover = self.underMouse() or self._x is not None
+        w = 2 if hover else 1
+        p.fillRect(QRectF((self.width() - w) / 2, 4, w, self.height() - 8),
+                   QColor(C["accent"] if hover else C["border"]))
+
+
 class ColumnHeader(QWidget):
-    """En-têtes alignés sur les colonnes des lignes."""
+    """En-têtes alignés sur les colonnes des lignes, avec un filtre identique pour Statics et GSX
+    et des poignées pour régler les largeurs."""
+    filter_changed = Signal(str, str)          # colonne ("statics" / "gsx"), clé du filtre
 
     def __init__(self):
         super().__init__()
         h = QHBoxLayout(self)
         l, _t, r, _b = ROW_MARGINS
         h.setContentsMargins(l + 1, 0, r + 1, 0)
-        h.setSpacing(ROW_SPACING)
-        for key, width in (("col_scene", None), (None, 0), ("col_statics", COL_STATICS_W),
-                           (None, 0), ("col_gsx", COL_GSX_W)):
-            if key is None:
-                h.addWidget(vsep(False))
-                continue
+        h.setSpacing(ROW_SPACING - 4)        # poignée de 9 px : son trait central tombe sur le séparateur des lignes
+        scene = QLabel(tr("col_scene"))
+        scene.setObjectName("colHead")
+        h.addWidget(scene, 1)
+        self.handles = [ColHandle(), ColHandle()]
+        self.boxes, self.combos = {}, {}
+        for i, (col, key, filters) in enumerate((("statics", "col_statics", STATICS_FILTERS),
+                                                  ("gsx", "col_gsx", GSX_FILTERS))):
+            h.addWidget(self.handles[i])
+            box = QWidget()
+            bl = QHBoxLayout(box)
+            bl.setContentsMargins(0, 0, 0, 0)
+            bl.setSpacing(8)
             lbl = QLabel(tr(key))
             lbl.setObjectName("colHead")
-            if width:
-                lbl.setFixedWidth(width)
-                h.addWidget(lbl)
-            else:
-                h.addWidget(lbl, 1)
+            combo = ChevronCombo()
+            combo.setObjectName("colFilter")
+            combo.setCursor(Qt.PointingHandCursor)
+            combo.setToolTip(tr("tip_col_filter"))
+            prefix = "fst_" if col == "statics" else "fgx_"
+            for k in filters:
+                combo.addItem(tr(prefix + k), k)
+            combo.currentIndexChanged.connect(lambda _i, c=col, cb=combo: self._changed(c, cb))
+            bl.addWidget(lbl)
+            bl.addWidget(combo)
+            bl.addStretch()
+            h.addWidget(box)
+            self.boxes[col], self.combos[col] = box, combo
+
+    def _changed(self, col, combo):
+        key = combo.currentData() or "all"
+        polish(combo, active=key != "all")
+        self.filter_changed.emit(col, key)
+
+    def set_filter(self, col: str, key: str):
+        combo = self.combos[col]
+        i = max(0, combo.findData(key))
+        combo.blockSignals(True)
+        combo.setCurrentIndex(i)
+        combo.blockSignals(False)
+        polish(combo, active=(combo.currentData() or "all") != "all")
+
+    def set_widths(self, ws: int, wg: int):
+        self.boxes["statics"].setFixedWidth(ws)
+        self.boxes["gsx"].setFixedWidth(wg)
 
 
 class SceneRow(QFrame):
@@ -2300,6 +2423,7 @@ class SceneRow(QFrame):
 
         # ── Colonne statics
         col, cv = column(COL_STATICS_W)
+        self.st_col = col
         line = QHBoxLayout()
         line.setSpacing(10)
         self.state_lbl = QLabel()
@@ -2328,6 +2452,8 @@ class SceneRow(QFrame):
 
         # ── Colonne GSX
         col, gv = column(COL_GSX_W)
+        self.gsx_col = col
+        self.gsx_state = "none"
         self.gsx_line = QHBoxLayout()
         self.gsx_line.setSpacing(6)
         self.gsx_none = QLabel(tr("gsx_none"))
@@ -2426,9 +2552,21 @@ class SceneRow(QFrame):
         b.clicked.connect(lambda _=False: self.search_requested.emit(self.scene))
         self._add_gsx_widget(b)
 
+    def set_col_widths(self, ws: int, wg: int):
+        self.st_col.setFixedWidth(ws)
+        self.gsx_col.setFixedWidth(wg)
+
+    def statics_state(self) -> str:
+        """Clé du filtre Statics : on / off / check / none."""
+        s = self.scene
+        if not s.groups:
+            return "none"
+        return {ON: "on", OFF: "off"}.get(s.state, "check")
+
     def refresh_gsx(self):
         s = self.scene
         self._clear_gsx()
+        self.gsx_state = "none"
         self.manual = gsx_manual_profiles(s, self.gsx_index_fn()) if self.gsx_index_fn else []
         if self.gsx_folder_fn is None:
             self.gsx_none.show()
@@ -2437,6 +2575,7 @@ class SceneRow(QFrame):
         if not s.gsx_variants:
             # ── Aucun profil fourni avec la scène : profil installé à la main ? sinon recherche
             if self.manual:
+                self.gsx_state = "manual"
                 self.gsx_none.hide()
                 lbl = QLabel(tr("gsx_manual_lbl"))
                 lbl.setObjectName("gsxManual")
@@ -2453,6 +2592,7 @@ class SceneRow(QFrame):
         self.gsx_none.hide()
         self._refresh_scene_profile()
         if self.manual:      # un autre profil pour le même aéroport : GSX risque de choisir le mauvais
+            self.gsx_state = "check"
             txt = tr("gsx_other_installed", files=", ".join(self.manual))
             self._note(txt, is_warn=True, tip=txt)
 
@@ -2474,6 +2614,7 @@ class SceneRow(QFrame):
         if len(s.gsx_variants) == 1:
             v = s.gsx_variants[0]
             st = gsx_status(v.files, dest)
+            self.gsx_state = {GSX_SAME: "installed", GSX_MISSING: "todo"}.get(st, "check")
             b = QPushButton(tr(GSX_TEXT_KEY[st]))
             b.setObjectName("gsx")
             b.setCursor(Qt.PointingHandCursor)
@@ -2490,6 +2631,7 @@ class SceneRow(QFrame):
 
         # ── Plusieurs versions : une seule active, choix mémorisé
         state, act, why, why_name = gsx_variant_state(s, dest, self.choices.get(s.key))
+        self.gsx_state = {VAR_CHOSEN: "installed", VAR_NONE: "todo"}.get(state, "check")
         if state == VAR_CHOSEN and why == "auto" and self.on_auto_choice:
             self.on_auto_choice(s, variant_id(s, s.gsx_variants[act]))
 
@@ -2778,7 +2920,6 @@ class MainWindow(QMainWindow):
         self.scenes: dict = {}
         self.rows: dict = {}
         self.session_new: set = set()
-        self.filter = "all"
         self.worker = None
         self.busy = False
         sim = self.config.sim
@@ -2838,26 +2979,21 @@ class MainWindow(QMainWindow):
         ch = QHBoxLayout(chips)
         ch.setContentsMargins(3, 3, 3, 3)
         ch.setSpacing(2)
-        self.chip_group = QButtonGroup(self)
-        for key in FILTER_KEYS:
-            b = QPushButton(tr("f_" + key))
-            b.setObjectName("chipBtn")
-            b.setCheckable(True)
-            b.setCursor(Qt.PointingHandCursor)
-            b.setChecked(key == "all")
-            b.clicked.connect(lambda _=False, k=key: self.set_filter(k))
-            self.chip_group.addButton(b)
-            ch.addWidget(b)
+        self.new_chip = QPushButton(tr("f_new"))
+        self.new_chip.setObjectName("chipBtn")
+        self.new_chip.setCheckable(True)
+        self.new_chip.setCursor(Qt.PointingHandCursor)
+        self.new_chip.setToolTip(tr("tip_new_filter"))
+        self.new_chip.toggled.connect(lambda _c: self.apply_filter())
+        ch.addWidget(self.new_chip)
         bar.addWidget(chips)
-        self.category = "all"
-        self.cat_combo = ChevronCombo()
-        self.cat_combo.setObjectName("catCombo")
-        self.cat_combo.setToolTip(tr("cat_tip"))
-        self.cat_combo.setCursor(Qt.PointingHandCursor)
-        for key in CATEGORY_KEYS:
-            self.cat_combo.addItem(tr("cat_" + key), key)
-        self.cat_combo.currentIndexChanged.connect(self._category_changed)
-        bar.addWidget(self.cat_combo)
+        self.reset_btn = QPushButton(tr("btn_reset_filters"))
+        self.reset_btn.setObjectName("linkBtn")
+        self.reset_btn.setCursor(Qt.PointingHandCursor)
+        self.reset_btn.clicked.connect(self.reset_filters)
+        self.reset_btn.hide()
+        bar.addWidget(self.reset_btn)
+        self.st_filter, self.gsx_filter = "all", "all"
         root.addLayout(bar)
 
         # Actions
@@ -2937,6 +3073,11 @@ class MainWindow(QMainWindow):
         self.list_l.setContentsMargins(0, 0, 6, 0)
         self.list_l.setSpacing(8)
         self.col_header = ColumnHeader()
+        self.col_header.filter_changed.connect(self._column_filter_changed)
+        self.col_fs, self.col_fg = self.config.col_fs, self.config.col_fg
+        for i, hd in enumerate(self.col_header.handles):
+            hd.dragged.connect(lambda dx, i=i: self._drag_column(i, dx))
+            hd.released.connect(self._save_columns)
         self.list_l.addWidget(self.col_header)
         self.empty = QLabel(tr("empty_scanning"))
         self.empty.setObjectName("empty")
@@ -2944,6 +3085,7 @@ class MainWindow(QMainWindow):
         self.list_l.addWidget(self.empty)
         self.list_l.addStretch()
         self.scroll.setWidget(self.list_w)
+        self.scroll.viewport().installEventFilter(self)
         root.addWidget(self.scroll, 1)
 
         sep = QFrame()
@@ -2957,11 +3099,11 @@ class MainWindow(QMainWindow):
             self.sources = state["sources"]
             self.session_new = state["session_new"]
             self.scenes = state["scenes"]
-            self.filter = state.get("filter", "all")
-            for b, key in zip(self.chip_group.buttons(), FILTER_KEYS):
-                b.setChecked(key == self.filter)
-            cat = state.get("category", "all")
-            self.cat_combo.setCurrentIndex(max(0, list(CATEGORY_KEYS).index(cat) if cat in CATEGORY_KEYS else 0))
+            self.st_filter = state.get("st_filter", "all")
+            self.gsx_filter = state.get("gsx_filter", "all")
+            self.col_header.set_filter("statics", self.st_filter)
+            self.col_header.set_filter("gsx", self.gsx_filter)
+            self.new_chip.setChecked(state.get("new_only", False))
             self.search.setText(state.get("search", ""))
             self._scan_time = state.get("scan_time", "")
             self.rebuild_rows()
@@ -3084,7 +3226,8 @@ class MainWindow(QMainWindow):
         QApplication.instance().setLayoutDirection(Qt.RightToLeft if code in RTL_LANGS else Qt.LeftToRight)
         state = None if self.busy else {
             "sources": self.sources, "session_new": self.session_new, "scenes": self.scenes,
-            "filter": self.filter, "category": self.category, "search": self.search.text(),
+            "st_filter": self.st_filter, "gsx_filter": self.gsx_filter, "new_only": self.new_chip.isChecked(),
+            "search": self.search.text(),
             "status_fn": self._status_done_text,
             "scan_time": self._scan_time,
         }
@@ -3481,18 +3624,26 @@ class MainWindow(QMainWindow):
             row.gsx_requested.connect(self.on_gsx)
             row.search_requested.connect(self.search_profile)
             row.restore_requested.connect(self.on_restore)
+            row.set_col_widths(*column_widths(self._avail_width(), self.col_fs, self.col_fg))
             self.list_l.insertWidget(2 + i, row)
             self.rows[s.key] = row
         self.apply_filter()
         self.update_stats()
 
-    # ── Filtres
-    def set_filter(self, key: str):
-        self.filter = key
+    # ── Filtres (un par colonne, même logique pour Statics et GSX)
+    def _column_filter_changed(self, col: str, key: str):
+        if col == "statics":
+            self.st_filter = key
+        else:
+            self.gsx_filter = key
         self.apply_filter()
 
-    def _category_changed(self, _i):
-        self.category = self.cat_combo.currentData() or "all"
+    def reset_filters(self):
+        self.st_filter = self.gsx_filter = "all"
+        self.col_header.set_filter("statics", "all")
+        self.col_header.set_filter("gsx", "all")
+        self.new_chip.setChecked(False)
+        self.search.clear()
         self.apply_filter()
 
     def row_matches(self, row: SceneRow) -> bool:
@@ -3500,19 +3651,13 @@ class MainWindow(QMainWindow):
         q = self.search.text().strip().lower()
         if q and q not in f"{s.title} {s.folder} {s.creator} {s.icao}".lower():
             return False
-        c = self.category
-        if c == "statics" and not s.groups:
+        if self.new_chip.isChecked() and not s.is_new:
             return False
-        if c == "gsx_scene" and not s.gsx_variants:
+        if self.st_filter != "all" and row.statics_state() != self.st_filter:
             return False
-        if c == "gsx_manual" and (s.gsx_variants or not row.manual):
+        if self.gsx_filter != "all" and row.gsx_state != self.gsx_filter:
             return False
-        if c == "gsx_none" and (s.gsx_variants or row.manual):
-            return False
-        f = self.filter
-        st = s.state
-        return (f == "all" or (f == "on" and st == ON) or (f == "off" and st == OFF)
-                or (f == "new" and s.is_new) or (f == "check" and st in (MIXED, CONFLICT)))
+        return True
 
     def apply_filter(self):
         visible = 0
@@ -3525,6 +3670,46 @@ class MainWindow(QMainWindow):
         self.col_header.setVisible(visible > 0)
         filtered = visible != len(self.rows)
         self.scope_lbl.setText(tr("shown", n=visible) if filtered else "")
+        active = (self.st_filter != "all" or self.gsx_filter != "all" or self.new_chip.isChecked()
+                  or bool(self.search.text().strip()))
+        self.reset_btn.setVisible(active)
+        if visible == 0 and self.rows:
+            self.col_header.setVisible(True)      # garder les filtres de colonne accessibles
+
+    # ── Largeur des colonnes : proportionnelle à la fenêtre, réglable avec les poignées de l'en-tête
+    def eventFilter(self, obj, ev):
+        if obj is self.scroll.viewport() and ev.type() == QEvent.Resize:
+            self.layout_columns()
+        return super().eventFilter(obj, ev)
+
+    def _avail_width(self) -> int:
+        return max(400, self.scroll.viewport().width() - self.list_l.contentsMargins().left()
+                   - self.list_l.contentsMargins().right())
+
+    def layout_columns(self):
+        ws, wg = column_widths(self._avail_width(), self.col_fs, self.col_fg)
+        self.col_header.set_widths(ws, wg)
+        for row in self.rows.values():
+            row.set_col_widths(ws, wg)
+
+    def _drag_column(self, handle: int, dx: int):
+        avail = self._avail_width()
+        ws, wg = column_widths(avail, self.col_fs, self.col_fg)
+        if handle == 0:                    # bord gauche de Statics : la colonne s'élargit vers la gauche
+            ws = max(COL_STATICS_MIN, ws - dx)
+        else:                              # entre Statics et GSX
+            new_ws = max(COL_STATICS_MIN, min(ws + dx, ws + wg - COL_GSX_MIN))
+            wg -= new_ws - ws
+            ws = new_ws
+        overhead = ROW_MARGINS[0] + ROW_MARGINS[2] + 4 * ROW_SPACING + 4
+        if ws + wg + COL_SCENE_MIN + overhead > avail:      # la colonne scène garde son minimum
+            return
+        self.col_fs, self.col_fg = ws / avail, wg / avail
+        self.layout_columns()
+
+    def _save_columns(self):
+        self.config.col_fs, self.config.col_fg = round(self.col_fs, 4), round(self.col_fg, 4)
+        self.config.save()
 
     def update_stats(self):
         sc = list(self.scenes.values())
