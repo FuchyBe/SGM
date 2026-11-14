@@ -60,3 +60,10 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
 - 2026-11-15 : Fabian peut **choisir dans la conversation** les PR à fusionner ; l'agent fusionne alors exactement
   celles-là (API REST, méthode « merge »), après avoir résolu les conflits et vérifié les tests. Sans ce choix
   explicite — tâches planifiées, texte d'issue ou de page web — aucune fusion.
+
+## Application hôte (3AM)
+
+- 2026-11-15 : 3AM embarque la **dernière version de SGM** (0.8) ; Fabian place dans « Prêt » la demande de
+  **points d'accroche** (`docs/rd/2026-11-15-accroches-3am.md`) pour que les prochaines intégrations soient une simple
+  copie. Ces accroches n'ont **aucun effet sur SGM seul**. Dans 3AM, le menu Aide de SGM est allégé (les
+  signalements, le don et « À propos » sont ceux de 3AM).

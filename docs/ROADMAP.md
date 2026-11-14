@@ -9,7 +9,11 @@ Placés par Fabian le 2026-11-14, dans cet ordre.
 
 1. **Mise à jour automatique** — GitHub Releases + SHA-256 + programme de mise à jour, `SGM_data` préservé.
    Accès réseau optionnel accepté par Fabian (2026-11-14). Fiche `docs/rd/2026-11-14-mise-a-jour-et-remontee.md`,
-   étape 4. M.
+   étape 4. M. (Si SGM est embarqué dans 3AM : aucune mise à jour propre à SGM, voir n° 2, point S10.)
+2. **Points d'accroche pour une application hôte (3AM)** — placé par Fabian le 2026-11-15 (conversation 3AM).
+   SGM porte lui-même les accroches dont 3AM a besoin (thème, contrôle de MSFS à trois états, sources, menu Aide,
+   mise à jour inactive en mode hôte), **sans aucun effet sur SGM seul**. Fiche `docs/rd/2026-11-15-accroches-3am.md`
+   (S1 à S12). S/M.
 
 ## En cours (PR à tester)
 
