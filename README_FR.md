@@ -126,6 +126,10 @@ Utilise **Aide › Signaler un problème…** ou **Aide › Proposer une idée�
 
 La version de SGM, le simulateur et la version de Windows sont ajoutés automatiquement. Aucune donnée personnelle n'est envoyée : ne colle ni ton adresse e-mail, ni des chemins complets contenant ton nom d'utilisateur.
 
+### Rapport d'analyse des statics
+
+**Aide › Créer un rapport d'analyse des statics…** parcourt toutes tes scènes sans rien modifier et enregistre un fichier `.json` dans `SGM_data\reports`. Il liste les fichiers de type statics trouvés dans chaque scène (noms à l'intérieur de la scène, tailles, empreintes, présence dans `layout.json`, interprétation de SGM). Il ne contient aucun chemin personnel ni nom d'utilisateur. Joins-le à une issue GitHub pour aider à améliorer les règles de détection de SGM.
+
 ## Soutenir le projet
 
 SGM est gratuit. S'il te fait gagner du temps, tu peux soutenir son développement :
@@ -162,6 +166,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Filtre par catégorie : avec statics, profil GSX dans la scène, installé à la main, sans profil GSX.
 - Installation de profils GSX depuis une archive téléchargée : glisser-déposer, bouton Installer, détection dans Téléchargements au lancement (.zip ; .7z/.rar avec 7-Zip).
 - Les avions et livrées sont ignorés pendant l'analyse (plus rapide).
+- Rapport d'analyse des statics (menu Aide) : analyse en lecture seule pour améliorer les règles de détection.
 - Restauration de l'état d'origine : clic droit sur une scène, ou Aide › Tout restaurer à l'origine. SGM enregistre chaque scène et profil GSX tels qu'ils étaient avant sa première modification.
 - Sécurité des statics : un fichier statics au nom différent qui ne correspond à aucune variante on/off n'est jamais écrasé : il est affiché « À vérifier », avec une icône de dossier pour ouvrir le dossier du fichier statics et le faire manuellement.
 - Aide › Signaler un problème / Proposer une idée (issue GitHub préremplie).

@@ -126,6 +126,10 @@ Use **Help › Report a problem…** or **Help › Suggest an idea…** in SGM. 
 
 The SGM version, the simulator and the Windows version are added automatically. No personal information is sent: please do not paste your e-mail address or full file paths containing your user name.
 
+### Statics analysis report
+
+**Help › Create a statics analysis report…** scans all your sceneries without changing anything and saves a `.json` file in `SGM_data\reports`. It lists the statics-like files found in each scenery (names inside the scenery, sizes, fingerprints, whether they are in `layout.json`, and how SGM understood them). It contains no personal path or user name. Attach it to a GitHub issue to help improve SGM's detection rules.
+
 ## Support the project
 
 SGM is free. If it saves you time, you can support its development:
@@ -162,6 +166,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Category filter: with statics, GSX profile in scenery, installed manually, no GSX profile.
 - Install GSX profiles from downloaded archives: drag & drop, Install button, Downloads folder detection at launch (.zip; .7z/.rar with 7-Zip).
 - Aircraft and liveries are skipped during the scan (faster).
+- Statics analysis report (Help menu): read-only scan to help improve detection rules.
 - Restore original state: right-click a scenery, or Help › Restore everything to original. SGM records each scenery and GSX profile as it was before its first change.
 - Statics safety: a statics file with a different name that matches neither on/off variant is never overwritten: it is shown as "To check", with a folder icon to open the folder of the statics file and do it manually.
 - Help › Report a problem / Suggest an idea (pre-filled GitHub issue).

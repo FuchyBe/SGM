@@ -937,6 +937,108 @@ def origin_roots() -> list[Path]:
     return out
 
 
+# ── Rapport d'analyse des fichiers statics (lecture seule) ──
+# But : constituer une base réelle de noms de fichiers pour améliorer les règles de détection.
+# Aucun chemin complet ni nom d'utilisateur : uniquement des chemins relatifs au paquet de la scène.
+
+REPORT_SCHEMA = 1
+REPORT_EXTS = (".bgl", ".off", ".bak", ".disabled", ".old", ".orig", ".inactive")
+REPORT_WORDS = re.compile(r"static|parked|parking_?ai|(?<![a-z])(off|disabled?|deactivated?|inactive|without|nostatics?|"
+                          r"no[_ \-]?statics?|empty|bak)(?![a-z])", re.IGNORECASE)
+
+
+def _report_file(root: Path, p: Path, layout_paths: set) -> dict:
+    rel = Path(os.path.relpath(p, root)).as_posix()
+    try:
+        size = p.stat().st_size
+        h = file_hash(p)[:12]
+    except OSError:
+        size, h = -1, ""
+    return {"path": rel, "size": size, "sha1": h, "in_layout": rel.lower() in layout_paths}
+
+
+def report_scene(root: Path, source: str) -> dict | None:
+    """Description d'une scène pour le rapport, ou None si aucun fichier intéressant."""
+    man = read_manifest(root)
+    ctype = str(man.get("content_type") or "").upper()
+    if ctype in SKIP_CONTENT_TYPES:
+        return None
+    try:
+        layout = json.loads((root / "layout.json").read_text(encoding="utf-8-sig"))
+        layout_paths = {str(e.get("path", "")).replace("\\", "/").lower() for e in layout.get("content", [])}
+    except Exception:
+        layout_paths = set()
+    files, bgl_count, bgl_dirs = [], 0, set()
+    for dirpath, _dirs, filenames in os.walk(root, followlinks=True):
+        for fn in filenames:
+            low = fn.lower()
+            if low.endswith(".bgl"):
+                bgl_count += 1
+                bgl_dirs.add(Path(os.path.relpath(dirpath, root)).as_posix())
+            if any(low.endswith(e) for e in REPORT_EXTS) and REPORT_WORDS.search(fn.rsplit(".", 1)[0] if "." in fn else fn):
+                files.append(_report_file(root, Path(dirpath) / fn, layout_paths))
+            elif "static" in low:
+                files.append(_report_file(root, Path(dirpath) / fn, layout_paths))
+    if not files:
+        return None
+    sc = scan_package(root, source)
+    groups = []
+    for g in (sc.groups if sc else []):
+        groups.append({"mode": g.mode, "state": g.state, "note": g.note,
+                       "active": Path(os.path.relpath(g.active, root)).as_posix(),
+                       "on": Path(os.path.relpath(g.on_file, root)).as_posix() if g.on_file else "",
+                       "off": Path(os.path.relpath(g.off_file, root)).as_posix() if g.off_file else ""})
+    detected = {gp for g in groups for gp in (g["active"], g["on"], g["off"]) if gp}
+    for f in files:
+        f["used_by_sgm"] = f["path"] in detected or f["path"] + ".off" in detected or \
+            (f["path"].lower().endswith(".off") and f["path"][:-4] in detected)
+    return {"folder": root.name, "title": str(man.get("title") or ""), "creator": str(man.get("creator") or ""),
+            "version": str(man.get("package_version") or ""), "content_type": ctype,
+            "icao": detect_icao(str(man.get("title") or root.name), root.name), "source": source,
+            "bgl_count": bgl_count, "bgl_dirs": sorted(bgl_dirs)[:20], "files": sorted(files, key=lambda f: f["path"]),
+            "sgm_groups": groups,
+            "sgm_state": sc.state if sc else NONE}
+
+
+def build_statics_report(sources: list, sim: str, progress=None) -> dict:
+    pkgs = []
+    for s in sources:
+        if s.exists:
+            pkgs += [(s, p) for p in find_packages(s.path)]
+    scenes, seen = [], set()
+    for i, (s, p) in enumerate(pkgs):
+        if progress:
+            progress(i + 1, len(pkgs), p.name)
+        real = norm_key(os.path.realpath(p))
+        if real in seen:
+            continue
+        seen.add(real)
+        try:
+            r = report_scene(p, source_label(s, p))
+        except Exception as e:                     # une scène illisible ne bloque pas le rapport
+            r = {"folder": p.name, "error": type(e).__name__}
+        if r:
+            scenes.append(r)
+    states: dict = {}
+    for r in scenes:
+        st = r.get("sgm_state", "error")
+        states[st] = states.get(st, 0) + 1
+    unused = sum(1 for r in scenes for f in r.get("files", []) if not f.get("used_by_sgm"))
+    return {"schema": REPORT_SCHEMA, "app": f"SGM beta v{APP_VERSION}", "sim": sim,
+            "created": datetime.now().strftime("%Y-%m-%d %H:%M"), "packages_scanned": len(seen),
+            "summary": {"scenes_with_candidates": len(scenes), "by_sgm_state": states,
+                        "candidate_files_not_used_by_sgm": unused},
+            "scenes": scenes}
+
+
+def write_statics_report(report: dict) -> Path:
+    d = data_dir() / "reports"
+    d.mkdir(parents=True, exist_ok=True)
+    out = d / f"sgm-statics-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    write_atomic(out, json.dumps(report, indent=1, ensure_ascii=False))
+    return out
+
+
 # ── Journal GSX : état d'origine de chaque fichier que SGM écrit ou retire ──
 
 def _gsx_journal_dir(dest_dir: Path) -> Path:
@@ -2458,6 +2560,9 @@ class MainWindow(QMainWindow):
             a = QAction(tr(key), self)
             a.triggered.connect(lambda _=False, k=kind: self.open_report(k))
             m_help.addAction(a)
+        a = QAction(tr("m_stats_report"), self)
+        a.triggered.connect(self.make_statics_report)
+        m_help.addAction(a)
         m_help.addSeparator()
         for key, fn in (("m_donate", self.donate), ("m_about", self.about)):
             a = QAction(tr(key), self)
@@ -2612,6 +2717,27 @@ class MainWindow(QMainWindow):
         if errors:
             warn(self, tr("all_errors") + "\n\n" + "\n".join(errors[:15]) + ("\n…" if len(errors) > 15 else ""))
         self.start_scan()
+
+    def make_statics_report(self):
+        """Rapport en lecture seule : aucun fichier de scène n'est modifié."""
+        if self.busy:
+            return
+        self.set_busy(True)
+        try:
+            def prog(i, n, name):
+                self.status.setText(tr("report_progress", i=i, n=n, name=name))
+                QApplication.processEvents()
+            report = build_statics_report(find_sources(self.config), self.config.sim, prog)
+            path = write_statics_report(report)
+        except Exception as e:
+            self.set_busy(False)
+            warn(self, tr("report_fail", err=e))
+            return
+        self.set_busy(False)
+        self.status.setText(tr("report_saved", name=path.name))
+        QMessageBox.information(self, APP_NAME, tr("report_done", n=report["summary"]["scenes_with_candidates"],
+                                                   name=path.name))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
 
     def open_backups(self):
         d = data_dir() / "backups"
