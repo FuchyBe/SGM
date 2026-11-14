@@ -72,7 +72,7 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 - Un fichier n'est retiré de GSX que s'il est identique à celui de la scène. Un profil que tu as modifié à la main n'est jamais supprimé.
 - **Aéroports sans profil dans la scène** : SGM cherche dans le dossier GSX un profil correspondant au code OACI.
   - **✓ Installé à la main** signifie qu'un profil que tu as installé toi-même a été trouvé.
-  - Le bouton **flightsim.to ↗** lance la recherche « OACI GSX » sur flightsim.to. Dans **Paramètres › Recherche de profils GSX**, choisis une recherche directe sur flightsim.to ou une recherche web limitée à flightsim.to.
+  - Le bouton **flightsim.to ↗** ouvre une recherche web « OACI GSX » limitée à flightsim.to.
   - Si un autre profil pour le même aéroport est aussi installé, un avertissement orange s'affiche, car GSX pourrait charger le mauvais.
 - Le dossier de destination GSX est détecté automatiquement et peut être changé dans **Dossiers**.
 
@@ -130,7 +130,9 @@ Pour lancer sans compiler : `pip install pyside6`, puis `python statics_manager.
 
 ## Signaler un problème ou proposer une idée
 
-Utilise **Aide › Signaler un problème…** ou **Aide › Proposer une idée…** dans SGM. Une page préremplie s'ouvre sur le suivi public de GitHub (https://github.com/FuchyBe/SGM/issues, un compte GitHub gratuit est nécessaire).
+Utilise **Aide › Signaler un problème…** ou **Aide › Proposer une idée…** dans SGM. Une petite fenêtre demande un titre, ce qui s'est passé (ou ton idée), la scène concernée et le message affiché par SGM. Deux cases ajoutent un rapport d'analyse des statics et le journal de SGM (cochées pour un problème) ; **Voir ce qui sera partagé** montre le texte et les fichiers exacts.
+
+**Préparer et ouvrir GitHub** crée un `.zip` dans `SGM_data\reports`, ouvre son dossier et le suivi public de GitHub (https://github.com/FuchyBe/SGM/issues, un compte GitHub gratuit est nécessaire) avec ton texte déjà rempli. Glisse le `.zip` dans la page, vérifie, puis clique sur **Submit** : rien n'est envoyé avant.
 
 La version de SGM, le simulateur et la version de Windows sont ajoutés automatiquement. Aucune donnée personnelle n'est envoyée : ne colle ni ton adresse e-mail, ni des chemins complets contenant ton nom d'utilisateur.
 
@@ -138,7 +140,10 @@ La version de SGM, le simulateur et la version de Windows sont ajoutés automati
 
 **Aide › Créer un rapport d'analyse des statics…** parcourt toutes tes scènes sans rien modifier et enregistre un fichier `.json` dans `SGM_data\reports`. Il liste les fichiers de type statics trouvés dans chaque scène (noms à l'intérieur de la scène, tailles, empreintes, présence dans `layout.json`, interprétation de SGM). Il ne contient aucun chemin personnel ni nom d'utilisateur. Joins-le à une issue GitHub pour aider à améliorer les règles de détection de SGM.
 
-Quand tu signales un problème, SGM propose de créer ce rapport en même temps : glisse le fichier dans la page GitHub avant d'envoyer.
+### Journal
+
+SGM note ce qu'il fait (lancement, analyses, chaque bascule avec les fichiers renommés ou copiés, installations GSX, erreurs) dans `SGM_data\logs\sgm.log`. Ton dossier personnel est remplacé par `~` : aucun nom d'utilisateur. Il est limité à 5 fichiers de 1 Mo. **Aide › Ouvrir le dossier du journal** l'ouvre.
+
 
 ## Soutenir le projet
 
@@ -168,6 +173,11 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Microsoft Flight Simulator est une marque de Microsoft Corporation. GSX est un produit de FSDreamTeam / Virtuali. Les autres noms et marques appartiennent à leurs propriétaires.
 
 ## Historique des versions
+
+**Prochaine version (en développement)**
+- **Journal** (`SGM_data\logs`, sans nom d'utilisateur), joint aux signalements de bug ; Aide › Ouvrir le dossier du journal.
+- **Bouton flightsim.to** : recherche web limitée à flightsim.to (la recherche du site ignorait l'OACI depuis un lien) ; le réglage de recherche est retiré.
+- **Fenêtre Signaler un problème / Proposer une idée** : ton texte arrive directement dans la page GitHub, rapport et journal dans un seul `.zip`, aperçu exact de ce qui est partagé.
 
 **beta v0.7**
 - **Statics : beaucoup plus de méthodes d'éditeurs reconnues**, à partir d'une vraie bibliothèque de plus de 2 000 paquets et des instructions des éditeurs : `.off`, `.disabled`, fichiers « static » au singulier et « parked », doubles identiques, versions `.nostatic` (méthode officielle Orbx / Drzewiecki, compatible avec le panneau Orbx Central, échange de `layout.json` compris), paires `_static` / `_nostatic`, fichiers d'aéroport complet avec statics, UK2000 `.staticq`. SGM garde la convention de chaque éditeur.

@@ -72,7 +72,7 @@ The full user guide is in the app: **Help › User guide** (F1).
 - A file is only removed from GSX if it is identical to the scenery's copy. A profile you edited by hand is never deleted.
 - **Airports without a profile in the scenery**: SGM looks for a profile matching the ICAO code in the GSX folder.
   - **✓ Installed manually** means a profile you installed yourself was found.
-  - The **flightsim.to ↗** button searches "ICAO GSX" on flightsim.to. In **Settings › GSX profile search**, choose a direct flightsim.to search or a web search limited to flightsim.to.
+  - The **flightsim.to ↗** button opens a web search for "ICAO GSX" limited to flightsim.to.
   - If another profile for the same airport is also installed, an orange warning is shown, because GSX could load the wrong one.
 - The GSX destination folder is detected automatically and can be changed in **Folders**.
 
@@ -130,7 +130,9 @@ To run without building: `pip install pyside6`, then `python statics_manager.py`
 
 ## Report a problem or suggest an idea
 
-Use **Help › Report a problem…** or **Help › Suggest an idea…** in SGM. It opens a pre-filled page in the public GitHub issue tracker (https://github.com/FuchyBe/SGM/issues, a free GitHub account is required).
+Use **Help › Report a problem…** or **Help › Suggest an idea…** in SGM. A small window asks for a title, what happened (or your idea), the scenery concerned and the message shown by SGM. Two boxes add a statics analysis report and the SGM log (ticked for a problem); **Show what will be shared** displays the exact text and files.
+
+**Prepare and open GitHub** creates a `.zip` in `SGM_data\reports`, opens its folder and the public GitHub issue tracker (https://github.com/FuchyBe/SGM/issues, a free GitHub account is required) with your text already filled in. Drag the `.zip` into the page, check, then click **Submit**: nothing is sent before.
 
 The SGM version, the simulator and the Windows version are added automatically. No personal information is sent: please do not paste your e-mail address or full file paths containing your user name.
 
@@ -138,7 +140,10 @@ The SGM version, the simulator and the Windows version are added automatically. 
 
 **Help › Create a statics analysis report…** scans all your sceneries without changing anything and saves a `.json` file in `SGM_data\reports`. It lists the statics-like files found in each scenery (names inside the scenery, sizes, fingerprints, whether they are in `layout.json`, and how SGM understood them). It contains no personal path or user name. Attach it to a GitHub issue to help improve SGM's detection rules.
 
-When you report a problem, SGM offers to create this report at the same time: drag the file into the GitHub page before submitting.
+### Log
+
+SGM keeps a log of what it does (launch, scans, every switch with the files renamed or copied, GSX installs, errors) in `SGM_data\logs\sgm.log`. Your user folder is replaced by `~`, so it contains no user name. It is limited to 5 files of 1 MB. **Help › Open log folder** opens it.
+
 
 ## Support the project
 
@@ -168,6 +173,11 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Microsoft Flight Simulator is a trademark of Microsoft Corporation. GSX is a product of FSDreamTeam / Virtuali. All other names and trademarks are the property of their respective owners.
 
 ## Version history
+
+**Next version (in development)**
+- **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
+- **flightsim.to button**: web search limited to flightsim.to (the site's own search ignored the ICAO from a link); the search setting is removed.
+- **Report a problem / Suggest an idea window**: your text goes straight into the GitHub page, report and log in one `.zip`, exact preview of what is shared.
 
 **beta v0.7**
 - **Statics: many more developer methods recognised**, built from a real library of more than 2,000 packages and the developers' own instructions: `.off`, `.disabled`, "static" singular and "parked" files, identical twin files, `.nostatic` versions (official Orbx / Drzewiecki method, compatible with the Orbx Central control panel, including the `layout.json` swap), `_static` / `_nostatic` pairs, complete airport files with statics, UK2000 `.staticq`. SGM keeps each developer's own naming.

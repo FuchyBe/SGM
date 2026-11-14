@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import logging.handlers
 import os
 import re
 import shutil
@@ -39,8 +41,9 @@ from PySide6.QtCore import (QEvent, Property, QEasingCurve, QPropertyAnimation, 
                             QSize, Qt, QThread, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QFontMetricsF,
                            QIcon, QImage, QPainter, QPainterPath, QPen, QPixmap)
-from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QComboBox, QInputDialog,
-                               QDialog, QFileDialog, QFrame, QHBoxLayout,
+from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QCheckBox, QComboBox, QCompleter,
+                               QInputDialog, QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
+                               QPlainTextEdit,
                                QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
                                QPushButton, QScrollArea, QSizePolicy, QTextBrowser, QToolButton,
                                QVBoxLayout, QWidget)
@@ -53,14 +56,17 @@ APP_VERSION = "0.7"
 APP_AUTHOR = "Fabian Fuchs"
 # Lien de don public (PayPal.me)
 DONATE_URL = "https://paypal.me/Fuchy"
-# Recherche de profils GSX : {q} est remplacé par « OACI GSX » (encodé)
 # Signalements : Issues publiques du dépôt FuchyBe/SGM
 ISSUES_NEW_URL = "https://github.com/FuchyBe/SGM/issues/new"
 
-SEARCH_ENGINES = {
-    "fsto": "https://flightsim.to/search/?keyword={q}",
-    "web": "https://www.google.com/search?q=site%3Aflightsim.to+{q}",
-}
+# Recherche de profils GSX : recherche web limitée à flightsim.to. Les recherches directes du site ne marchent
+# pas depuis un lien (vérifié par Fabian le 2026-11-14 : /search/?keyword= ignore le mot-clé, /discover/… = 404).
+SEARCH_URL = "https://www.google.com/search?q=site%3Aflightsim.to+{q}"
+
+
+def search_url(query: str) -> str:
+    return SEARCH_URL.format(q=quote_plus(query))
+
 
 FILETIME_EPOCH = 116444736000000000  # 1601-01-01 -> 1970-01-01 en unités de 100 ns
 MAX_BACKUPS_PER_SCENE = 10
@@ -117,6 +123,75 @@ def app_dir() -> Path:
 _DATA_DIR: Path | None = None
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  Journal local (SGM_data/logs/sgm.log) — jamais de chemin personnel
+# ════════════════════════════════════════════════════════════════════════════
+
+LOG = logging.getLogger("sgm")
+LOG.addHandler(logging.NullHandler())
+LOG_MAX_BYTES = 1_000_000
+LOG_BACKUPS = 4                                   # sgm.log + 4 anciens = 5 Mo au maximum
+_USERS_RE = re.compile(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\r\n\"'<>|:*?]+", re.I)   # espaces permis
+_HOME_RE = re.compile(r"(?<![\w.])/(?:home|Users)/[^/\s\"']+")
+
+
+def scrub(text: str) -> str:
+    """Retire du texte le dossier personnel (nom d'utilisateur Windows compris) : remplacé par « ~ »."""
+    text = str(text)
+    for home in {str(Path.home()), os.environ.get("USERPROFILE", "")}:
+        if home and len(home) > 3:
+            for h in {home, home.replace("\\", "/")}:
+                text = re.sub(re.escape(h), "~", text, flags=re.I)
+    text = _USERS_RE.sub("~", text)
+    return _HOME_RE.sub("~", text)
+
+
+class ScrubFormatter(logging.Formatter):
+    def format(self, record):
+        return scrub(super().format(record))
+
+
+def log_dir() -> Path:
+    return data_dir() / "logs"
+
+
+def log_file() -> Path:
+    return log_dir() / "sgm.log"
+
+
+def setup_logging() -> bool:
+    """Active le journal tournant. Sans effet si le dossier n'est pas inscriptible."""
+    if any(isinstance(h, logging.handlers.RotatingFileHandler) for h in LOG.handlers):
+        return True
+    try:
+        log_dir().mkdir(parents=True, exist_ok=True)
+        h = logging.handlers.RotatingFileHandler(log_file(), maxBytes=LOG_MAX_BYTES,
+                                                 backupCount=LOG_BACKUPS, encoding="utf-8")
+    except OSError:
+        return False
+    h.setFormatter(ScrubFormatter("%(asctime)s %(levelname)-7s %(message)s", "%Y-%m-%d %H:%M:%S"))
+    LOG.addHandler(h)
+    LOG.setLevel(logging.INFO)
+    LOG.propagate = False
+    previous = sys.excepthook
+
+    def hook(kind, value, tb):
+        LOG.critical("Erreur inattendue", exc_info=(kind, value, tb))
+        previous(kind, value, tb)
+    sys.excepthook = hook
+    return True
+
+
+def close_logging():
+    for h in [h for h in LOG.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]:
+        h.close()
+        LOG.removeHandler(h)
+
+
+def scene_label(scene) -> str:
+    return f"{scene.title} [{scene.root.name}]"
+
+
 def license_dir() -> Path:
     """Dossier « licenses » livré à côté du programme (ou dans le paquet PyInstaller)."""
     for base in (app_dir(), Path(getattr(sys, "_MEIPASS", app_dir()))):
@@ -166,7 +241,6 @@ class Config:
     def __init__(self):
         self.file = data_dir() / "config.json"
         self.lang = "en"
-        self.search = "fsto"
         self.check_downloads = True
         self.archive_cleanup = "ask"          # après installation depuis Téléchargements : ask / auto / never
         self.seen_archives: list = []
@@ -180,7 +254,6 @@ class Config:
         if isinstance(data, dict):
             if int(data.get("version", 1)) >= 3:
                 self.lang = str(data.get("lang") or "en")
-                self.search = data.get("search") if data.get("search") in SEARCH_ENGINES else "fsto"
                 self.check_downloads = bool(data.get("check_downloads", True))
                 if data.get("archive_cleanup") in ARCHIVE_CLEANUP:
                     self.archive_cleanup = data["archive_cleanup"]
@@ -260,7 +333,7 @@ class Config:
         return self.gsx_override or default_gsx_folder(self.sim)
 
     def save(self):
-        data = {"version": 3, "lang": self.lang, "sim": self.sim, "search": self.search,
+        data = {"version": 3, "lang": self.lang, "sim": self.sim,
                 "check_downloads": self.check_downloads, "seen_archives": self.seen_archives[-300:],
                 "archive_cleanup": self.archive_cleanup,
                 "columns": {"statics": self.col_fs, "gsx": self.col_fg},
@@ -1178,7 +1251,7 @@ def snapshot_scene(scene: Scene):
     write_atomic(d / "origin.json", json.dumps(record, indent=2, ensure_ascii=False))
 
 
-def restore_scene_statics(root: Path):
+def _restore_scene_statics(root: Path):
     """Remet les fichiers statics, layout.json et manifest.json comme avant SGM.
     Tout ou rien : si un fichier ne correspond pas à l'origine, rien n'est modifié (RestoreError)."""
     d = origin_dir(root)
@@ -1424,6 +1497,8 @@ def write_statics_report(report: dict) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"sgm-statics-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
     write_atomic(out, json.dumps(report, indent=1, ensure_ascii=False))
+    LOG.info("Rapport d'analyse créé : %s (%s scènes avec fichiers statics)", out.name,
+             report.get("summary", {}).get("scenes_with_candidates", "?"))
     return out
 
 
@@ -1468,7 +1543,7 @@ def gsx_has_origin(dest_dir: Path, names) -> bool:
     return any(n.lower() in files for n in names)
 
 
-def gsx_restore(dest_dir: Path, names=None) -> int:
+def _gsx_restore(dest_dir: Path, names=None) -> int:
     """Remet les fichiers GSX notés dans le journal (tous, ou seulement `names`). Renvoie le nombre traité."""
     j = _gsx_load(dest_dir)
     jd = _gsx_journal_dir(dest_dir)
@@ -1515,6 +1590,7 @@ def _move(src: Path, dst: Path):
     if dst.exists():
         raise ToggleError(tr("err_exists", name=dst.name))
     os.rename(src, dst)
+    LOG.info("  renommé %s -> %s", src.name, dst.name)
     forget_hash(src)
     forget_hash(dst)
 
@@ -1542,7 +1618,7 @@ def _swap_layout_files(root: Path, groups: list, target: str):
         os.rename(ljs, lj)
 
 
-def set_scene_state(scene: Scene, target: str):
+def _set_scene_state(scene: Scene, target: str):
     groups = [g for g in scene.groups if g.toggleable and g.state != target]
     if not groups:
         return
@@ -1554,6 +1630,8 @@ def set_scene_state(scene: Scene, target: str):
     to_backup += [scene.root / n for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC) if (scene.root / n).is_file()]
     backup_files(scene.root, to_backup)
     _swap_layout_files(scene.root, groups, target)
+    if any(g.mode == "rswap" for g in groups):
+        LOG.info("  layout.json échangé (méthode officielle .static / .nostatic)")
     meta = PackageMeta(scene.root)              # relu : layout.json a pu être échangé
     try:
         for g in groups:
@@ -1703,7 +1781,7 @@ def gsx_other_installed(scene: Scene, variant: GsxVariant, dest_dir: Path) -> li
     return out
 
 
-def copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
+def _copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
     dest_dir.mkdir(parents=True, exist_ok=True)
     replaced = [dest_dir / f.name for f in variant.files
                 if (dest_dir / f.name).is_file() and not same_content(f, dest_dir / f.name)]
@@ -1808,7 +1886,7 @@ def icaos_of(files: list[Path]) -> set[str]:
     return {f.name[:4].upper() for f in files if f.suffix.lower() == ".ini" and GSX_NAME_RE.match(f.name)}
 
 
-def install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
+def _install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
     """Copie des fichiers de profil dans GSX ; sauvegarde ce qui est remplacé."""
     dest_dir.mkdir(parents=True, exist_ok=True)
     replaced = [dest_dir / f.name for f in files
@@ -1950,31 +2028,153 @@ def trash_archives(paths: list) -> list:
     for p in paths:
         try:
             send_to_trash(p)
+            LOG.info("Archive mise à la corbeille : %s", Path(p).name)
         except OSError as e:
+            LOG.warning("Archive non supprimée : %s (%s)", Path(p).name, e)
             failed.append((Path(p).name, str(e)))
     return failed
 
 
-def report_url(kind: str, sim: str, lang: str, attachment: str = "") -> str:
+# ── Enveloppes journalisées des opérations sur les fichiers ──
+
+def _group_desc(g) -> str:
+    names = [x.name for x in (g.active, g.on_path, g.off_path, g.on_file, g.off_file, g.alt_on, g.alt_off) if x]
+    return f"{g.mode}[{', '.join(dict.fromkeys(names))}]"
+
+
+def set_scene_state(scene: Scene, target: str):
+    groups = [g for g in scene.groups if g.toggleable and g.state != target]
+    if not groups:
+        return
+    LOG.info("Statics %s : %s -> %s ; %s", scene_label(scene), scene.state, target,
+             " ; ".join(_group_desc(g) for g in groups))
+    try:
+        _set_scene_state(scene, target)
+    except Exception:
+        LOG.exception("Échec de la bascule %s", scene_label(scene))
+        raise
+    LOG.info("  terminé")
+
+
+def restore_scene_statics(root: Path):
+    LOG.info("Restauration de l'origine : %s", root.name)
+    try:
+        _restore_scene_statics(root)
+    except RestoreError as e:
+        LOG.warning("  restauration refusée : %s", e)
+        raise
+    except Exception:
+        LOG.exception("  échec de la restauration")
+        raise
+    LOG.info("  terminé")
+
+
+def copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
+    LOG.info("GSX %s : copie de %s", scene_label(scene), ", ".join(f.name for f in variant.files))
+    try:
+        out = _copy_gsx(scene, variant, dest_dir)
+    except Exception:
+        LOG.exception("  échec de la copie GSX")
+        raise
+    LOG.info("  copié : %s", ", ".join(map(str, out)) or "rien")
+    return out
+
+
+def install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
+    LOG.info("GSX : installation de %s", ", ".join(f.name for f in files))
+    try:
+        out = _install_profile_files(files, dest_dir)
+    except Exception:
+        LOG.exception("  échec de l'installation")
+        raise
+    LOG.info("  installé : %s", ", ".join(map(str, out)) or "rien")
+    return out
+
+
+def gsx_restore(dest_dir: Path, names=None) -> int:
+    n = _gsx_restore(dest_dir, names)
+    if n:
+        LOG.info("GSX : %d profil(s) remis à l'origine", n)
+    return n
+
+
+ISSUE_FIELDS = {
+    "bug": (("what", "What happened?"), ("expected", "What did you expect?"), ("steps", "Steps to reproduce"),
+            ("scene", "Scenery concerned (name, developer, ICAO)"), ("message", "Message shown by SGM (if any)")),
+    "idea": (("idea", "Your idea"), ("why", "Why would it help you?")),
+}
+ISSUE_BODY_MAX = 5000          # le texte passe dans l'adresse de la page GitHub : rester bien sous 8 000 caractères
+
+
+def issue_text(kind: str, sim: str, lang: str, fields: dict | None = None, summary: str = "",
+               attachment=(), limit: int | None = ISSUE_BODY_MAX) -> tuple:
+    """(titre, texte) de l'issue. Titres de sections en anglais (suivi public), texte de l'utilisateur tel quel,
+    dossier personnel retiré. `limit` raccourcit chaque réponse si le total dépasse (texte complet dans le .zip)."""
+    kind = "bug" if kind == "bug" else "idea"
+    fields = {k: scrub(v).strip() for k, v in (fields or {}).items() if v and str(v).strip()}
+    title = ("Bug: " if kind == "bug" else "Idea: ") + scrub(summary).strip()
+    names = [attachment] if isinstance(attachment, str) else list(attachment)
+    names = [n for n in names if n]
+    foot = ("---\n"
+            f"SGM beta v{APP_VERSION} · {sim} · {platform.system()} {platform.release()} · UI language: {lang}\n"
+            "_Please do not post personal information (e-mail, full file paths with your user name)._")
+    files = ""
+    if names:
+        files = ("### Files from SGM\n"
+                 "Please drag " + ", ".join(f"`{n}`" for n in names) +
+                 " (folder opened by SGM) into this box.\n\n")
+
+    def build(cap):
+        out = ""
+        for key, head in ISSUE_FIELDS[kind]:
+            txt = fields.get(key, "")
+            if key == "steps" and not txt:
+                txt = "1. \n2. "
+            if cap is not None and len(txt) > cap:
+                txt = txt[:cap].rstrip() + " […] _(full text in the attached file)_"
+            out += f"### {head}\n{txt}\n\n"
+        return out + files + foot
+
+    body = build(None)
+    if limit and len(body) > limit:
+        cap = 2000
+        while cap > 100 and len(build(cap)) > limit:
+            cap = int(cap * 0.8)
+        body = build(cap)
+    return title, body
+
+
+def report_url(kind: str, sim: str, lang: str, attachment=(), fields: dict | None = None,
+               summary: str = "") -> str:
     """Lien « nouvelle issue » prérempli. Aucune donnée personnelle : ni chemin, ni nom d'utilisateur."""
-    title = "Bug: " if kind == "bug" else "Idea: "
-    if kind == "bug":
-        body = ("### What happened?\n\n\n"
-                "### What did you expect?\n\n\n"
-                "### Steps to reproduce\n1. \n2. \n\n"
-                "### Scenery concerned (name, developer, ICAO)\n\n\n"
-                "### Message shown by SGM (if any)\n\n\n")
-        if attachment:
-            body += ("### Statics analysis report\n"
-                     f"Please drag the file `{attachment}` (folder opened by SGM) into this box.\n\n")
-    else:
-        body = ("### Your idea\n\n\n"
-                "### Why would it help you?\n\n\n")
-    body += ("---\n"
-             f"SGM beta v{APP_VERSION} · {sim} · {platform.system()} {platform.release()} · UI language: {lang}\n"
-             "_Please do not post personal information (e-mail, full file paths with your user name)._")
+    title, body = issue_text(kind, sim, lang, fields, summary, attachment)
     return ISSUES_NEW_URL + "?" + urlencode({"title": title, "body": body,
                                             "labels": "bug" if kind == "bug" else "enhancement"})
+
+
+def build_report_package(kind: str, sim: str, lang: str, fields: dict | None = None, summary: str = "",
+                         report: dict | None = None, include_log: bool = False) -> Path:
+    """Fichier .zip à glisser dans l'issue : message complet, rapport d'analyse, journal (sans chemin personnel)."""
+    d = data_dir() / "reports"
+    d.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    out = d / f"sgm-{'bug' if kind == 'bug' else 'idea'}-{stamp}.zip"
+    title, body = issue_text(kind, sim, lang, fields, summary, limit=None)
+    tmp = out.with_suffix(".zip.tmp")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("message.md", f"# {title}\n\n{body}\n")
+        if report is not None:
+            z.writestr("statics-report.json", scrub(json.dumps(report, indent=1, ensure_ascii=False)))
+        if include_log:
+            for h in LOG.handlers:
+                h.flush()
+            for f in (log_file().with_name("sgm.log.1"), log_file()):     # précédent puis actuel
+                if f.is_file():
+                    z.writestr(f.name, scrub(f.read_text(encoding="utf-8", errors="replace")))
+    os.replace(tmp, out)
+    LOG.info("Paquet de signalement créé : %s (rapport : %s, journal : %s)", out.name,
+             "oui" if report is not None else "non", "oui" if include_log else "non")
+    return out
 
 
 def sim_running(sim: str) -> bool:
@@ -2121,6 +2321,15 @@ QScrollBar::handle:vertical:hover {{ background: #3A4352; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ height: 0; background: none; }}
 QToolTip {{ background: {C['surface2']}; color: {C['text']}; border: 1px solid {C['border2']}; padding: 6px; }}
 QMessageBox {{ background: {C['surface']}; }}
+QPlainTextEdit {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 8px;
+                  padding: 5px 8px; color: {C['text']}; selection-background-color: {C['accent']}; }}
+QPlainTextEdit:focus {{ border-color: {C['border2']}; background: {C['surface2']}; }}
+QPlainTextEdit#preview {{ color: {C['muted']}; font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; }}
+QLabel#fieldLabel {{ color: {C['muted']}; font-size: 12px; }}
+QCheckBox {{ color: {C['text']}; spacing: 8px; }}
+QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {C['border2']}; border-radius: 4px;
+                        background: {C['surface']}; }}
+QCheckBox::indicator:checked {{ background: {C['accent']}; border-color: {C['accent']}; }}
 QTextBrowser#doc {{ background: {C['surface']}; color: {C['text']}; border: 1px solid {C['border']};
                     border-radius: 10px; padding: 14px 18px; font-size: 13px; }}
 """
@@ -2155,6 +2364,7 @@ def ask(parent, text: str, default_yes=True) -> bool:
 
 
 def warn(parent, text: str):
+    LOG.warning("Alerte affichée : %s", " ".join(str(text).split()))
     QMessageBox.warning(parent, APP_NAME, text)
 
 
@@ -2973,6 +3183,182 @@ class DocDialog(QDialog):
         v.addLayout(row)
 
 
+class ReportDialog(QDialog):
+    """Fenêtre « Signaler un problème / Proposer une idée » : texte, pièces jointes, aperçu exact.
+    Rien n'est envoyé par SGM : il prépare un .zip et ouvre la page GitHub préremplie."""
+
+    def __init__(self, kind: str, sim: str, scene_names=(), parent=None):
+        super().__init__(parent)
+        self.sim = sim
+        self.kind = "bug" if kind == "bug" else "idea"
+        self.setWindowTitle(APP_NAME)
+        self.setMinimumWidth(640)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 20, 22, 18)
+        v.setSpacing(10)
+        top = QHBoxLayout()
+        self.h = QLabel()
+        self.h.setObjectName("h1")
+        self.h.setStyleSheet("font-size: 17px;")
+        top.addWidget(self.h)
+        top.addStretch()
+        chips = QFrame()
+        chips.setObjectName("chips")
+        ch = QHBoxLayout(chips)
+        ch.setContentsMargins(3, 3, 3, 3)
+        ch.setSpacing(2)
+        self.kind_btns = {}
+        group = QButtonGroup(self)
+        for k, key in (("bug", "rd_kind_bug"), ("idea", "rd_kind_idea")):
+            b = QPushButton(tr(key))
+            b.setObjectName("chipBtn")
+            b.setCheckable(True)
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda _c=False, k=k: self.set_kind(k))
+            group.addButton(b)
+            ch.addWidget(b)
+            self.kind_btns[k] = b
+        top.addWidget(chips)
+        v.addLayout(top)
+        hint = QLabel(tr("rd_hint"))
+        hint.setObjectName("hint")
+        hint.setWordWrap(True)
+        v.addWidget(hint)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(8)
+        self.summary = QLineEdit()
+        self.summary.setPlaceholderText(tr("rd_summary_ph"))
+        self.summary.setMaxLength(120)
+        self.inputs, self.rows = {}, {}
+        specs = [("summary", "rd_summary", self.summary)]
+        for key, label, multi in (("what", "rd_what", 3), ("expected", "rd_expected", 0), ("steps", "rd_steps", 3),
+                                  ("scene", "rd_scene", 0), ("message", "rd_message", 0),
+                                  ("idea", "rd_idea", 4), ("why", "rd_why", 2)):
+            if multi:
+                w = QPlainTextEdit()
+                w.setTabChangesFocus(True)
+                w.setFixedHeight(22 + 18 * multi)
+                w.textChanged.connect(self.update_preview)
+            else:
+                w = QLineEdit()
+                w.textChanged.connect(self.update_preview)
+            self.inputs[key] = w
+            specs.append((key, label, w))
+        self.summary.textChanged.connect(self.update_preview)
+        scene = self.inputs["scene"]
+        scene.setPlaceholderText(tr("rd_scene_ph"))
+        if scene_names:
+            comp = QCompleter(sorted(set(scene_names)), scene)
+            comp.setCaseSensitivity(Qt.CaseInsensitive)
+            comp.setFilterMode(Qt.MatchContains)
+            scene.setCompleter(comp)
+        for r, (key, label, w) in enumerate(specs):
+            lab = QLabel(tr(label))
+            lab.setObjectName("fieldLabel")
+            lab.setWordWrap(True)
+            lab.setContentsMargins(0, 7, 0, 0)          # aligné sur le texte des champs
+            grid.addWidget(lab, r, 0, Qt.AlignTop)
+            grid.addWidget(w, r, 1)
+            self.rows[key] = (lab, w)
+        grid.setColumnStretch(1, 1)
+        v.addLayout(grid)
+
+        self.cb_report = QCheckBox(tr("rd_attach_report"))
+        self.cb_log = QCheckBox(tr("rd_attach_log"))
+        for cb in (self.cb_report, self.cb_log):
+            cb.toggled.connect(self.update_preview)
+            v.addWidget(cb)
+        priv = QLabel(tr("rd_privacy"))
+        priv.setObjectName("hint")
+        priv.setWordWrap(True)
+        v.addWidget(priv)
+
+        self.prev_btn = QPushButton(tr("rd_preview_show"))
+        self.prev_btn.setObjectName("linkBtn")
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.clicked.connect(self.toggle_preview)
+        v.addWidget(self.prev_btn, 0, Qt.AlignLeft)
+        self.preview = QPlainTextEdit()
+        self.preview.setObjectName("preview")
+        self.preview.setReadOnly(True)
+        self.preview.setMinimumHeight(170)
+        self.preview.hide()
+        v.addWidget(self.preview)
+
+        btns = QHBoxLayout()
+        btns.addStretch()
+        cancel = QPushButton(tr("rd_cancel"))
+        cancel.clicked.connect(self.reject)
+        self.send = QPushButton(tr("rd_send"))
+        self.send.setObjectName("primary")
+        self.send.setCursor(Qt.PointingHandCursor)
+        self.send.clicked.connect(self.accept_if_filled)
+        btns.addWidget(cancel)
+        btns.addWidget(self.send)
+        v.addSpacing(4)
+        v.addLayout(btns)
+        self.set_kind(self.kind)
+
+    # ── état
+    def set_kind(self, kind: str):
+        self.kind = kind
+        self.kind_btns[kind].setChecked(True)
+        self.h.setText(tr("rd_title_bug" if kind == "bug" else "rd_title_idea"))
+        own = {k for k, _ in ISSUE_FIELDS[kind]}
+        for key, (lab, w) in self.rows.items():
+            show = key == "summary" or key in own
+            lab.setVisible(show)
+            w.setVisible(show)
+        self.cb_report.setChecked(kind == "bug")
+        self.cb_log.setChecked(kind == "bug")
+        self.update_preview()
+        self.adjustSize()
+
+    def fields(self) -> dict:
+        out = {}
+        for key, _ in ISSUE_FIELDS[self.kind]:
+            w = self.inputs[key]
+            out[key] = w.toPlainText() if isinstance(w, QPlainTextEdit) else w.text()
+        return out
+
+    def main_text(self) -> str:
+        f = self.fields()
+        return (f.get("what") or f.get("idea") or "").strip()
+
+    def attachment_name(self) -> str:
+        if not (self.cb_report.isChecked() or self.cb_log.isChecked()):
+            return ""
+        return f"sgm-{self.kind}-…zip"
+
+    def update_preview(self, *_):
+        if not hasattr(self, "preview") or self.preview.isHidden():
+            return
+        title, body = issue_text(self.kind, self.sim, get_lang(), self.fields(), self.summary.text(),
+                                 [self.attachment_name()] if self.attachment_name() else ())
+        parts = [title, "", body]
+        if self.attachment_name():
+            inside = ["message.md"] + (["statics-report.json"] if self.cb_report.isChecked() else []) + \
+                     (["sgm.log"] if self.cb_log.isChecked() else [])
+            parts += ["", "════════", f"{tr('rd_files')} {self.attachment_name()}  ({', '.join(inside)})"]
+        self.preview.setPlainText("\n".join(parts))
+
+    def toggle_preview(self):
+        show = self.preview.isHidden()
+        self.preview.setVisible(show)
+        self.prev_btn.setText(tr("rd_preview_hide" if show else "rd_preview_show"))
+        self.update_preview()
+        self.adjustSize()
+
+    def accept_if_filled(self):
+        if not self.main_text():
+            warn(self, tr("rd_empty"))
+            self.inputs["what" if self.kind == "bug" else "idea"].setFocus()
+            return
+        self.accept()
+
+
 class MainWindow(QMainWindow):
     """Fenêtre principale. `state` permet de la recréer (changement de langue) sans relancer l'analyse."""
 
@@ -3202,14 +3588,6 @@ class MainWindow(QMainWindow):
         note.setEnabled(False)
         m_sim.addAction(note)
 
-        m_srch = m_set.addMenu(tr("m_search"))
-        egrp = QActionGroup(self)
-        for key, label in (("fsto", "search_fsto"), ("web", "search_web")):
-            a = QAction(tr(label), self, checkable=True)
-            a.setChecked(self.config.search == key)
-            a.triggered.connect(lambda _=False, k=key: self.set_search_engine(k))
-            egrp.addAction(a)
-            m_srch.addAction(a)
         a = QAction(tr("m_check_dl"), self, checkable=True)
         a.setChecked(self.config.check_downloads)
         a.toggled.connect(self.set_check_downloads)
@@ -3236,6 +3614,7 @@ class MainWindow(QMainWindow):
                                   ("m_disclaimer", self.show_disclaimer, None),
                                   ("m_licenses", self.show_licenses, None),
                                   ("m_backups", self.open_backups, None),
+                                  ("m_open_log", self.open_logs, None),
                                   ("m_restore_all", self.restore_all, None)):
             a = QAction(tr(key), self)
             if shortcut:
@@ -3438,16 +3817,39 @@ class MainWindow(QMainWindow):
         d.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(d)))
 
+    def open_logs(self):
+        log_dir().mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_dir())))
+
     def open_report(self, kind: str):
-        attachment = ""
-        if kind == "bug" and ask(self, tr("report_attach_q")):
+        names = [s.title for s in self.scenes.values()] + [s.icao for s in self.scenes.values() if s.icao]
+        dlg = ReportDialog(kind, self.config.sim, names, self)
+        ok = dlg.exec() == QDialog.Accepted
+        kind, fields, summary = dlg.kind, dlg.fields(), dlg.summary.text()
+        want_report, want_log = dlg.cb_report.isChecked(), dlg.cb_log.isChecked()
+        dlg.deleteLater()
+        if not ok:
+            return
+        report = None
+        if want_report:
             res = self._create_report()
             if res:
-                path, _report = res
-                attachment = path.name
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
-                QMessageBox.information(self, APP_NAME, tr("report_attach_how", name=path.name))
-        QDesktopServices.openUrl(QUrl(report_url(kind, self.config.sim, get_lang(), attachment)))
+                report = res[1]
+        package = None
+        if report is not None or want_log:
+            try:
+                package = build_report_package(kind, self.config.sim, get_lang(), fields, summary,
+                                               report, want_log)
+            except OSError as e:
+                warn(self, tr("report_fail", err=e))
+        url = report_url(kind, self.config.sim, get_lang(), [package.name] if package else (), fields, summary)
+        LOG.info("Signalement préparé (%s), pièce jointe : %s", kind, package.name if package else "aucune")
+        if package:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(package.parent)))
+            QMessageBox.information(self, APP_NAME, tr("rd_done", name=package.name))
+        else:
+            QMessageBox.information(self, APP_NAME, tr("rd_done_nofile"))
+        QDesktopServices.openUrl(QUrl(url))
 
     def donate(self):
         if DONATE_URL:
@@ -3689,6 +4091,9 @@ class MainWindow(QMainWindow):
         for s in scenes:
             s.is_new = s.key in self.session_new
         self.scenes = {s.key: s for s in scenes}
+        LOG.info("Analyse : %d scènes, %d avec statics gérables, %d à vérifier, %d avec profil GSX",
+                 len(scenes), sum(1 for s in scenes if s.toggleable),
+                 sum(1 for s in scenes if s.state in (UNKNOWN, CONFLICT)), sum(1 for s in scenes if s.gsx_variants))
         self.rebuild_rows()
         self.set_busy(False)
         self._scan_time = datetime.now().strftime("%H:%M")
@@ -3899,12 +4304,8 @@ class MainWindow(QMainWindow):
 
     # ── GSX
     def search_profile(self, scene: Scene):
-        url = SEARCH_ENGINES.get(self.config.search, SEARCH_ENGINES["fsto"]).format(q=quote_plus(gsx_search_query(scene)))
+        url = search_url(gsx_search_query(scene))
         QDesktopServices.openUrl(QUrl(url))
-
-    def set_search_engine(self, key: str):
-        self.config.search = key
-        self.config.save()
 
     def remember_gsx_choice(self, scene: Scene, vid: str):
         if self.config.gsx_choices.get(scene.key) != vid:
@@ -4114,8 +4515,13 @@ def main():
     app.setStyle("Fusion")
     app.setStyleSheet(QSS)
     app.setWindowIcon(make_icon())
-    lang = Config().lang
+    cfg = Config()
+    lang = cfg.lang
     set_lang(lang)
+    setup_logging()
+    LOG.info("SGM beta v%s démarré · %s · %s %s · Python %s · langue %s%s", APP_VERSION, cfg.sim,
+             platform.system(), platform.release(), platform.python_version(), lang,
+             " · exe" if getattr(sys, "frozen", False) else "")
     app.setLayoutDirection(Qt.RightToLeft if lang in RTL_LANGS else Qt.LeftToRight)
     app.main_window = MainWindow()
     dark_title_bar(app.main_window)
