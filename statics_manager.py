@@ -49,7 +49,7 @@ from i18n import LANGS, RTL_LANGS, get_lang, set_lang, tr
 
 APP_NAME = "SGM"
 APP_FULL = "Statics & GSX Manager"
-APP_VERSION = "0.6"
+APP_VERSION = "0.7"
 APP_AUTHOR = "Fabian Fuchs"
 # Lien de don public (PayPal.me)
 DONATE_URL = "https://paypal.me/Fuchy"

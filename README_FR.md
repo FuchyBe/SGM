@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.6
+# SGM — Statics & GSX Manager · beta v0.7
 
 **Gestionnaire des avions statiques et des profils GSX pour Microsoft Flight Simulator 2024 et 2020**
 par **Fabian Fuchs** · gratuit · portable · 12 langues
@@ -30,7 +30,7 @@ SGM le fait pour toi :
 
 Il n'y a rien à installer.
 
-1. Décompresse `SGM_beta_v0.6.zip` où tu veux (dossier d'outils, clé USB…).
+1. Décompresse `SGM_beta_v0.7.zip` où tu veux (dossier d'outils, clé USB…).
 2. Lance `SGM.exe`, dans le dossier `SGM`.
 
 Garde tout le dossier `SGM` ensemble : `SGM.exe` a besoin du dossier `_internal` placé à côté de lui.
@@ -120,7 +120,7 @@ Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre
 Prérequis : Python 3.10 ou plus récent.
 
 1. Place ensemble `statics_manager.py`, `i18n.py`, `build_exe.bat`, les deux README et le dossier `licenses`.
-2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.6.zip`.
+2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.7.zip`.
 
 Pour lancer sans compiler : `pip install pyside6`, puis `python statics_manager.py`.
 
@@ -165,6 +165,13 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 
 ## Historique des versions
 
+**beta v0.7**
+- **Statics : beaucoup plus de méthodes d'éditeurs reconnues**, à partir d'une vraie bibliothèque de plus de 2 000 paquets et des instructions des éditeurs : `.off`, `.disabled`, fichiers « static » au singulier et « parked », doubles identiques, versions `.nostatic` (méthode officielle Orbx / Drzewiecki, compatible avec le panneau Orbx Central, échange de `layout.json` compris), paires `_static` / `_nostatic`, fichiers d'aéroport complet avec statics, UK2000 `.staticq`. SGM garde la convention de chaque éditeur.
+- **Sécurité** : un aéroport n'est jamais chargé deux fois ; les cas peu clairs ne sont jamais basculés (« À vérifier » + icône dossier pour le faire à la main) ; un `.bgl` absent de `layout.json` n'est jamais touché ; bibliothèques de modèles et aplanissements ignorés.
+- **Correction** : SGM ≤ v0.6 pouvait désactiver un fichier d'aéroport complet nommé `…-airport-statics.bgl` (Homa Sim), laissant la scène sans aéroport. SGM affiche maintenant « Aucune version active » et n'en réactive qu'une.
+- **Restaurer l'état d'origine** : clic droit sur une scène › Restaurer l'état d'origine…, ou Aide › Tout restaurer à l'origine. SGM enregistre chaque scène et profil GSX avant sa première modification ; restauration tout ou rien.
+- **Rapport d'analyse des statics** (menu Aide) : analyse en lecture seule, sans donnée personnelle, pour améliorer les règles. Aide › Signaler un problème propose de le créer et de le joindre.
+
 **beta v0.6**
 - Les scènes d'aéroport sont listées même sans statics ni profil GSX (détection du code OACI).
 - Détection des profils GSX installés à la main, et avertissement quand deux profils existent pour le même aéroport.
@@ -172,11 +179,6 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Filtre par catégorie : avec statics, profil GSX dans la scène, installé à la main, sans profil GSX.
 - Installation de profils GSX depuis une archive téléchargée : glisser-déposer, bouton Installer, détection dans Téléchargements au lancement (.zip ; .7z/.rar avec 7-Zip).
 - Les avions et livrées sont ignorés pendant l'analyse (plus rapide).
-- Rapport d'analyse des statics (menu Aide) : analyse en lecture seule pour améliorer les règles de détection.
-- Correction : SGM v0.6 pouvait désactiver les deux versions d'un fichier d'aéroport complet (`…-airport-statics.bgl`, Homa Sim), laissant la scène sans aéroport. SGM affiche maintenant « Aucune version active » et n'en réactive qu'une.
-- Beaucoup plus de méthodes de statics reconnues (`.off`, `.disabled`, `.nostatic`, paires static/nostatic, fichiers d'aéroport complets), à partir d'une vraie bibliothèque de plus de 2 000 paquets. Le signalement de problème peut inclure le rapport d'analyse.
-- Restauration de l'état d'origine : clic droit sur une scène, ou Aide › Tout restaurer à l'origine. SGM enregistre chaque scène et profil GSX tels qu'ils étaient avant sa première modification.
-- Sécurité des statics : un fichier statics au nom différent qui ne correspond à aucune variante on/off n'est jamais écrasé : il est affiché « À vérifier », avec une icône de dossier pour ouvrir le dossier du fichier statics et le faire manuellement.
 - Aide › Signaler un problème / Proposer une idée (issue GitHub préremplie).
 
 **beta v0.5**

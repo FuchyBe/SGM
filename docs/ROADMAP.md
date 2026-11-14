@@ -32,6 +32,7 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **beta v0.7** — méthodes de statics des éditeurs (base des cas réels), méthode officielle Orbx/Drzewiecki, restauration de l'état d'origine, rapport d'analyse, correction Homa Sim, cas peu clairs à faire à la main.
 - **beta v0.6** — aéroports sans profil, profils installés à la main, recherche flightsim.to, catégories,
   installation de profils depuis une archive, menu Signaler un problème.
 - **beta v0.5** — première version publique.

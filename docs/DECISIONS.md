@@ -5,7 +5,7 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
 ## Produit
 
 - **Nom** : SGM — Statics & GSX Manager (anciennement Statics Manager).
-- **Auteur** : Fabian Fuchs. Version actuelle : beta v0.6.
+- **Auteur** : Fabian Fuchs. Version actuelle : beta v0.7 (demandée par Fabian le 2026-11-14).
 - **Simulateurs** : MSFS 2024 par défaut, mode MSFS 2020 en option, mémoire séparée par simulateur.
 - **Portable** : aucune installation, données dans `SGM_data` à côté de `SGM.exe`.
 - **Interface** : sombre, sobre et élégante. 12 langues, anglais par défaut, codes langue à deux lettres.
