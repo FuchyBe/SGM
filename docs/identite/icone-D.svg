@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- D « Service au sol » : avion + anneau statics (vert) / GSX (bleu) -->
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="#161920" stroke="#2D3441" stroke-width="6"/>
+  <path d="M128 36 A92 92 0 0 1 128 220" fill="none" stroke="#4CC9A0" stroke-width="16" stroke-linecap="round"/>
+  <path d="M128 220 A92 92 0 0 1 128 36" fill="none" stroke="#7AA7F5" stroke-width="16" stroke-linecap="round"
+        stroke-dasharray="0.1 0" opacity="0.95"/>
+  <g transform="translate(128 128) scale(0.62) translate(-128 -120)">
+    <path d="M128 34 C135 34 138 45 138 58 L138 98 L218 138 L218 152 L138 132 L138 180 L162 197 L162 207 L131 199 L128 207 L125 199 L94 207 L94 197 L118 180 L118 132 L38 152 L38 138 L118 98 L118 58 C118 45 121 34 128 34 Z" fill="#E7E9ED"/>
+  </g>
+</svg>
