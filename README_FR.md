@@ -72,7 +72,7 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 - Un fichier n'est retiré de GSX que s'il est identique à celui de la scène. Un profil que tu as modifié à la main n'est jamais supprimé.
 - **Aéroports sans profil dans la scène** : SGM cherche dans le dossier GSX un profil correspondant au code OACI.
   - **✓ Installé à la main** signifie qu'un profil que tu as installé toi-même a été trouvé.
-  - Le bouton **flightsim.to ↗** lance la recherche « OACI GSX » sur flightsim.to. Dans **Paramètres › Recherche de profils GSX**, choisis une recherche directe sur flightsim.to ou une recherche web limitée à flightsim.to.
+  - Le bouton **flightsim.to ↗** ouvre une recherche web « OACI GSX » limitée à flightsim.to.
   - Si un autre profil pour le même aéroport est aussi installé, un avertissement orange s'affiche, car GSX pourrait charger le mauvais.
 - Le dossier de destination GSX est détecté automatiquement et peut être changé dans **Dossiers**.
 
@@ -176,6 +176,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 
 **Prochaine version (en développement)**
 - **Journal** (`SGM_data\logs`, sans nom d'utilisateur), joint aux signalements de bug ; Aide › Ouvrir le dossier du journal.
+- **Bouton flightsim.to** : recherche web limitée à flightsim.to (la recherche du site ignorait l'OACI depuis un lien) ; le réglage de recherche est retiré.
 - **Fenêtre Signaler un problème / Proposer une idée** : ton texte arrive directement dans la page GitHub, rapport et journal dans un seul `.zip`, aperçu exact de ce qui est partagé.
 
 **beta v0.7**
