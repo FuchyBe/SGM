@@ -69,16 +69,13 @@ class LogTest(SandboxTest):
         self.assertTrue(m.setup_logging())                  # pas de second fichier ouvert
         self.assertEqual(sum(isinstance(x, logging.handlers.RotatingFileHandler) for x in m.LOG.handlers), 1)
 
-    def test_copie_pour_signalement(self):
+    def test_journal_dans_le_paquet_de_signalement(self):
         m.LOG.info("chemin %s", r"C:\Users\Jean Dupont\Downloads")
-        out = m.copy_log_for_report()
-        self.assertTrue(out.name.startswith("sgm-log-"))
-        self.assertEqual(out.parent, self.data / "reports")
-        self.assertNotIn("Jean", out.read_text(encoding="utf-8"))
-        url = m.report_url("bug", "MSFS 2024", "en", ["sgm-statics-report-1.json", out.name])
-        self.assertIn("sgm-statics-report-1.json", url)
-        self.assertIn(out.name, url)
-
+        out = m.build_report_package("bug", "MSFS 2024", "en", {"what": "x"}, include_log=True)
+        import zipfile
+        with zipfile.ZipFile(out) as z:
+            self.assertIn("sgm.log", z.namelist())
+            self.assertNotIn("Jean", z.read("sgm.log").decode("utf-8"))
 
 if __name__ == "__main__":
     unittest.main()
