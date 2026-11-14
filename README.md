@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.7
+# SGM — Statics & GSX Manager · beta v0.8
 
 <p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
 
@@ -32,7 +32,7 @@ SGM does it for you:
 
 There is nothing to install.
 
-1. Unzip `SGM_beta_v0.7.zip` anywhere (tools folder, USB stick…).
+1. Unzip `SGM_beta_v0.8.zip` anywhere (tools folder, USB stick…).
 2. Run `SGM.exe` from the `SGM` folder.
 
 Keep the whole `SGM` folder together: `SGM.exe` needs the `_internal` folder next to it.
@@ -128,7 +128,7 @@ A scenery update (for example through the Marketplace or an installer) may resto
 Requirements: Python 3.10 or newer.
 
 1. Put `statics_manager.py`, `i18n.py`, `build_exe.bat`, both README files and the `licenses` folder together.
-2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.7.zip`.
+2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.8.zip`.
 
 To run without building: `pip install pyside6`, then `python statics_manager.py`.
 
@@ -178,15 +178,15 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 
 ## Version history
 
-**Next version (in development)**
+**beta v0.8**
+- **Undo** (button or Ctrl+Z, 10 actions kept): a switch, All ON/OFF, a GSX profile, a restore — files back exactly as before, refused if a file changed since.
+- **Statics profiles**: save the ON/OFF state of your sceneries under a name ("Dense AI traffic", "Photo flights") and apply it in one click (simple cases only, undoable).
+- **Columns fit their text** (one line), scenery names get the rest; manual setting remembered, double-click to go back to automatic.
+- **All OFF / All ON** moved to the Statics column header; simple cases only, sceneries to check are left untouched.
+- **Scan also checks your download folders** for GSX profile archives; download folders can be changed or added in **Folders**.
+- **Report a problem / Suggest an idea window**: your text goes straight into the GitHub page, report and log in one `.zip`, exact preview of what is shared.
 - **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
 - **flightsim.to button**: web search limited to flightsim.to (the site's own search ignored the ICAO from a link); the search setting is removed.
-- **Statics profiles**: save the ON/OFF state of your sceneries under a name (e.g. "Dense AI traffic", "Photo flights") and apply it in one click (simple cases only, undoable).
-- **Undo the last action** (button or Ctrl+Z, 10 actions kept): switches, All ON/OFF, GSX profiles, restores; files back exactly as before, refused if changed since.
-- **Scan also checks your download folders** for GSX profile archives; download folders can be changed or added in **Folders**.
-- **All OFF / All ON** moved to the Statics column header; simple cases only, sceneries to check are left untouched.
-- **Columns fit their text automatically** (one line), scenery names get the rest; manual setting remembered, double-click to go back to automatic.
-- **Report a problem / Suggest an idea window**: your text goes straight into the GitHub page, report and log in one `.zip`, exact preview of what is shared.
 
 **beta v0.7**
 - **Statics: many more developer methods recognised**, built from a real library of more than 2,000 packages and the developers' own instructions: `.off`, `.disabled`, "static" singular and "parked" files, identical twin files, `.nostatic` versions (official Orbx / Drzewiecki method, compatible with the Orbx Central control panel, including the `layout.json` swap), `_static` / `_nostatic` pairs, complete airport files with statics, UK2000 `.staticq`. SGM keeps each developer's own naming.
