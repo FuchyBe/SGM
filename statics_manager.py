@@ -49,7 +49,7 @@ from i18n import LANGS, RTL_LANGS, get_lang, set_lang, tr
 
 APP_NAME = "SGM"
 APP_FULL = "Statics & GSX Manager"
-APP_VERSION = "0.6"
+APP_VERSION = "0.7"
 APP_AUTHOR = "Fabian Fuchs"
 # Lien de don public (PayPal.me)
 DONATE_URL = "https://paypal.me/Fuchy"
@@ -334,17 +334,37 @@ def display_source(label: str) -> str:
 
 @dataclass
 class StaticsGroup:
-    mode: str              # "rename" | "variant" | "conflict"
+    mode: str              # "rename" | "variant" | "swap" | "pair" | "conflict"
     directory: Path
-    active: Path           # rename : fichier actuel / variant : statics.bgl actif
+    active: Path           # fichier actuel (rename) / statics.bgl actif (variant) / X.bgl (swap, pair)
     state: str
-    on_file: Path | None = None
-    off_file: Path | None = None
+    on_file: Path | None = None    # variant : variante ON / swap : X.bgl.static
+    off_file: Path | None = None   # variant : variante OFF / swap : X.bgl.nostatic
     note: str = ""         # clé de traduction
+    on_path: Path | None = None    # rename, pair : chemin activé (.bgl)
+    off_path: Path | None = None   # rename, pair : chemin désactivé (.bgl.off, .off, .bgl.disabled…)
+    alt_on: Path | None = None     # pair : fichier « sans statics » activé
+    alt_off: Path | None = None    # pair : fichier « sans statics » désactivé
+    twin: bool = False     # rename : copie désactivée identique présente à côté du .bgl actif
+    alt_static: bool = False   # swap : la version de rechange est celle AVEC statics (UK2000 .bgl.staticq)
 
     @property
     def toggleable(self) -> bool:
-        return self.mode in ("rename", "variant")
+        return self.mode in ("rename", "variant", "swap", "rswap", "pair")
+
+    def paths(self) -> list:
+        """Tous les fichiers concernés qui existent sur le disque."""
+        out = []
+        for p in (self.active, self.on_file, self.off_file, self.on_path, self.off_path, self.alt_on, self.alt_off):
+            if p is not None and p.is_file() and p not in out:
+                out.append(p)
+        return out
+
+    @property
+    def off_form(self) -> str:
+        if self.off_path is None:
+            return ""
+        return parse_form(self.off_path.name)[1] or ""
 
 
 @dataclass
@@ -426,39 +446,174 @@ def split_ext(name: str):
     return None, None
 
 
+# Règles de détection (base des cas réels : docs/analyses/BASE.md)
+STATIC_WORD_RE = re.compile(r"static|parked", re.IGNORECASE)
+NEG_RE = re.compile(r"(?:no|without)[ _\-]?(statics?)", re.IGNORECASE)          # nostatic, no_static, without_static
+EXCLUDE_RE = re.compile(r"model[ _\-]?lib|modelib|library|flatten|exclu", re.IGNORECASE)   # bibliothèques, aplanissements
+FORMS = ((".bgl.off", "bgl.off"), (".bgl.disabled", "bgl.disabled"), (".bgl.nostatic", "bgl.nostatic"),
+         (".bgl.staticq", "bgl.staticq"), (".bgl.static", "bgl.static"),
+         (".bgl", "bgl"), (".off", "off"), (".disabled", "disabled"))
+ALT_FORMS = {"bgl.nostatic": False, "bgl.staticq": True, "bgl.static": True}   # version de rechange : avec statics ?
+LAYOUT_STATIC, LAYOUT_NOSTATIC = "layout.json.static", "layout.json.nostatic"     # échange officiel Orbx / Drzewiecki
+OFF_FORMS = ("bgl.off", "bgl.disabled", "off", "disabled")
+
+
+def parse_form(name: str):
+    """'X.bgl.off' -> ('X', 'bgl.off') ; 'X.off' -> ('X', 'off') ; autre -> (None, None)."""
+    low = name.lower()
+    for suffix, form in FORMS:
+        if low.endswith(suffix):
+            return name[:-len(suffix)], form
+    return None, None
+
+
+OTHER_EXT_RE = re.compile(r"\.(config|cfg|json|xml|txt|ini|py|js|html?|css|dds|png|ktx2|bin|gltf)$", re.IGNORECASE)
+
+
+def is_statics_name(name: str) -> bool:
+    stem, form = parse_form(name)
+    if stem is None or EXCLUDE_RE.search(name):
+        return False
+    if form in ("off", "disabled") and OTHER_EXT_RE.search(stem):
+        return False                              # ex. statics-off.config.off : réglage d'un outil, pas un .bgl
+    return form in ALT_FORMS or bool(STATIC_WORD_RE.search(stem))
+
+
+def _on_name(stem: str, form: str, name: str) -> str:
+    """Nom activé (.bgl) d'un fichier désactivé."""
+    if form in ("bgl.off", "bgl.disabled"):
+        return name[:-(len(form) - 3)]           # retire .off / .disabled, garde la casse de .bgl
+    return stem + ".bgl"
+
+
+def _off_name(on_name: str, form: str) -> str:
+    """Nom désactivé d'un .bgl, dans la même convention que `form`."""
+    if form == "bgl.nostatic":
+        return on_name + ".nostatic"
+    if form in ("off", "disabled"):
+        return on_name[:-4] + "." + form
+    if form == "bgl.disabled":
+        return on_name + ".disabled"
+    return on_name + ".off"
+
+
+STATIC_TOKEN_RE = re.compile(r"[ _\-.]?statics?", re.IGNORECASE)
+FULL_SIZE_RATIO = 1.25        # fichier « aéroport complet avec statics » ≈ même taille que le fichier de base
+
+
+def _find_any(listing: dict, directory: Path, stem: str):
+    """Fichier `stem` en .bgl ou sous une forme désactivée : (chemin, forme) ou (None, None)."""
+    for suffix, form in ((".bgl", "bgl"), (".bgl.off", "bgl.off"), (".bgl.disabled", "bgl.disabled"),
+                         (".off", "off"), (".disabled", "disabled")):
+        real = listing.get((stem + suffix).lower())
+        if real:
+            return directory / real, form
+    return None, None
+
+
+def _similar_size(a: Path, b: Path) -> bool:
+    try:
+        x, y = a.stat().st_size, b.stat().st_size
+    except OSError:
+        return False
+    return min(x, y) > 0 and max(x, y) / min(x, y) <= FULL_SIZE_RATIO
+
+
 def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
-    variants: dict = {}
-    plain: dict = {}
+    groups, used = [], set()
+    try:
+        listing = {n.lower(): n for n in os.listdir(directory)}
+    except OSError:
+        listing = {}
+    entries: dict = {}
     for name in files:
-        stem, ext = split_ext(name)
+        stem, form = parse_form(name)
         if stem is None:
             continue
-        m = VARIANT_RE.search(stem)
-        if m:
-            base = stem[:m.start()] + m.group(1) + stem[m.end():]
-            v = variants.setdefault(base.lower(), {"base": base})
-            v.setdefault(m.group(2).lower(), name)
-        else:
-            plain.setdefault(stem.lower(), {"stem": stem, "exts": {}})["exts"][ext] = name
+        entries.setdefault(stem.lower(), {"stem": stem, "forms": {}})["forms"][form] = name
 
+    # 1. Version de rechange à côté du fichier actif
+    #    Méthode officielle Orbx / Drzewiecki (notices LYNI, EPGD ; panneau Orbx Central) :
+    #      X.bgl + X.bgl.nostatic = statics ON ; OFF : X.bgl -> X.bgl.static, X.bgl.nostatic -> X.bgl
+    #      X.bgl + X.bgl.static   = statics OFF ; ON  : X.bgl -> X.bgl.nostatic, X.bgl.static -> X.bgl
+    #      (+ même échange pour layout.json / layout.json.static / layout.json.nostatic, voir set_scene_state)
+    #    X.bgl.nostatic seul (Drzewiecki XXXX_PLC sans XXXX_PLC.bgl) : forme désactivée, ON = renommer en X.bgl.
+    #    UK2000 (règle de Fabian) : X.bgl (sans statics) + X.bgl.staticq (avec) ;
+    #      ON = X.bgl -> X.bgl.bak puis copie de X.bgl.staticq nommée X.bgl ; OFF = copie supprimée, .bak -> X.bgl.
+    #    Ancien état laissé par une version de test (X.bgl.bak + copie du .nostatic) : reconnu, ON remet l'original.
+    for key, e in entries.items():
+        f = e["forms"]
+        alts = [fm for fm in f if fm in ALT_FORMS]
+        if not alts:
+            continue
+        used.add(key)
+        first = directory / f[alts[0]]
+        main = directory / (f.get("bgl") or first.name[:-len(alts[0]) + 3])
+        bak = directory / (main.name + ".bak")
+        nost = directory / (main.name + ".nostatic")
+        stat = directory / (main.name + ".static")
+        statq = directory / (main.name + ".staticq")
+        broken = lambda at: StaticsGroup("conflict", directory, at, CONFLICT, note="note_swap_broken")
+        if "bgl.staticq" in alts:
+            if len(alts) > 1 or not main.is_file():
+                groups.append(broken(statq))
+                continue
+            applied = bak.is_file() and same_content(main, statq)
+            original = not bak.exists() and not same_content(main, statq)
+            if applied or original:
+                groups.append(StaticsGroup("swap", directory, main, ON if applied else OFF, bak, statq,
+                                           alt_static=True))
+            else:
+                groups.append(broken(main))
+            continue
+        has_n, has_s = nost.is_file(), stat.is_file()
+        if main.is_file():
+            if has_n and not has_s and bak.is_file() and same_content(main, nost):
+                groups.append(StaticsGroup("swap", directory, main, OFF, bak, nost))       # ancien état .bak
+            elif has_n and not has_s and not bak.exists():
+                groups.append(StaticsGroup("rswap", directory, main, ON, stat, nost))
+            elif has_s and not has_n and not bak.exists():
+                groups.append(StaticsGroup("rswap", directory, main, OFF, stat, nost))
+            else:
+                groups.append(broken(main))
+        elif has_n and not has_s and not bak.exists() and not NEG_RE.search(e["stem"]):
+            groups.append(StaticsGroup("rename", directory, nost, OFF, on_path=main, off_path=nost))
+        else:
+            groups.append(broken(first))
+
+    # 2. Variantes statics_on / statics_off (+ statics.bgl actif)
+    variants: dict = {}
+    plain: dict = {}
+    for key, e in entries.items():
+        if key in used:
+            continue
+        for form, name in e["forms"].items():
+            if form not in ("bgl", "bgl.off") or not STATIC_WORD_RE.search(e["stem"]):
+                continue
+            m = VARIANT_RE.search(e["stem"])
+            if m:
+                base = e["stem"][:m.start()] + m.group(1) + e["stem"][m.end():]
+                v = variants.setdefault(base.lower(), {"base": base})
+                v.setdefault(m.group(2).lower(), name)
     pairs = {}
     for key, v in variants.items():
         if "on" in v and "off" in v:
             pairs[key] = v
-        else:   # variante isolée -> fichier simple
-            for tok in ("on", "off"):
-                if tok in v:
-                    stem, ext = split_ext(v[tok])
-                    plain.setdefault(stem.lower(), {"stem": stem, "exts": {}})["exts"][ext] = v[tok]
+    variant_names = {n.lower() for v in pairs.values() for n in (v["on"], v["off"])}
+    for key, e in entries.items():
+        if key in used or not STATIC_WORD_RE.search(e["stem"]):
+            continue
+        forms = {fm: n for fm, n in e["forms"].items() if n.lower() not in variant_names}
+        if forms:
+            plain[key] = {"stem": e["stem"], "forms": forms}
 
-    groups, used = [], set()
     for key, v in pairs.items():
         on_f, off_f = directory / v["on"], directory / v["off"]
-        target = key if (key in plain and ".bgl" in plain[key]["exts"]) else None
+        target = key if (key in plain and "bgl" in plain[key]["forms"]) else None
         if target is None and len(pairs) == 1:
-            cands = [k for k, p in plain.items() if ".bgl" in p["exts"]]
+            cands = [k for k, p in plain.items() if "bgl" in p["forms"] and not NEG_RE.search(p["stem"])]
             if len(cands) == 1:
-                cand = directory / plain[cands[0]]["exts"][".bgl"]
+                cand = directory / plain[cands[0]]["forms"]["bgl"]
                 if same_content(cand, on_f) or same_content(cand, off_f):
                     target = cands[0]
                 else:
@@ -471,7 +626,7 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
                     continue
         if target:
             used.add(target)
-            active = directory / plain[target]["exts"][".bgl"]
+            active = directory / plain[target]["forms"]["bgl"]
             if same_content(active, on_f):
                 state, note = ON, ""
             elif same_content(active, off_f):
@@ -484,17 +639,114 @@ def build_groups(directory: Path, files: list[str]) -> list[StaticsGroup]:
             state, note = UNKNOWN, "note_no_active"
         groups.append(StaticsGroup("variant", directory, active, state, on_f, off_f, note))
 
+    # 3. Paires « avec statics » / « sans statics » : X_static.bgl.disabled + X_nostatic.bgl
+    for key, p in list(plain.items()):
+        if key in used or not NEG_RE.search(p["stem"]):
+            continue
+        partner = NEG_RE.sub(lambda mm: mm.group(1), p["stem"]).lower()
+        used.add(key)
+        q = plain.get(partner)
+        if q is None or partner in used:
+            groups.append(StaticsGroup("conflict", directory, directory / next(iter(p["forms"].values())),
+                                       CONFLICT, note="note_negation"))
+            continue
+        used.add(partner)
+        s_forms, n_forms = q["forms"], p["forms"]
+        s_on = "bgl" in s_forms and len(s_forms) == 1
+        n_on = "bgl" in n_forms and len(n_forms) == 1
+        s_off = len(s_forms) == 1 and next(iter(s_forms)) in OFF_FORMS
+        n_off = len(n_forms) == 1 and next(iter(n_forms)) in OFF_FORMS
+        if s_on and n_off:
+            n_name = n_forms[next(iter(n_forms))]
+            form = parse_form(n_name)[1]
+            s_path = directory / s_forms["bgl"]
+            groups.append(StaticsGroup("pair", directory, s_path, ON,
+                                       on_path=s_path, off_path=directory / _off_name(s_path.name, form),
+                                       alt_on=directory / _on_name(p["stem"], form, n_name), alt_off=directory / n_name))
+        elif n_on and s_off:
+            s_name = s_forms[next(iter(s_forms))]
+            form = parse_form(s_name)[1]
+            n_path = directory / n_forms["bgl"]
+            groups.append(StaticsGroup("pair", directory, n_path, OFF,
+                                       on_path=directory / _on_name(q["stem"], form, s_name), off_path=directory / s_name,
+                                       alt_on=n_path, alt_off=directory / _off_name(n_path.name, form)))
+        else:
+            base_p, base_f = _find_any(listing, directory, STATIC_TOKEN_RE.sub("", q["stem"], count=1))
+            if s_off and n_off and base_f == "bgl":
+                # X.bgl actif + X-statics + X-nostatics désactivés : on copie la version choisie sur X.bgl
+                s_file = directory / s_forms[next(iter(s_forms))]
+                n_file = directory / n_forms[next(iter(n_forms))]
+                if same_content(base_p, s_file):
+                    state, note = ON, ""
+                elif same_content(base_p, n_file):
+                    state, note = OFF, ""
+                else:
+                    state, note = UNKNOWN, "note_unknown_active"
+                groups.append(StaticsGroup("variant", directory, base_p, state, s_file, n_file, note))
+            elif s_off and n_off and base_p is None:
+                # Homa Sim : deux aéroports complets (avec / sans statics) tous deux désactivés -> aucun aéroport
+                # chargé (souvent après une ancienne version de SGM). ON active la version avec statics,
+                # OFF la version sans ; jamais les deux.
+                s_name = s_forms[next(iter(s_forms))]
+                n_name = n_forms[next(iter(n_forms))]
+                s_form, n_form = parse_form(s_name)[1], parse_form(n_name)[1]
+                groups.append(StaticsGroup("pair", directory, directory / s_name, UNKNOWN, note="note_pair_none",
+                                           on_path=directory / _on_name(q["stem"], s_form, s_name),
+                                           off_path=directory / s_name,
+                                           alt_on=directory / _on_name(p["stem"], n_form, n_name),
+                                           alt_off=directory / n_name))
+            else:
+                # les deux actifs, ou fichier actif introuvable : on ne touche à rien
+                groups.append(StaticsGroup("conflict", directory, directory / next(iter(s_forms.values())),
+                                           CONFLICT, note="note_negation"))
+
+    # 3b. Aéroport complet « avec statics » qui remplace le fichier de base : X-statics ↔ X (tailles proches)
+    for key, p in list(plain.items()):
+        if key in used:
+            continue
+        base = STATIC_TOKEN_RE.sub("", p["stem"], count=1)
+        if not base or base.lower() == key or STATIC_WORD_RE.search(base):
+            continue
+        base_p, base_f = _find_any(listing, directory, base)
+        if base_p is None or len(p["forms"]) != 1:
+            continue
+        s_form, s_name = next(iter(p["forms"].items()))
+        s_file = directory / s_name
+        if not _similar_size(s_file, base_p):
+            continue
+        used.add(key)
+        if s_form in OFF_FORMS and base_f == "bgl":
+            groups.append(StaticsGroup("pair", directory, base_p, OFF,
+                                       on_path=directory / _on_name(p["stem"], s_form, s_name), off_path=s_file,
+                                       alt_on=base_p, alt_off=directory / _off_name(base_p.name, s_form)))
+        elif s_form == "bgl" and base_f in OFF_FORMS:
+            groups.append(StaticsGroup("pair", directory, s_file, ON,
+                                       on_path=s_file, off_path=directory / _off_name(s_name, base_f),
+                                       alt_on=directory / _on_name(base, base_f, base_p.name), alt_off=base_p))
+        else:
+            groups.append(StaticsGroup("conflict", directory, s_file, CONFLICT, note="note_negation"))
+
+    # 4. Fichier simple : X.bgl <-> X.bgl.off / X.off / X.bgl.disabled / X.disabled
     for key, p in plain.items():
         if key in used:
             continue
-        exts = p["exts"]
-        if ".bgl" in exts and ".bgl.off" in exts:
-            groups.append(StaticsGroup("conflict", directory, directory / exts[".bgl"], CONFLICT,
-                                       note="note_conflict"))
-        elif ".bgl" in exts:
-            groups.append(StaticsGroup("rename", directory, directory / exts[".bgl"], ON))
+        forms = p["forms"]
+        offs = [fm for fm in forms if fm in OFF_FORMS]
+        if "bgl" in forms and not offs:
+            on = directory / forms["bgl"]
+            groups.append(StaticsGroup("rename", directory, on, ON, on_path=on, off_path=directory / (on.name + ".off")))
+        elif "bgl" not in forms and len(offs) == 1:
+            off = directory / forms[offs[0]]
+            on = directory / _on_name(p["stem"], offs[0], off.name)
+            groups.append(StaticsGroup("rename", directory, off, OFF, on_path=on, off_path=off))
+        elif "bgl" in forms and len(offs) == 1 and same_content(directory / forms["bgl"], directory / forms[offs[0]]):
+            # copie désactivée identique : ON ; désactiver = supprimer le .bgl (son double reste)
+            on = directory / forms["bgl"]
+            groups.append(StaticsGroup("rename", directory, on, ON, on_path=on, off_path=directory / forms[offs[0]],
+                                       twin=True))
         else:
-            groups.append(StaticsGroup("rename", directory, directory / exts[".bgl.off"], OFF))
+            groups.append(StaticsGroup("conflict", directory, directory / (forms.get("bgl") or next(iter(forms.values()))),
+                                       CONFLICT, note="note_conflict"))
     return groups
 
 
@@ -604,6 +856,63 @@ def detect_icao(title: str, folder: str) -> str:
     return ""
 
 
+def _check_layout(root: Path, groups: list) -> list:
+    """Un .bgl actif absent de layout.json n'est pas chargé par MSFS : l'éditeur gère alors ses statics
+    autrement (échange de layout.json…). Cas ambigu : on ne touche à rien."""
+    try:
+        layout = json.loads((root / "layout.json").read_text(encoding="utf-8-sig"))
+        listed = {str(e.get("path", "")).replace("\\", "/").lower() for e in layout.get("content", [])}
+    except Exception:
+        return groups
+    if not listed:
+        return groups
+    out = []
+    for g in groups:
+        on = g.on_path if g.mode in ("rename", "pair") and g.state == ON else (
+            g.alt_on if g.mode == "pair" else (g.active if g.mode in ("swap", "rswap") else None))
+        if on is not None and on.is_file() and Path(os.path.relpath(on, root)).as_posix().lower() not in listed:
+            out.append(StaticsGroup("conflict", g.directory, on, CONFLICT, note="note_not_in_layout"))
+        else:
+            out.append(g)
+    return out
+
+
+def _use_origin_off_names(root: Path, groups: list):
+    """Un fichier livré désactivé (ex. X.off) et activé par SGM redevient X.off, pas X.bgl.off :
+    on garde la convention de l'éditeur, retrouvée dans la photo d'origine."""
+    rec = origin_dir(root) / "origin.json"
+    if not rec.is_file():
+        return
+    try:
+        names = {Path(r).as_posix().lower(): r for r in json.loads(rec.read_text(encoding="utf-8")).get("files", {})}
+    except (OSError, ValueError):
+        return
+    covered = {norm_key(p) for g in groups for p in g.paths()}
+    for low, rel in names.items():
+        # X.bgl.nostatic d'origine renommé en X.bgl par SGM : le nom ne contient pas « static »,
+        # on le retrouve grâce à la photo d'origine
+        if low.endswith(".bgl.nostatic"):
+            nost, main = root / rel, root / rel[:-len(".nostatic")]
+            if main.is_file() and not nost.exists() and norm_key(main) not in covered:
+                groups.append(StaticsGroup("rename", main.parent, main, ON, on_path=main, off_path=nost))
+    def origin_off(on_path):
+        on_rel = Path(os.path.relpath(on_path, root)).as_posix()
+        for alt in (on_rel + ".off", on_rel[:-4] + ".off", on_rel[:-4] + ".disabled", on_rel + ".disabled",
+                    on_rel + ".nostatic"):
+            if alt.lower() in names and alt.lower() != on_rel.lower():
+                return root / names[alt.lower()]
+        return None
+
+    for g in groups:
+        if g.mode == "rename" and g.state == ON and not g.twin:
+            g.off_path = origin_off(g.on_path) or g.off_path
+        elif g.mode == "pair":
+            if g.on_path is not None and g.on_path.is_file():
+                g.off_path = origin_off(g.on_path) or g.off_path
+            if g.alt_on is not None and g.alt_on.is_file():
+                g.alt_off = origin_off(g.alt_on) or g.alt_off
+
+
 def scan_package(root: Path, source_label: str) -> Scene | None:
     man = read_manifest(root)
     ctype = str(man.get("content_type") or "").upper()
@@ -617,13 +926,16 @@ def scan_package(root: Path, source_label: str) -> Scene | None:
     for dirpath, _dirs, filenames in os.walk(root, followlinks=True):
         for fn in filenames:
             low = fn.lower()
-            if "statics" in low and (low.endswith(".bgl") or low.endswith(".bgl.off")):
-                by_dir.setdefault(dirpath, []).append(fn)
+            if is_statics_name(fn):
+                if not EXCLUDE_RE.search(os.path.relpath(dirpath, root)):
+                    by_dir.setdefault(dirpath, []).append(fn)
             elif low.endswith(".ini"):
                 inis.append(Path(dirpath) / fn)
     groups = []
     for d in sorted(by_dir):
         groups += build_groups(Path(d), sorted(by_dir[d], key=str.lower))
+    groups = _check_layout(root, groups)
+    _use_origin_off_names(root, groups)
     gsx = find_gsx_files(root, sorted(inis))
     is_airport = bool(icao) and ctype in ("SCENERY", "")
     if not groups and not gsx and not is_airport:
@@ -817,8 +1129,8 @@ def statics_paths(scene: Scene) -> list[Path]:
     """Tous les fichiers statics d'une scène (actifs, variantes, renommés)."""
     out = []
     for g in scene.groups:
-        for p in (g.active, g.on_file, g.off_file):
-            if p is not None and p.is_file() and p not in out:
+        for p in g.paths():
+            if p not in out:
                 out.append(p)
     return out
 
@@ -840,6 +1152,10 @@ def snapshot_scene(scene: Scene):
         record["files"][rel(p)] = file_hash(p)
     to_copy = [g.active for g in scene.groups if g.mode == "variant" and g.active.is_file()]
     to_copy += [scene.root / "layout.json", scene.root / "manifest.json"]
+    for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC):
+        if (scene.root / n).is_file():
+            to_copy.append(scene.root / n)
+            record["files"][n] = file_hash(scene.root / n)
     for p in to_copy:
         if p.is_file():
             target = files_dir / rel(p)
@@ -874,47 +1190,83 @@ def restore_scene_statics(root: Path):
                 if v is not None and v.is_file():
                     known.add(file_hash(v))
 
-    # 1. Plan, sans rien toucher
-    plan, left, consumed = [], [], set()
+    # 1. Plan, sans rien toucher. Chaque fichier d'origine est retrouvé par son empreinte, quel que soit
+    #    son nom actuel (renommé .off, .disabled, échangé avec sa version « sans statics »…).
+    cur = {norm_key(p): p for p in cur_paths}
+    for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC):         # fichiers layout échangés (méthode officielle)
+        if (root / n).is_file():
+            cur.setdefault(norm_key(root / n), root / n)
+    if "layout.json" in copied and (files_dir / "layout.json").is_file():
+        known.add(file_hash(files_dir / "layout.json"))
+    for r in wanted:
+        if (root / r).is_file():
+            cur.setdefault(norm_key(root / r), root / r)
+    hashes = {k: file_hash(p) for k, p in cur.items()}
+    rel_of = lambda p: Path(os.path.relpath(p, root)).as_posix()
+    ok = {norm_key(root / r) for r, h in wanted.items() if hashes.get(norm_key(root / r)) == h}
+    moves, copies, deletes, left, sources = [], [], [], [], set()
     for r, h in wanted.items():
-        p = root / r
-        if p.is_file() and file_hash(p) == h:
+        dst = root / r
+        if norm_key(dst) in ok:
             continue
         if r in copied and (files_dir / r).is_file():
-            plan.append(("copy", files_dir / r, p))
+            copies.append((files_dir / r, dst))
             continue
-        twin = p.with_name(p.name[:-4]) if p.name.lower().endswith(".off") else p.with_name(p.name + ".off")
-        if twin.is_file() and not p.exists() and file_hash(twin) == h:
-            plan.append(("rename", twin, p))
-            consumed.add(norm_key(twin))
+        src = next((k for k, hh in hashes.items() if hh == h and k not in ok and k not in sources), None)
+        if src is not None:
+            moves.append((cur[src], dst))
+            sources.add(src)
+            continue
+        src = next((k for k, hh in hashes.items() if hh == h and k in ok), None)
+        if src is not None:
+            copies.append((cur[src], dst))
+            continue
+        twin = next((d2 for s2, d2 in moves if hashes.get(norm_key(s2)) == h), None)
+        if twin is not None:                     # deux fichiers identiques à l'origine : copie du premier remis
+            copies.append((twin, dst))
             continue
         left.append(r)
-    for p in cur_paths:
-        r = Path(os.path.relpath(p, root)).as_posix()
-        if r in wanted or norm_key(p) in consumed:
+    targets = {norm_key(dd) for _s, dd in moves + copies}
+    for _s, dd in moves + copies:
+        k = norm_key(dd)
+        if str(_s).startswith(str(files_dir)):
+            continue                              # remis depuis la photo d'origine (layout.json échangé…)
+        if dd.exists() and k in cur and k not in sources:
+            if hashes[k] in known:
+                deletes.append(dd)
+            else:
+                left.append(rel_of(dd))
+    for k, q in cur.items():
+        if rel_of(q) in wanted or k in sources or k in targets:
             continue
-        if file_hash(p) in known:
-            plan.append(("delete", p, None))
+        if hashes[k] in known:
+            deletes.append(q)
         else:
-            left.append(r)
+            left.append(rel_of(q))
     if left:
         raise RestoreError(tr("restore_left", files="\n".join(f"• {r}" for r in sorted(set(left)))))
 
     # 2. Exécution, après sauvegarde de l'état actuel
-    backup_files(root, [root / "layout.json", root / "manifest.json"] + cur_paths)
+    backup_files(root, [root / "layout.json", root / "manifest.json"] + list(cur.values()))
     try:
-        for op, a, b in plan:
-            if op == "copy":
-                tmp = b.with_name(b.name + ".sm-tmp")
-                shutil.copy2(a, tmp)
-                os.replace(tmp, b)
-                forget_hash(b)
-            elif op == "rename":
-                os.rename(a, b)
-                forget_hash(a)
-            else:
-                a.unlink()
-                forget_hash(a)
+        staged = []
+        for s, dd in moves:                      # d'abord vers des noms temporaires (échanges de noms)
+            tmp = s.with_name(s.name + ".sgm-restore")
+            os.rename(s, tmp)
+            forget_hash(s)
+            staged.append((tmp, dd))
+        for q in deletes:
+            if q.exists():
+                q.unlink()
+                forget_hash(q)
+        for tmp, dd in staged:
+            os.replace(tmp, dd)
+            forget_hash(dd)
+        for s, dd in copies:
+            tmp = dd.with_name(dd.name + ".sm-tmp")
+            shutil.copy2(s, tmp)
+            os.replace(tmp, dd)
+            forget_hash(dd)
         for r in ("layout.json", "manifest.json"):
             if r in copied and (files_dir / r).is_file():
                 tmp = root / (r + ".sm-tmp")
@@ -934,6 +1286,131 @@ def origin_roots() -> list[Path]:
                 out.append(Path(json.loads((d / "origin.json").read_text(encoding="utf-8"))["root"]))
             except (OSError, ValueError, KeyError):
                 continue
+    return out
+
+
+# ── Rapport d'analyse des fichiers statics (lecture seule) ──
+# But : constituer une base réelle de noms de fichiers pour améliorer les règles de détection.
+# Aucun chemin complet ni nom d'utilisateur : uniquement des chemins relatifs au paquet de la scène.
+
+REPORT_SCHEMA = 1
+REPORT_EXTS = (".bgl", ".off", ".bak", ".disabled", ".old", ".orig", ".inactive")
+REPORT_NOISE = re.compile(r"\.(dds|ktx2|png|jpg|jpeg|tif|tga|bmp|bin|gltf|glb|xml|spb|pck|svg|wav|ogg|js|css|html)(\.json)?$")
+REPORT_WORDS = re.compile(r"static|parked|parking_?ai|(?<![a-z])(off|disabled?|deactivated?|inactive|without|nostatics?|"
+                          r"no[_ \-]?statics?|empty|bak)(?![a-z])", re.IGNORECASE)
+
+
+def _report_file(root: Path, p: Path, layout_paths: set) -> dict:
+    rel = Path(os.path.relpath(p, root)).as_posix()
+    try:
+        size = p.stat().st_size
+        h = file_hash(p)[:12]
+    except OSError:
+        size, h = -1, ""
+    return {"path": rel, "size": size, "sha1": h, "in_layout": rel.lower() in layout_paths}
+
+
+def report_scene(root: Path, source: str) -> dict | None:
+    """Description d'une scène pour le rapport, ou None si aucun fichier intéressant."""
+    man = read_manifest(root)
+    ctype = str(man.get("content_type") or "").upper()
+    if ctype in SKIP_CONTENT_TYPES:
+        return None
+    try:
+        layout = json.loads((root / "layout.json").read_text(encoding="utf-8-sig"))
+        layout_paths = {str(e.get("path", "")).replace("\\", "/").lower() for e in layout.get("content", [])}
+    except Exception:
+        layout_paths = set()
+    files, bgl_count, bgl_dirs = [], 0, set()
+    for dirpath, _dirs, filenames in os.walk(root, followlinks=True):
+        for fn in filenames:
+            low = fn.lower()
+            if low.endswith(".bgl"):
+                bgl_count += 1
+                bgl_dirs.add(Path(os.path.relpath(dirpath, root)).as_posix())
+            if REPORT_NOISE.search(low):
+                continue                           # textures, modèles 3D : jamais des interrupteurs de statics
+            if not ((any(low.endswith(e) for e in REPORT_EXTS) and REPORT_WORDS.search(fn.rsplit(".", 1)[0] if "." in fn else fn))
+                    or "static" in low):
+                continue
+            files.append(_report_file(root, Path(dirpath) / fn, layout_paths))
+            stem, _form = parse_form(fn)
+            cands = []
+            for suffix in (".nostatic", ".staticq", ".static"):
+                if low.endswith(".bgl" + suffix):
+                    cands.append(fn[:-len(suffix)])             # fichier actif + sa sauvegarde
+                    cands.append(fn[:-len(suffix)] + ".bak")
+            if stem:
+                base = STATIC_TOKEN_RE.sub("", stem, count=1)   # ex. lowi-scene-airport-statics -> lowi-scene-airport
+                if base and base.lower() != stem.lower():
+                    cands += [base + ".bgl", base + ".bgl.disabled", base + ".off"]
+            for c in cands:
+                if (Path(dirpath) / c).is_file():
+                    files.append(_report_file(root, Path(dirpath) / c, layout_paths))
+    if not files:
+        return None
+    sc = scan_package(root, source)
+    groups = []
+    for g in (sc.groups if sc else []):
+        groups.append({"mode": g.mode, "state": g.state, "note": g.note,
+                       "paths": [Path(os.path.relpath(x, root)).as_posix() for x in g.paths()],
+                       "active": Path(os.path.relpath(g.active, root)).as_posix(),
+                       "on": Path(os.path.relpath(g.on_file, root)).as_posix() if g.on_file else "",
+                       "off": Path(os.path.relpath(g.off_file, root)).as_posix() if g.off_file else ""})
+    detected = {gp.lower() for g in groups if g["mode"] != "conflict" for gp in g["paths"]}
+    seen_paths = set()
+    uniq = []
+    for f in files:
+        if f["path"] in seen_paths:
+            continue
+        seen_paths.add(f["path"])
+        f["used_by_sgm"] = f["path"].lower() in detected
+        uniq.append(f)
+    files = uniq
+    return {"folder": root.name, "title": str(man.get("title") or ""), "creator": str(man.get("creator") or ""),
+            "version": str(man.get("package_version") or ""), "content_type": ctype,
+            "icao": detect_icao(str(man.get("title") or root.name), root.name), "source": source,
+            "bgl_count": bgl_count, "bgl_dirs": sorted(bgl_dirs)[:20], "files": sorted(files, key=lambda f: f["path"]),
+            "sgm_groups": groups,
+            "sgm_state": sc.state if sc else NONE}
+
+
+def build_statics_report(sources: list, sim: str, progress=None) -> dict:
+    pkgs = []
+    for s in sources:
+        if s.exists:
+            pkgs += [(s, p) for p in find_packages(s.path)]
+    scenes, seen = [], set()
+    for i, (s, p) in enumerate(pkgs):
+        if progress:
+            progress(i + 1, len(pkgs), p.name)
+        real = norm_key(os.path.realpath(p))
+        if real in seen:
+            continue
+        seen.add(real)
+        try:
+            r = report_scene(p, source_label(s, p))
+        except Exception as e:                     # une scène illisible ne bloque pas le rapport
+            r = {"folder": p.name, "error": type(e).__name__}
+        if r:
+            scenes.append(r)
+    states: dict = {}
+    for r in scenes:
+        st = r.get("sgm_state", "error")
+        states[st] = states.get(st, 0) + 1
+    unused = sum(1 for r in scenes for f in r.get("files", []) if not f.get("used_by_sgm"))
+    return {"schema": REPORT_SCHEMA, "app": f"SGM beta v{APP_VERSION}", "sim": sim,
+            "created": datetime.now().strftime("%Y-%m-%d %H:%M"), "packages_scanned": len(seen),
+            "summary": {"scenes_with_candidates": len(scenes), "by_sgm_state": states,
+                        "candidate_files_not_used_by_sgm": unused},
+            "scenes": scenes}
+
+
+def write_statics_report(report: dict) -> Path:
+    d = data_dir() / "reports"
+    d.mkdir(parents=True, exist_ok=True)
+    out = d / f"sgm-statics-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    write_atomic(out, json.dumps(report, indent=1, ensure_ascii=False))
     return out
 
 
@@ -1021,6 +1498,37 @@ def gsx_journal_dests() -> list[Path]:
     return out
 
 
+def _move(src: Path, dst: Path):
+    if dst.exists():
+        raise ToggleError(tr("err_exists", name=dst.name))
+    os.rename(src, dst)
+    forget_hash(src)
+    forget_hash(dst)
+
+
+def _swap_layout_files(root: Path, groups: list, target: str):
+    """Méthode officielle Orbx / Drzewiecki : layout.json est échangé avec layout.json.nostatic (OFF)
+    ou layout.json.static (ON), pour rester cohérent avec le panneau Orbx Central."""
+    if not any(g.mode == "rswap" for g in groups):
+        return
+    lj, ljs, ljn = root / "layout.json", root / LAYOUT_STATIC, root / LAYOUT_NOSTATIC
+
+    def valid(f: Path) -> bool:                   # jamais d'échange vers un layout illisible
+        try:
+            return isinstance(json.loads(f.read_text(encoding="utf-8-sig")).get("content"), list)
+        except Exception:
+            return False
+
+    if not lj.is_file():
+        return
+    if target == OFF and ljn.is_file() and not ljs.exists() and valid(ljn):
+        os.rename(lj, ljs)
+        os.rename(ljn, lj)
+    elif target == ON and ljs.is_file() and not ljn.exists() and valid(ljs):
+        os.rename(lj, ljn)
+        os.rename(ljs, lj)
+
+
 def set_scene_state(scene: Scene, target: str):
     groups = [g for g in scene.groups if g.toggleable and g.state != target]
     if not groups:
@@ -1029,19 +1537,68 @@ def set_scene_state(scene: Scene, target: str):
     meta = PackageMeta(scene.root)
     to_backup = [meta.layout_file, meta.manifest_file]
     to_backup += [g.active for g in groups if g.mode == "variant" and g.state == UNKNOWN and g.active.exists()]
+    to_backup += [g.on_path for g in groups if g.mode == "rename" and g.twin and g.on_path.is_file()]
+    to_backup += [scene.root / n for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC) if (scene.root / n).is_file()]
     backup_files(scene.root, to_backup)
+    _swap_layout_files(scene.root, groups, target)
+    meta = PackageMeta(scene.root)              # relu : layout.json a pu être échangé
     try:
         for g in groups:
             if g.mode == "rename":
-                cur = g.active
-                new = cur.with_name(cur.name + ".off") if target == OFF else cur.with_name(cur.name[:-4])
-                if new.exists():
-                    raise ToggleError(tr("err_exists", name=new.name))
-                os.rename(cur, new)
                 if target == OFF:
-                    meta.remove(cur)
+                    if g.twin and g.off_path.is_file() and same_content(g.on_path, g.off_path):
+                        g.on_path.unlink()               # son double désactivé identique reste en place
+                        forget_hash(g.on_path)
+                    else:
+                        _move(g.on_path, g.off_path)
+                    meta.remove(g.on_path)
+                elif g.off_form == "bgl.disabled":
+                    # iniBuilds : le .disabled d'origine reste en place, on active une copie
+                    if g.on_path.exists():
+                        raise ToggleError(tr("err_exists", name=g.on_path.name))
+                    shutil.copy2(g.off_path, g.on_path)
+                    forget_hash(g.on_path)
+                    meta.upsert(g.on_path)
                 else:
-                    meta.upsert(new)
+                    _move(g.off_path, g.on_path)
+                    meta.upsert(g.on_path)
+            elif g.mode == "rswap":
+                main, stat, nost = g.active, g.on_file, g.off_file
+                if target == OFF:                         # X.bgl -> X.bgl.static, X.bgl.nostatic -> X.bgl
+                    _move(main, stat)
+                    _move(nost, main)
+                else:                                     # X.bgl -> X.bgl.nostatic, X.bgl.static -> X.bgl
+                    _move(main, nost)
+                    _move(stat, main)
+                meta.upsert(main)
+            elif g.mode == "swap":
+                main, bak, alt = g.active, g.on_file, g.off_file
+                apply_alt = (target == ON) if g.alt_static else (target == OFF)
+                if apply_alt:                             # X.bgl -> X.bgl.bak, copie de la version de rechange en X.bgl
+                    _move(main, bak)
+                    shutil.copy2(alt, main)
+                    forget_hash(main)
+                else:                                     # copie supprimée (vérifiée), X.bgl.bak -> X.bgl
+                    if not same_content(main, alt):
+                        raise ToggleError(tr("err_exists", name=main.name))
+                    main.unlink()
+                    forget_hash(main)
+                    _move(bak, main)
+                meta.upsert(main)
+            elif g.mode == "pair":
+                # toujours désactiver d'abord, puis activer : jamais les deux versions chargées
+                if target == OFF:                         # avec statics désactivé, sans statics activé
+                    if g.on_path.is_file():
+                        _move(g.on_path, g.off_path)
+                        meta.remove(g.on_path)
+                    _move(g.alt_off, g.alt_on)
+                    meta.upsert(g.alt_on)
+                else:
+                    if g.alt_on.is_file():
+                        _move(g.alt_on, g.alt_off)
+                        meta.remove(g.alt_on)
+                    _move(g.off_path, g.on_path)
+                    meta.upsert(g.on_path)
             else:
                 src = g.on_file if target == ON else g.off_file
                 tmp = g.active.with_name(g.active.name + ".sm-tmp")
@@ -1325,7 +1882,7 @@ def find_download_archives(seen: set) -> list[Path]:
     return out
 
 
-def report_url(kind: str, sim: str, lang: str) -> str:
+def report_url(kind: str, sim: str, lang: str, attachment: str = "") -> str:
     """Lien « nouvelle issue » prérempli. Aucune donnée personnelle : ni chemin, ni nom d'utilisateur."""
     title = "Bug: " if kind == "bug" else "Idea: "
     if kind == "bug":
@@ -1334,6 +1891,9 @@ def report_url(kind: str, sim: str, lang: str) -> str:
                 "### Steps to reproduce\n1. \n2. \n\n"
                 "### Scenery concerned (name, developer, ICAO)\n\n\n"
                 "### Message shown by SGM (if any)\n\n\n")
+        if attachment:
+            body += ("### Statics analysis report\n"
+                     f"Please drag the file `{attachment}` (folder opened by SGM) into this box.\n\n")
     else:
         body = ("### Your idea\n\n\n"
                 "### Why would it help you?\n\n\n")
@@ -1619,8 +2179,23 @@ def state_text(st: str) -> str:
 
 
 GROUP_STATE_KEY = {ON: "grp_on", OFF: "grp_off", UNKNOWN: "grp_unknown", CONFLICT: "grp_conflict"}
-MODE_KEY = {"rename": "mode_rename", "variant": "mode_variant", "conflict": "mode_conflict"}
-MODE_NOTE_KEY = {"rename": "note_rename", "variant": "note_variant", "conflict": "note_conflict"}
+MODE_KEY = {"rename": "mode_rename", "variant": "mode_variant", "swap": "mode_swap", "rswap": "mode_swap", "pair": "mode_pair",
+            "conflict": "mode_conflict"}
+MODE_NOTE_KEY = {"rename": "note_rename", "variant": "note_variant", "swap": "note_swap", "rswap": "note_swap", "pair": "note_pair",
+                 "conflict": "note_conflict"}
+
+
+def mode_note(groups: list, mode: str) -> str:
+    if mode == "rswap":
+        return tr("note_swap_x", alt=".bgl.nostatic / .static")
+    if mode == "swap":
+        alts = sorted({"." + parse_form(g.off_file.name)[1] for g in groups if g.mode == "swap" and g.off_file})
+        return tr("note_swap_x", alt=" / ".join(alts))
+    if mode == "rename":
+        forms = {g.off_form for g in groups if g.mode == "rename" and g.off_form}
+        if forms and forms != {"bgl.off"}:
+            return tr("note_rename_x", off=" / ".join("." + f for f in sorted(forms)))
+    return tr(MODE_NOTE_KEY[mode])
 GSX_TEXT_KEY = {GSX_MISSING: "gsx_copy", GSX_SAME: "gsx_same", GSX_DIFF: "gsx_diff"}
 GSX_INFO_KEY = {GSX_MISSING: "gsx_info_missing", GSX_SAME: "gsx_info_same", GSX_DIFF: "gsx_info_diff"}
 
@@ -1801,7 +2376,7 @@ class SceneRow(QFrame):
             if notes:
                 note, is_warn = tr(notes[0]), True
             elif len(modes) == 1:
-                note = tr(MODE_NOTE_KEY[modes.pop()])
+                note = mode_note(s.groups, modes.pop())
                 is_warn = "conflict" in {g.mode for g in s.groups}
             else:
                 note = tr("note_mixed_methods")
@@ -2458,6 +3033,9 @@ class MainWindow(QMainWindow):
             a = QAction(tr(key), self)
             a.triggered.connect(lambda _=False, k=kind: self.open_report(k))
             m_help.addAction(a)
+        a = QAction(tr("m_stats_report"), self)
+        a.triggered.connect(self.make_statics_report)
+        m_help.addAction(a)
         m_help.addSeparator()
         for key, fn in (("m_donate", self.donate), ("m_about", self.about)):
             a = QAction(tr(key), self)
@@ -2613,13 +3191,48 @@ class MainWindow(QMainWindow):
             warn(self, tr("all_errors") + "\n\n" + "\n".join(errors[:15]) + ("\n…" if len(errors) > 15 else ""))
         self.start_scan()
 
+    def make_statics_report(self):
+        """Rapport en lecture seule : aucun fichier de scène n'est modifié."""
+        res = self._create_report()
+        if res:
+            path, report = res
+            QMessageBox.information(self, APP_NAME, tr("report_done", n=report["summary"]["scenes_with_candidates"],
+                                                       name=path.name))
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
+
+    def _create_report(self):
+        if self.busy:
+            return None
+        self.set_busy(True)
+        try:
+            def prog(i, n, name):
+                self.status.setText(tr("report_progress", i=i, n=n, name=name))
+                QApplication.processEvents()
+            report = build_statics_report(find_sources(self.config), self.config.sim, prog)
+            path = write_statics_report(report)
+        except Exception as e:
+            self.set_busy(False)
+            warn(self, tr("report_fail", err=e))
+            return None
+        self.set_busy(False)
+        self.status.setText(tr("report_saved", name=path.name))
+        return path, report
+
     def open_backups(self):
         d = data_dir() / "backups"
         d.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(d)))
 
     def open_report(self, kind: str):
-        QDesktopServices.openUrl(QUrl(report_url(kind, self.config.sim, get_lang())))
+        attachment = ""
+        if kind == "bug" and ask(self, tr("report_attach_q")):
+            res = self._create_report()
+            if res:
+                path, _report = res
+                attachment = path.name
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
+                QMessageBox.information(self, APP_NAME, tr("report_attach_how", name=path.name))
+        QDesktopServices.openUrl(QUrl(report_url(kind, self.config.sim, get_lang(), attachment)))
 
     def donate(self):
         if DONATE_URL:

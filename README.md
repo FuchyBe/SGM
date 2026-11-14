@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.6
+# SGM — Statics & GSX Manager · beta v0.7
 
 **Static aircraft and GSX profiles manager for Microsoft Flight Simulator 2024 and 2020**
 by **Fabian Fuchs** · freeware · portable · 12 languages
@@ -30,7 +30,7 @@ SGM does it for you:
 
 There is nothing to install.
 
-1. Unzip `SGM_beta_v0.6.zip` anywhere (tools folder, USB stick…).
+1. Unzip `SGM_beta_v0.7.zip` anywhere (tools folder, USB stick…).
 2. Run `SGM.exe` from the `SGM` folder.
 
 Keep the whole `SGM` folder together: `SGM.exe` needs the `_internal` folder next to it.
@@ -52,10 +52,14 @@ The full user guide is in the app: **Help › User guide** (F1).
 ## Features
 
 ### Static aircraft
-- Files are detected when their name contains `statics` and ends in `.bgl` or `.bgl.off`, at any depth inside the scenery.
-- Two methods are supported:
-  - **Renaming**: `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off` (OFF).
-  - **Variants**: `statics_on.bgl` + `statics_off.bgl` next to an active `statics.bgl`. The chosen variant is copied onto `statics.bgl`.
+- Files are detected when their name contains `static`, `statics` or `parked`, at any depth inside the scenery. Model libraries (`modelLib…`) and terrain flattens are ignored.
+- The methods used by developers are recognised (based on a real library of more than 2,000 packages):
+  - **Renaming**: `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` or `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM keeps the developer's own naming.
+  - **Variants**: `statics_on.bgl` + `statics_off.bgl` next to an active `statics.bgl`. The chosen variant is copied onto `statics.bgl`. Also `xxx-airport-statics` / `xxx-airport-nostatics` next to the active `xxx-airport.bgl` (Homa Sim).
+  - **No-statics version**: `xxx.bgl` + `xxx.bgl.nostatic` (Orbx, Drzewiecki, UK2000). The developer's official method, the same as the Orbx Central control panel: OFF renames `xxx.bgl` → `xxx.bgl.static` and `xxx.bgl.nostatic` → `xxx.bgl`, and swaps `layout.json` with `layout.json.nostatic` when present; ON does the reverse. A `xxx.bgl.nostatic` on its own (Drzewiecki `XXXX_PLC.bgl.nostatic`) is simply renamed to `.bgl`.
+  - **With-statics version**: `xxx.bgl` (no statics) + `xxx.bgl.staticq` (UK2000). ON saves `xxx.bgl` as `xxx.bgl.bak` and copies `xxx.bgl.staticq` onto `xxx.bgl`; OFF puts the original back.
+  - **`.bgl.disabled`** (iniBuilds): ON copies it to `.bgl` (the `.disabled` file stays), OFF deletes the copy.
+  - **With / without pair**: `xxx_static` + `xxx_nostatic` (iniBuilds), or a complete airport file `xxx-statics` that replaces `xxx`. Only one of the two is ever active, so the airport is never loaded twice.
 - The package `layout.json` (and `total_package_size` in `manifest.json`) is updated automatically, like MSFSLayoutGenerator does. Without this, the simulator would ignore the change.
 - Ambiguous cases are never changed automatically. They are shown in orange as **To check**.
 
@@ -116,7 +120,7 @@ A scenery update (for example through the Marketplace or an installer) may resto
 Requirements: Python 3.10 or newer.
 
 1. Put `statics_manager.py`, `i18n.py`, `build_exe.bat`, both README files and the `licenses` folder together.
-2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.6.zip`.
+2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.7.zip`.
 
 To run without building: `pip install pyside6`, then `python statics_manager.py`.
 
@@ -125,6 +129,12 @@ To run without building: `pip install pyside6`, then `python statics_manager.py`
 Use **Help › Report a problem…** or **Help › Suggest an idea…** in SGM. It opens a pre-filled page in the public GitHub issue tracker (https://github.com/FuchyBe/SGM/issues, a free GitHub account is required).
 
 The SGM version, the simulator and the Windows version are added automatically. No personal information is sent: please do not paste your e-mail address or full file paths containing your user name.
+
+### Statics analysis report
+
+**Help › Create a statics analysis report…** scans all your sceneries without changing anything and saves a `.json` file in `SGM_data\reports`. It lists the statics-like files found in each scenery (names inside the scenery, sizes, fingerprints, whether they are in `layout.json`, and how SGM understood them). It contains no personal path or user name. Attach it to a GitHub issue to help improve SGM's detection rules.
+
+When you report a problem, SGM offers to create this report at the same time: drag the file into the GitHub page before submitting.
 
 ## Support the project
 
@@ -155,6 +165,13 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 
 ## Version history
 
+**beta v0.7**
+- **Statics: many more developer methods recognised**, built from a real library of more than 2,000 packages and the developers' own instructions: `.off`, `.disabled`, "static" singular and "parked" files, identical twin files, `.nostatic` versions (official Orbx / Drzewiecki method, compatible with the Orbx Central control panel, including the `layout.json` swap), `_static` / `_nostatic` pairs, complete airport files with statics, UK2000 `.staticq`. SGM keeps each developer's own naming.
+- **Safety**: an airport is never loaded twice; unclear cases are never switched ("To check" + folder icon to do it manually); a `.bgl` missing from `layout.json` is never touched; model libraries and terrain flattens are ignored.
+- **Fix**: SGM ≤ v0.6 could disable a complete airport file named `…-airport-statics.bgl` (Homa Sim), leaving the scenery without an airport. SGM now shows "No version active" and re-enables only one version.
+- **Restore original state**: right-click a scenery › Restore original state…, or Help › Restore everything to original. SGM records each scenery and GSX profile as it was before its first change; restoring is all or nothing.
+- **Statics analysis report** (Help menu): read-only scan, no personal data, to help improve the detection rules. Help › Report a problem offers to create it and attach it.
+
 **beta v0.6**
 - Airport sceneries are listed even without statics or GSX profile (ICAO code detection).
 - Detection of GSX profiles installed manually, and warning when two profiles exist for the same airport.
@@ -162,8 +179,6 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Category filter: with statics, GSX profile in scenery, installed manually, no GSX profile.
 - Install GSX profiles from downloaded archives: drag & drop, Install button, Downloads folder detection at launch (.zip; .7z/.rar with 7-Zip).
 - Aircraft and liveries are skipped during the scan (faster).
-- Restore original state: right-click a scenery, or Help › Restore everything to original. SGM records each scenery and GSX profile as it was before its first change.
-- Statics safety: a statics file with a different name that matches neither on/off variant is never overwritten: it is shown as "To check", with a folder icon to open the folder of the statics file and do it manually.
 - Help › Report a problem / Suggest an idea (pre-filled GitHub issue).
 
 **beta v0.5**
