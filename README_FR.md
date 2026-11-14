@@ -98,6 +98,15 @@ Avant chaque modification, les fichiers concernés sont copiés dans `SGM_data\b
 
 **Aide › Ouvrir le dossier des sauvegardes** l'ouvre.
 
+### Restaurer l'état d'origine
+
+Avant sa toute première modification d'une scène, SGM enregistre son état dans `SGM_data\origin` (fichiers statics, `layout.json`, `manifest.json`). Cet enregistrement n'est jamais effacé par les sauvegardes suivantes. SGM note aussi chaque profil GSX qu'il remplace, retire ou ajoute.
+
+- **Clic droit sur une scène › Restaurer l'état d'origine…** remet cette scène et ses profils GSX comme avant SGM.
+- **Aide › Tout restaurer à l'origine…** le fait pour toutes les scènes et le dossier GSX, par exemple avant de supprimer SGM.
+- La restauration est tout ou rien : si un fichier ne correspond plus (modifié à la main), rien n'est changé et les fichiers à vérifier sont listés.
+- Si l'éditeur a mis la scène à jour entre-temps, ses fichiers sont déjà d'origine : rien n'est fait.
+
 ## Mises à jour des scènes
 
 Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre ses fichiers d'origine. Il suffit de la rebasculer dans SGM.
@@ -153,6 +162,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Filtre par catégorie : avec statics, profil GSX dans la scène, installé à la main, sans profil GSX.
 - Installation de profils GSX depuis une archive téléchargée : glisser-déposer, bouton Installer, détection dans Téléchargements au lancement (.zip ; .7z/.rar avec 7-Zip).
 - Les avions et livrées sont ignorés pendant l'analyse (plus rapide).
+- Restauration de l'état d'origine : clic droit sur une scène, ou Aide › Tout restaurer à l'origine. SGM enregistre chaque scène et profil GSX tels qu'ils étaient avant sa première modification.
 - Sécurité des statics : un fichier statics au nom différent qui ne correspond à aucune variante on/off n'est jamais écrasé : il est affiché « À vérifier », avec une icône de dossier pour ouvrir le dossier du fichier statics et le faire manuellement.
 - Aide › Signaler un problème / Proposer une idée (issue GitHub préremplie).
 
