@@ -101,6 +101,8 @@ The full user guide is in the app: **Help › User guide** (F1).
 
 ## Backups
 
+**Undo** (button next to *Install GSX profile…*, or **Ctrl+Z**) cancels the last action — a switch, All ON / All OFF as a whole, a GSX profile copied or installed, a restore — and can be pressed again to go further back (10 actions kept). Files go back exactly as they were; if one was changed since, nothing is modified.
+
 Before every change, the modified files are copied to `SGM_data\backups`:
 - one folder per scenery, keeping the 10 most recent backups;
 - GSX files in `backups\_GSX`.
@@ -178,6 +180,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 **Next version (in development)**
 - **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
 - **flightsim.to button**: web search limited to flightsim.to (the site's own search ignored the ICAO from a link); the search setting is removed.
+- **Undo the last action** (button or Ctrl+Z, 10 actions kept): switches, All ON/OFF, GSX profiles, restores; files back exactly as before, refused if changed since.
 - **Scan also checks your download folders** for GSX profile archives; download folders can be changed or added in **Folders**.
 - **Report a problem / Suggest an idea window**: your text goes straight into the GitHub page, report and log in one `.zip`, exact preview of what is shared.
 

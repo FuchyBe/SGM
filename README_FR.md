@@ -101,6 +101,8 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 
 ## Sauvegardes
 
+**Annuler** (bouton à côté de *Installer un profil GSX…*, ou **Ctrl+Z**) défait la dernière action — une bascule, Tout ON / Tout OFF en entier, un profil GSX copié ou installé, une restauration — et se réutilise pour remonter plus loin (10 actions gardées). Les fichiers reviennent exactement comme avant ; si l'un d'eux a changé depuis, rien n'est modifié.
+
 Avant chaque modification, les fichiers concernés sont copiés dans `SGM_data\backups` :
 - un dossier par scène, avec les 10 sauvegardes les plus récentes ;
 - les fichiers GSX dans `backups\_GSX`.
@@ -178,6 +180,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 **Prochaine version (en développement)**
 - **Journal** (`SGM_data\logs`, sans nom d'utilisateur), joint aux signalements de bug ; Aide › Ouvrir le dossier du journal.
 - **Bouton flightsim.to** : recherche web limitée à flightsim.to (la recherche du site ignorait l'OACI depuis un lien) ; le réglage de recherche est retiré.
+- **Annuler la dernière action** (bouton ou Ctrl+Z, 10 actions gardées) : bascules, Tout ON/OFF, profils GSX, restaurations ; fichiers remis exactement, refus s'ils ont changé depuis.
 - **Analyser vérifie aussi tes dossiers de téléchargement** (archives de profils GSX) ; dossiers modifiables et ajoutables dans **Dossiers**.
 - **Fenêtre Signaler un problème / Proposer une idée** : ton texte arrive directement dans la page GitHub, rapport et journal dans un seul `.zip`, aperçu exact de ce qui est partagé.
 
