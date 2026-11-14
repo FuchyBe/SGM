@@ -5,11 +5,17 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 ## Prêt
 
-_(vide — Fabian déplace ici les sujets à développer, dans l'ordre souhaité)_
+Placés par Fabian le 2026-11-14, dans cet ordre.
+
+1. **Préparer la v0.8** — numéro de version, changelog et texte flightsim.to (journal, Signaler, bouton flightsim.to,
+   téléchargements, colonnes, Tout ON/OFF, Annuler, Profils). S.
+2. **Mise à jour automatique** — GitHub Releases + SHA-256 + programme de mise à jour, `SGM_data` préservé.
+   Accès réseau optionnel accepté par Fabian (2026-11-14). Fiche `docs/rd/2026-11-14-mise-a-jour-et-remontee.md`,
+   étape 4. M.
 
 ## En cours (PR à tester)
 
-- Arabe : en-tête — défaut de la capture, pas de l'application — PR #11.
+- Profils de statics — PR #17.
 
 ## À trier
 
@@ -32,6 +38,9 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **Annuler la dernière action** (PR #16).
+- **Colonnes ajustées au texte, Tout OFF / Tout ON dans l'en-tête Statics** (PR #15).
+- **Analyser vérifie les téléchargements, dossiers de téléchargement réglables** (PR #14).
 - **Bouton flightsim.to** : recherche web limitée au site, réglage retiré (PR #13).
 - **Fenêtre « Signaler un problème / Proposer une idée »** (PR #12).
 - **Journal local** (PR #10).
