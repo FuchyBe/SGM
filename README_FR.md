@@ -79,7 +79,8 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 ### Installer un profil GSX téléchargé
 - **Dépose** l'archive (`.zip`, `.7z`, `.rar`) ou les fichiers `.ini`/`.py` sur la fenêtre de SGM, ou clique sur **Installer un profil GSX…**.
 - SGM n'extrait que les fichiers du profil (`.ini` et `.py` du même nom), demande quelle version installer s'il y en a plusieurs, indique la scène correspondante et demande confirmation avant de copier.
-- Au lancement, SGM vérifie ton dossier **Téléchargements** à la recherche d'archives récentes contenant un profil GSX et propose de les installer, une seule fois par archive. Désactivable dans **Paramètres**.
+- Au lancement, SGM vérifie tes **dossiers de téléchargement** à la recherche d'archives récentes contenant un profil GSX et propose de les installer, une seule fois par archive (désactivable dans **Paramètres**). **Analyser** les revérifie à chaque fois, sans les archives dont les profils sont déjà dans GSX.
+- Les dossiers de téléchargement se règlent dans **Dossiers** : **Téléchargements** de Windows par défaut ; change-le ou ajoute-en d'autres.
 - Après une installation depuis Téléchargements, SGM peut retirer l'archive (**Paramètres › Après installation depuis Téléchargements** : Demander / Supprimer automatiquement / Ne jamais supprimer). Les archives vont dans la Corbeille ; une archive dont l'installation a posé problème n'est jamais supprimée (alerte), ni une archive située hors de Téléchargements.
 - Les archives sont extraites de façon sûre : rien n'est écrit hors d'un dossier temporaire, les autres fichiers sont ignorés.
 - Le `.zip` fonctionne directement. Les `.7z` et `.rar` nécessitent **7-Zip** (7-zip.org).
@@ -177,6 +178,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 **Prochaine version (en développement)**
 - **Journal** (`SGM_data\logs`, sans nom d'utilisateur), joint aux signalements de bug ; Aide › Ouvrir le dossier du journal.
 - **Bouton flightsim.to** : recherche web limitée à flightsim.to (la recherche du site ignorait l'OACI depuis un lien) ; le réglage de recherche est retiré.
+- **Analyser vérifie aussi tes dossiers de téléchargement** (archives de profils GSX) ; dossiers modifiables et ajoutables dans **Dossiers**.
 - **Fenêtre Signaler un problème / Proposer une idée** : ton texte arrive directement dans la page GitHub, rapport et journal dans un seul `.zip`, aperçu exact de ce qui est partagé.
 
 **beta v0.7**

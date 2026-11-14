@@ -244,6 +244,7 @@ class Config:
         self.check_downloads = True
         self.archive_cleanup = "ask"          # après installation depuis Téléchargements : ask / auto / never
         self.seen_archives: list = []
+        self.download_folders: list = []      # vide = dossier Téléchargements de Windows
         self.col_fs, self.col_fg = COL_STATICS_W / COL_REF_W, COL_GSX_W / COL_REF_W
         self.sim = DEFAULT_SIM
         self.profiles: dict = {}
@@ -265,6 +266,7 @@ class Config:
                 except (TypeError, ValueError):
                     pass
                 self.seen_archives = [str(x) for x in data.get("seen_archives", [])][-300:]
+                self.download_folders = [str(x) for x in data.get("download_folders", []) if str(x).strip()][:10]
                 self.sim = data.get("sim") if data.get("sim") in SIMS else DEFAULT_SIM
                 for sim, p in (data.get("profiles") or {}).items():
                     if sim in SIMS and isinstance(p, dict):
@@ -332,10 +334,14 @@ class Config:
     def gsx_folder(self) -> str:
         return self.gsx_override or default_gsx_folder(self.sim)
 
+    def download_dirs(self) -> list:
+        """Dossiers où chercher les archives de profils GSX (le premier sert aussi de dossier par défaut)."""
+        return [Path(f) for f in self.download_folders] or [downloads_dir()]
+
     def save(self):
         data = {"version": 3, "lang": self.lang, "sim": self.sim,
                 "check_downloads": self.check_downloads, "seen_archives": self.seen_archives[-300:],
-                "archive_cleanup": self.archive_cleanup,
+                "archive_cleanup": self.archive_cleanup, "download_folders": self.download_folders,
                 "columns": {"statics": self.col_fs, "gsx": self.col_fg},
                 "profiles": {}}
         for sim, p in self.profiles.items():
@@ -1947,13 +1953,16 @@ def archive_key(archive: Path) -> str:
         return norm_key(archive)
 
 
-def find_download_archives(seen: set) -> list[Path]:
-    """Archives récentes du dossier Téléchargements qui semblent contenir un profil GSX."""
-    folder = downloads_dir()
-    try:
-        cands = [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in ARCHIVE_EXT]
-    except OSError:
-        return []
+def find_download_archives(seen: set, folders=None, installed=None) -> list[Path]:
+    """Archives récentes des dossiers de téléchargement qui semblent contenir un profil GSX.
+    `installed` : noms des .ini déjà présents dans GSX ; une archive dont tous les profils y sont déjà est ignorée."""
+    cands = []
+    for folder in (folders or [downloads_dir()]):
+        try:
+            cands += [p for p in Path(folder).iterdir() if p.is_file() and p.suffix.lower() in ARCHIVE_EXT]
+        except OSError:
+            continue
+    installed = {n.lower() for n in (installed or ())}
     limit = time.time() - DOWNLOAD_MAX_AGE_DAYS * 86400
     cands = sorted((p for p in cands if p.stat().st_mtime >= limit), key=lambda p: -p.stat().st_mtime)
     out = []
@@ -1964,12 +1973,14 @@ def find_download_archives(seen: set) -> list[Path]:
             names = _names_in_archive(p)
         except Exception:
             continue
+        inis = set()
         for n in names:
             low = n.replace("\\", "/").lower()
             base = low.rsplit("/", 1)[-1]
             if base.endswith(".ini") and (GSX_NAME_RE.match(base) or "gsx" in low):
-                out.append(p)
-                break
+                inis.add(base)
+        if inis and not inis <= installed:
+            out.append(p)
     return out
 
 
@@ -1977,15 +1988,21 @@ ARCHIVE_CLEANUP = ("ask", "auto", "never")
 ARCH_OK, ARCH_CANCEL, ARCH_ERROR = "ok", "cancel", "error"
 
 
-def in_downloads(path: Path, downloads: Path | None = None) -> bool:
-    """L'archive est directement dans le dossier Téléchargements (jamais ailleurs)."""
+def in_downloads(path: Path, downloads=None) -> bool:
+    """L'archive est directement dans un dossier de téléchargement (jamais dans un sous-dossier ni ailleurs).
+    `downloads` : un dossier ou une liste de dossiers (par défaut : Téléchargements de Windows)."""
+    if downloads is None:
+        downloads = [downloads_dir()]
+    elif isinstance(downloads, (str, Path)):
+        downloads = [downloads]
     try:
-        return Path(path).resolve().parent == Path(downloads or downloads_dir()).resolve()
+        parent = Path(path).resolve().parent
+        return any(parent == Path(d).resolve() for d in downloads)
     except OSError:
         return False
 
 
-def cleanup_candidates(outcomes: dict, downloads: Path | None = None) -> list:
+def cleanup_candidates(outcomes: dict, downloads=None) -> list:
     """Archives à proposer à la suppression : installées sans erreur (ou déjà installées à l'identique)
     ET situées dans Téléchargements. Une archive en erreur ou annulée n'est jamais supprimée."""
     return [Path(a) for a, st in outcomes.items() if st == ARCH_OK and in_downloads(a, downloads)]
@@ -3013,13 +3030,13 @@ class ScanWorker(QThread):
 class DownloadsWorker(QThread):
     done = Signal(list)
 
-    def __init__(self, seen: set):
+    def __init__(self, seen: set, folders=None, installed=None):
         super().__init__()
-        self.seen = seen
+        self.seen, self.folders, self.installed = seen, folders, installed
 
     def run(self):
         try:
-            found = find_download_archives(self.seen)
+            found = find_download_archives(self.seen, self.folders, self.installed)
         except Exception:
             found = []
         self.done.emit(found)
@@ -3032,6 +3049,7 @@ class FoldersDialog(QDialog):
         self.sources = sources
         self.changed = False
         self.gsx_changed = False
+        self.downloads_changed = False
         self.setWindowTitle(f"{tr('dlg_folders')} — {config.sim}")
         self.setMinimumWidth(660)
         v = QVBoxLayout(self)
@@ -3093,12 +3111,20 @@ class FoldersDialog(QDialog):
         a.setObjectName("chip")
         return a
 
-    def rebuild(self):
-        while self.list.count():
-            item = self.list.takeAt(0)
+    @staticmethod
+    def _clear(layout):
+        while layout.count():
+            item = layout.takeAt(0)
             w = item.widget()
             if w:
+                w.hide()                      # retiré tout de suite de l'affichage, détruit ensuite
+                w.setParent(None)
                 w.deleteLater()
+            elif item.layout():
+                FoldersDialog._clear(item.layout())
+
+    def rebuild(self):
+        self._clear(self.list)
         autos = [s for s in self.sources if s.auto]
         if not autos:
             lbl = QLabel(tr("no_auto"))
@@ -3118,6 +3144,59 @@ class FoldersDialog(QDialog):
         tail = [] if self.config.gsx_override else [self._chip(tr("auto"))]
         tail += [self._ghost(tr("modify"), self.change_gsx), self._ghost(tr("default"), self.reset_gsx)]
         self._row("GSX", folder, Path(folder).is_dir(), tail)
+
+        dl = QLabel(tr("dl_folders"))
+        dl.setObjectName("hint")
+        dl.setWordWrap(True)
+        self.list.addSpacing(8)
+        self.list.addWidget(dl)
+        custom = bool(self.config.download_folders)
+        for f in self.config.download_dirs():
+            f = str(f)
+            tail = [] if custom else [self._chip(tr("auto"))]
+            tail.append(self._ghost(tr("modify"), lambda _=False, x=f: self.change_download(x)))
+            if custom and len(self.config.download_folders) > 1:
+                tail.append(self._ghost(tr("remove"), lambda _=False, x=f: self.remove_download(x)))
+            self._row(tr("dl_label"), f, Path(f).is_dir(), tail)
+        row = QHBoxLayout()
+        row.addWidget(self._ghost(tr("dl_add"), self.add_download))
+        if custom:
+            row.addWidget(self._ghost(tr("default"), self.reset_downloads))
+        row.addStretch()
+        self.list.addLayout(row)
+
+    # ── Dossiers de téléchargement (archives de profils GSX)
+    def _set_downloads(self, folders: list):
+        out = []
+        for f in folders:
+            f = os.path.normpath(f)
+            if norm_key(f) not in {norm_key(x) for x in out}:
+                out.append(f)
+        default = [os.path.normpath(str(downloads_dir()))]
+        self.config.download_folders = [] if out == default else out[:10]
+        self.config.save()
+        self.downloads_changed = True
+        self.rebuild()
+
+    def change_download(self, old: str):
+        d = QFileDialog.getExistingDirectory(self, tr("dl_choose"), old)
+        if d:
+            cur = [str(x) for x in self.config.download_dirs()]
+            self._set_downloads([d if norm_key(x) == norm_key(old) else x for x in cur])
+
+    def add_download(self):
+        d = QFileDialog.getExistingDirectory(self, tr("dl_choose"), str(self.config.download_dirs()[0]))
+        if d:
+            self._set_downloads([str(x) for x in self.config.download_dirs()] + [d])
+
+    def remove_download(self, f: str):
+        self._set_downloads([str(x) for x in self.config.download_dirs() if norm_key(x) != norm_key(f)])
+
+    def reset_downloads(self):
+        self.config.download_folders = []
+        self.config.save()
+        self.downloads_changed = True
+        self.rebuild()
 
     def change_gsx(self):
         d = QFileDialog.getExistingDirectory(self, tr("choose_gsx"), self.config.gsx_folder())
@@ -3452,7 +3531,8 @@ class MainWindow(QMainWindow):
         self.btn_folders = QPushButton(tr("btn_folders"))
         self.btn_folders.clicked.connect(self.open_folders)
         self.btn_scan = QPushButton(tr("btn_scan"))
-        self.btn_scan.clicked.connect(self.start_scan)
+        self.btn_scan.clicked.connect(self.manual_scan)
+        self.btn_scan.setToolTip(tr("tip_scan"))
         self.btn_install = QPushButton(tr("btn_install"))
         self.btn_install.setToolTip(tr("arch_drop_tip"))
         self.btn_install.clicked.connect(self.choose_archives)
@@ -3873,9 +3953,15 @@ class MainWindow(QMainWindow):
         self.config.check_downloads = bool(on)
         self.config.save()
 
+    _dl_manual_result = False
+
     def on_downloads_found(self, found: list):
         self._dl_found = found
+        LOG.info("Téléchargements : %d archive(s) avec profil GSX à installer", len(found))
         if not found:
+            self.dl_banner.hide()
+            if self._dl_manual_result:
+                self.status.setText(self._status_done_text() + "   ·   " + tr("dl_none"))
             return
         names = ", ".join(p.name for p in found[:3]) + ("…" if len(found) > 3 else "")
         txt = tr("dl_found", n=len(found), names=names)
@@ -3905,7 +3991,8 @@ class MainWindow(QMainWindow):
         self.dl_banner.hide()
 
     def choose_archives(self):
-        files, _ = QFileDialog.getOpenFileNames(self, tr("arch_choose"), str(downloads_dir()), tr("arch_filter"))
+        files, _ = QFileDialog.getOpenFileNames(self, tr("arch_choose"), str(self.config.download_dirs()[0]),
+                                                tr("arch_filter"))
         if files:
             self.install_paths([Path(f) for f in files])
 
@@ -3991,7 +4078,7 @@ class MainWindow(QMainWindow):
     def _cleanup_archives(self, outcomes: dict):
         """Suppression (Corbeille) des archives de Téléchargements installées sans erreur, selon le réglage."""
         mode = self.config.archive_cleanup
-        cands = cleanup_candidates(outcomes)
+        cands = cleanup_candidates(outcomes, self.config.download_dirs())
         if mode == "never" or not cands:
             return
         listing = "\n".join(f"• {p.name}" for p in cands)
@@ -4060,6 +4147,23 @@ class MainWindow(QMainWindow):
             r.switch.setEnabled(not busy and r.scene.toggleable)
 
     # ── Analyse
+    def manual_scan(self):
+        """Bouton Analyser : les scènes, puis les dossiers de téléchargement (même les archives déjà proposées,
+        sauf celles dont les profils sont déjà dans GSX)."""
+        self._dl_manual = True
+        self.start_scan()
+
+    _dl_manual = False
+
+    def check_downloads_now(self, manual: bool):
+        if getattr(self, "dl_worker", None) is not None and self.dl_worker.isRunning():
+            return
+        seen = set() if manual else set(self.config.seen_archives)
+        self._dl_manual_result = manual
+        self.dl_worker = DownloadsWorker(seen, self.config.download_dirs(), gsx_dest_index(Path(self.config.gsx_folder())))
+        self.dl_worker.done.connect(self.on_downloads_found)
+        self.dl_worker.start()
+
     def start_scan(self):
         if self.busy:
             return
@@ -4111,11 +4215,13 @@ class MainWindow(QMainWindow):
         missing = [s for s in self.sources if not s.exists]
         if missing and srcs:
             self.show_banner(tr("banner_missing", paths=", ".join(str(s.path) for s in missing)), "warn")
-        if self.config.check_downloads and not self._dl_checked:
+        if self._dl_manual:
+            self._dl_manual = False
             self._dl_checked = True
-            self.dl_worker = DownloadsWorker(set(self.config.seen_archives))
-            self.dl_worker.done.connect(self.on_downloads_found)
-            self.dl_worker.start()
+            self.check_downloads_now(True)
+        elif self.config.check_downloads and not self._dl_checked:
+            self._dl_checked = True
+            self.check_downloads_now(False)
 
     _scan_time = ""
 
@@ -4359,7 +4465,9 @@ class MainWindow(QMainWindow):
     def open_folders(self):
         dlg = FoldersDialog(self.config, self.sources, self)
         dlg.exec()
-        if dlg.changed:
+        if dlg.downloads_changed:
+            self._dl_manual = True              # nouveaux dossiers : on les vérifie tout de suite
+        if dlg.changed or dlg.downloads_changed:
             self.start_scan()
         elif dlg.gsx_changed:
             self.refresh_gsx_index()
