@@ -168,6 +168,7 @@ class Config:
         self.lang = "en"
         self.search = "fsto"
         self.check_downloads = True
+        self.archive_cleanup = "ask"          # après installation depuis Téléchargements : ask / auto / never
         self.seen_archives: list = []
         self.col_fs, self.col_fg = COL_STATICS_W / COL_REF_W, COL_GSX_W / COL_REF_W
         self.sim = DEFAULT_SIM
@@ -181,6 +182,8 @@ class Config:
                 self.lang = str(data.get("lang") or "en")
                 self.search = data.get("search") if data.get("search") in SEARCH_ENGINES else "fsto"
                 self.check_downloads = bool(data.get("check_downloads", True))
+                if data.get("archive_cleanup") in ARCHIVE_CLEANUP:
+                    self.archive_cleanup = data["archive_cleanup"]
                 cols = data.get("columns") or {}
                 try:
                     fs, fg = float(cols.get("statics", self.col_fs)), float(cols.get("gsx", self.col_fg))
@@ -259,6 +262,7 @@ class Config:
     def save(self):
         data = {"version": 3, "lang": self.lang, "sim": self.sim, "search": self.search,
                 "check_downloads": self.check_downloads, "seen_archives": self.seen_archives[-300:],
+                "archive_cleanup": self.archive_cleanup,
                 "columns": {"statics": self.col_fs, "gsx": self.col_fg},
                 "profiles": {}}
         for sim, p in self.profiles.items():
@@ -1891,6 +1895,66 @@ def find_download_archives(seen: set) -> list[Path]:
     return out
 
 
+ARCHIVE_CLEANUP = ("ask", "auto", "never")
+ARCH_OK, ARCH_CANCEL, ARCH_ERROR = "ok", "cancel", "error"
+
+
+def in_downloads(path: Path, downloads: Path | None = None) -> bool:
+    """L'archive est directement dans le dossier Téléchargements (jamais ailleurs)."""
+    try:
+        return Path(path).resolve().parent == Path(downloads or downloads_dir()).resolve()
+    except OSError:
+        return False
+
+
+def cleanup_candidates(outcomes: dict, downloads: Path | None = None) -> list:
+    """Archives à proposer à la suppression : installées sans erreur (ou déjà installées à l'identique)
+    ET situées dans Téléchargements. Une archive en erreur ou annulée n'est jamais supprimée."""
+    return [Path(a) for a, st in outcomes.items() if st == ARCH_OK and in_downloads(a, downloads)]
+
+
+def send_to_trash(path: Path):
+    """Envoie un fichier dans la Corbeille de Windows (récupérable). Lève OSError en cas d'échec.
+    Hors Windows (tests) : déplacé dans SGM_data/trash."""
+    path = Path(path)
+    if not path.is_file():
+        raise OSError(f"{path.name}: introuvable")
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        class SHFILEOPSTRUCTW(ctypes.Structure):
+            _fields_ = [("hwnd", wintypes.HWND), ("wFunc", wintypes.UINT), ("pFrom", wintypes.LPCWSTR),
+                        ("pTo", wintypes.LPCWSTR), ("fFlags", ctypes.c_ushort),
+                        ("fAnyOperationsAborted", wintypes.BOOL), ("hNameMappings", ctypes.c_void_p),
+                        ("lpszProgressTitle", wintypes.LPCWSTR)]
+        fo_delete, flags = 3, 0x0004 | 0x0010 | 0x0040 | 0x0400   # SILENT | NOCONFIRMATION | ALLOWUNDO | NOERRORUI
+        op = SHFILEOPSTRUCTW(None, fo_delete, str(path) + "\0", None, flags, False, None, None)
+        res = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
+        if res != 0 or op.fAnyOperationsAborted or path.exists():
+            raise OSError(f"{path.name}: {res}")
+        return
+    trash = data_dir() / "trash"
+    trash.mkdir(parents=True, exist_ok=True)
+    target = trash / path.name
+    n = 1
+    while target.exists():
+        target = trash / f"{path.stem} ({n}){path.suffix}"
+        n += 1
+    shutil.move(str(path), str(target))
+
+
+def trash_archives(paths: list) -> list:
+    """Envoie les archives à la Corbeille ; renvoie [(nom, erreur)] pour celles qui ont échoué."""
+    failed = []
+    for p in paths:
+        try:
+            send_to_trash(p)
+        except OSError as e:
+            failed.append((Path(p).name, str(e)))
+    return failed
+
+
 def report_url(kind: str, sim: str, lang: str, attachment: str = "") -> str:
     """Lien « nouvelle issue » prérempli. Aucune donnée personnelle : ni chemin, ni nom d'utilisateur."""
     title = "Bug: " if kind == "bug" else "Idea: "
@@ -3150,6 +3214,14 @@ class MainWindow(QMainWindow):
         a.setChecked(self.config.check_downloads)
         a.toggled.connect(self.set_check_downloads)
         m_set.addAction(a)
+        m_clean = m_set.addMenu(tr("m_arch_cleanup"))
+        cgrp = QActionGroup(self)
+        for mode in ARCHIVE_CLEANUP:
+            a = QAction(tr("m_arch_cleanup_" + mode), self, checkable=True)
+            a.setChecked(self.config.archive_cleanup == mode)
+            a.triggered.connect(lambda _=False, md=mode: self.set_archive_cleanup(md))
+            cgrp.addAction(a)
+            m_clean.addAction(a)
         a = QAction(tr("m_install_arch"), self)
         a.triggered.connect(self.choose_archives)
         m_set.addAction(a)
@@ -3473,14 +3545,22 @@ class MainWindow(QMainWindow):
     def install_paths(self, paths: list):
         archives = [Path(p) for p in paths if Path(p).suffix.lower() in ARCHIVE_EXT]
         loose = [Path(p) for p in paths if Path(p).suffix.lower() in (".ini", ".py")]
-        installed = []
+        installed, outcomes, errors = [], {}, []
         for a in archives:
             tmp = Path(tempfile.mkdtemp(prefix="sgm_"))
             try:
                 extract_profiles(a, tmp)
-                installed += self._install_from_folder(tmp, a.name)
+                status, files, why = self._install_from_folder(tmp, a.name)
+                outcomes[a] = status
+                installed += files
+                if status == ARCH_ERROR:
+                    errors.append((a.name, why))
             except ArchiveError as err:
-                warn(self, tr(err.key, **err.kw))
+                outcomes[a] = ARCH_ERROR
+                errors.append((a.name, tr(err.key, **err.kw)))
+            except Exception as err:
+                outcomes[a] = ARCH_ERROR
+                errors.append((a.name, str(err)))
             finally:
                 shutil.rmtree(tmp, ignore_errors=True)
         if loose:
@@ -3489,7 +3569,10 @@ class MainWindow(QMainWindow):
                 for f in loose:
                     if f.is_file() and f.stat().st_size <= MAX_MEMBER_SIZE:
                         shutil.copy2(f, tmp / f.name)
-                installed += self._install_from_folder(tmp, loose[0].name)
+                status, files, why = self._install_from_folder(tmp, loose[0].name)
+                installed += files
+                if status == ARCH_ERROR:
+                    errors.append((loose[0].name, why))
             finally:
                 shutil.rmtree(tmp, ignore_errors=True)
         self._mark_seen(archives)
@@ -3499,24 +3582,51 @@ class MainWindow(QMainWindow):
                 r.refresh_gsx()
             self.apply_filter()
             self.status.setText(tr("arch_done", files=", ".join(installed)))
+        if errors:      # jamais supprimée : on le dit clairement
+            warn(self, tr("arch_errors_kept") + "\n\n" + "\n".join(f"• {n} — {w}" for n, w in errors))
+        self._cleanup_archives(outcomes)
 
-    def _install_from_folder(self, folder: Path, name: str) -> list:
+    def _cleanup_archives(self, outcomes: dict):
+        """Suppression (Corbeille) des archives de Téléchargements installées sans erreur, selon le réglage."""
+        mode = self.config.archive_cleanup
+        cands = cleanup_candidates(outcomes)
+        if mode == "never" or not cands:
+            return
+        listing = "\n".join(f"• {p.name}" for p in cands)
+        if mode == "ask" and not ask(self, tr("arch_delete_q", n=len(cands)) + "\n\n" + listing):
+            return
+        failed = trash_archives(cands)
+        done = len(cands) - len(failed)
+        if done:
+            self.status.setText(tr("arch_deleted", n=done))
+        if failed:
+            warn(self, tr("arch_delete_fail") + "\n\n" + "\n".join(f"• {n} — {w}" for n, w in failed))
+
+    def set_archive_cleanup(self, mode: str):
+        if mode in ARCHIVE_CLEANUP:
+            self.config.archive_cleanup = mode
+            self.config.save()
+
+    def _install_from_folder(self, folder: Path, name: str) -> tuple:
+        """Installe le profil trouvé dans `folder`. Renvoie (état, fichiers installés, raison d'erreur)."""
         variants = profiles_in_folder(folder)
         if not variants:
-            QMessageBox.information(self, APP_NAME, tr("arch_none", name=name))
-            return []
+            return ARCH_ERROR, [], tr("arch_none_short")
         v = variants[0]
         if len(variants) > 1:
             labels = [vlabel(x) or x.folder.name for x in variants]
             item, ok = QInputDialog.getItem(self, tr("arch_pick_title"), tr("arch_pick_version", name=name),
                                             labels, 0, False)
             if not ok:
-                return []
+                return ARCH_CANCEL, [], ""
             v = variants[labels.index(item)]
         dest = Path(self.config.gsx_folder())
+        if dest.is_dir() and all((dest / f.name).is_file() and same_content(f, dest / f.name) for f in v.files):
+            self.status.setText(tr("arch_already", name=name))
+            return ARCH_OK, [], ""              # déjà installé à l'identique : compte comme un succès
         if not dest.is_dir() and not ask(self, tr("gsx_dir_create", path=dest, what=tr("what_profile")),
                                          default_yes=False):
-            return []
+            return ARCH_CANCEL, [], ""
         codes = icaos_of(v.files)
         matches = sorted({s.title for s in self.scenes.values() if s.icao and s.icao in codes})
         replaced = [f.name for f in v.files if (dest / f.name).is_file() and not same_content(f, dest / f.name)]
@@ -3528,12 +3638,11 @@ class MainWindow(QMainWindow):
             msg += "\n\n" + tr("gsx_replaced") + "\n" + "\n".join(f"• {n}" for n in replaced) \
                    + "\n" + tr("gsx_backup_note")
         if not ask(self, msg):
-            return []
+            return ARCH_CANCEL, [], ""
         try:
-            return install_profile_files(v.files, dest)
+            return ARCH_OK, install_profile_files(v.files, dest), ""
         except Exception as err:
-            warn(self, tr("gsx_copy_fail", err=err))
-            return []
+            return ARCH_ERROR, [], tr("gsx_copy_fail", err=err)
 
     # ── Bandeau
     def show_banner(self, html: str, kind: str = "info"):
