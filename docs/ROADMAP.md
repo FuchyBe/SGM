@@ -5,15 +5,11 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 ## Prêt
 
-Placés par Fabian le 2026-11-14, dans cet ordre.
-
-1. **Vérifier l'adresse de recherche flightsim.to** — `flightsim.to/search/?keyword=` à confirmer (site inaccessible
-   depuis l'environnement des agents : test de Fabian demandé). S.
+_(vide — Fabian déplace ici les sujets à développer, dans l'ordre souhaité)_
 
 ## En cours (PR à tester)
 
 - Arabe : en-tête — défaut de la capture, pas de l'application — PR #11.
-- Fenêtre « Signaler / Suggérer » intégrée — branche `sprint/2026-11-14-signaler`.
 
 ## À trier
 
@@ -36,6 +32,8 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **Bouton flightsim.to** : recherche web limitée au site, réglage retiré (PR #13).
+- **Fenêtre « Signaler un problème / Proposer une idée »** (PR #12).
 - **Journal local** (PR #10).
 - **beta v0.7** — méthodes de statics des éditeurs (base des cas réels), méthode officielle Orbx/Drzewiecki, restauration de l'état d'origine, rapport d'analyse, correction Homa Sim, cas peu clairs à faire à la main.
 - **beta v0.6** — aéroports sans profil, profils installés à la main, recherche flightsim.to, catégories,
