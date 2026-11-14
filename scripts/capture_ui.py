@@ -66,7 +66,7 @@ pkg("demo-lyni-nis", "Nis Constantine LYNI", "Demo Studio", [
     ("scenery/world/scenery/lyni_place.bgl", b"P" * 20, True), ("scenery/world/scenery/lyni_place.bgl.nostatic", b"N" * 15, False)])
 pkg("demo-eham-schiphol", "Amsterdam Schiphol EHAM", "Demo Studio", [("scenery/EHAM.bgl", b"A" * 9, True)])
 
-from PySide6.QtCore import QTimer  # noqa: E402
+from PySide6.QtCore import Qt, QTimer  # noqa: E402
 from PySide6.QtGui import QFont  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
@@ -82,6 +82,7 @@ cfg.lang = lang
 cfg.manual_folders.append(str(lib))
 cfg.save()
 m.set_lang(lang)
+app.setLayoutDirection(Qt.RightToLeft if lang in m.RTL_LANGS else Qt.LeftToRight)   # comme main()
 w = m.MainWindow()
 w.resize(width, height)
 w.show()
