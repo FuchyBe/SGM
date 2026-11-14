@@ -84,6 +84,7 @@ L'agent `gardien-securite` relit **tout** diff avant la PR. Son avis figure dans
 | `traducteur` | Relecture et correction des 12 langues (`scripts/check_i18n.py`, glossaire `docs/i18n/`) |
 | `recherche-developpement` | Options demandées ou exclusives : fiches de décision `docs/rd/`, prototypes en PR brouillon |
 | `chercheur-gsx` | Profils GSX : conventions, sources, recherche de profils manquants (`docs/gsx/`) |
+| `directeur-artistique` | Identité visuelle : icône de l'application, visuels flightsim.to (`docs/identite/`) |
 | `support-utilisateurs` | Trie les issues et rédige les réponses |
 | `veille-communaute` | Veille MSFS / GSX / outils voisins |
 
