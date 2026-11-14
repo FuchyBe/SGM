@@ -18,6 +18,18 @@ Placés par Fabian le 2026-11-14, dans cet ordre.
    Vérifier en 1024, 1280, 1920 px et en de, ar, ja. Agents : `designer-interface`, `developpeur`. M.
 3. **Nouvelle icône de l'application** — origine : Fabian. Agent : `directeur-artistique` : 3 à 4 propositions,
    Fabian choisit, puis intégration (exe, fenêtre, barre des tâches, README, flightsim.to). S.
+4. **Supprimer les archives de profils GSX après installation** — origine : Fabian (2026-11-14).
+   - Nouveau réglage « Après l'installation d'un profil depuis Téléchargements » : **Demander** (par défaut) /
+     **Supprimer automatiquement** / **Ne jamais supprimer**, mémorisé dans la configuration.
+   - « Demander » : après l'installation, une fenêtre liste les archives installées avec succès et demande la
+     confirmation de les supprimer.
+   - Une archive dont un profil n'a pas pu être installé n'est **jamais** supprimée : alerte avec le nom de
+     l'archive et la raison (archive illisible, profil invalide, accès refusé…).
+   - Suppression vers la **Corbeille de Windows** (récupérable), uniquement pour les archives du dossier
+     Téléchargements (jamais une archive glissée-déposée depuis ailleurs ou choisie avec le bouton Installer).
+   - « Déjà installé à l'identique » compte comme un succès.
+   - Tests (bac à sable) : succès, erreur partielle, archive verrouillée, fichier hors Téléchargements.
+   Agents : `developpeur`, `designer-interface` (fenêtre et réglage), `traducteur`, `gardien-securite`. M.
 
 ## En cours (PR à tester)
 
