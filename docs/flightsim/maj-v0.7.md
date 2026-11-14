@@ -42,6 +42,8 @@ Titre de la version : **beta v0.7 — Statics for every developer + Restore orig
 
 **New**
 - **New icon** — for the app, its window and the taskbar.
+- **GSX archives** — after installing a profile from your Downloads folder, SGM can delete the archive (ask / automatically / never). Recycle Bin, and never when something went wrong.
+- **Interface** — one filter per column (Statics and GSX), wider columns that follow the window and can be resized.
 - **Restore original state** — per scenery (right-click) or everything (Help menu), all or nothing.
 - **Statics analysis report** (Help menu) — read-only, no personal data; offered when you report a problem.
 

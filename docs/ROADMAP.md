@@ -7,22 +7,12 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-14, dans cet ordre.
 
-1. **Supprimer les archives de profils GSX après installation** — origine : Fabian (2026-11-14).
-   - Nouveau réglage « Après l'installation d'un profil depuis Téléchargements » : **Demander** (par défaut) /
-     **Supprimer automatiquement** / **Ne jamais supprimer**, mémorisé dans la configuration.
-   - « Demander » : après l'installation, une fenêtre liste les archives installées avec succès et demande la
-     confirmation de les supprimer.
-   - Une archive dont un profil n'a pas pu être installé n'est **jamais** supprimée : alerte avec le nom de
-     l'archive et la raison (archive illisible, profil invalide, accès refusé…).
-   - Suppression vers la **Corbeille de Windows** (récupérable), uniquement pour les archives du dossier
-     Téléchargements (jamais une archive glissée-déposée depuis ailleurs ou choisie avec le bouton Installer).
-   - « Déjà installé à l'identique » compte comme un succès.
-   - Tests (bac à sable) : succès, erreur partielle, archive verrouillée, fichier hors Téléchargements.
-   Agents : `developpeur`, `designer-interface` (fenêtre et réglage), `traducteur`, `gardien-securite`. M.
+_(vide — en attente du prochain sujet de Fabian)_
 
 ## En cours (PR à tester)
 
 - Filtres harmonisés + colonnes ×1,5 redimensionnables — PR #7.
+- Suppression des archives GSX après installation — PR #9 (fusionnée dans la branche de #7).
 - Nouvelle icône (proposition C, choisie par Fabian) — PR #8.
 
 ## À trier

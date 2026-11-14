@@ -65,25 +65,34 @@ class TestGui(SandboxTest):
 
         # colonnes : ×1,5 à 1280 px, proportionnelles, minimums respectés, réglables à la poignée
         w.resize(1280, 800)
-        APP.processEvents()
-        row = next(iter(w.rows.values()))
-        ws0, wg0 = row.st_col.width(), row.gsx_col.width()
+        for _ in range(5):
+            APP.processEvents()
+        w.layout_columns()
+        row = lambda: next(iter(w.rows.values()))   # relue : une analyse peut reconstruire les lignes
+        ws0, wg0 = row().st_col.width(), row().gsx_col.width()
         self.assertGreaterEqual(ws0, 300)
         self.assertGreaterEqual(wg0, 400)
         w.resize(1900, 900)
-        APP.processEvents()
-        self.assertGreater(row.st_col.width(), ws0)
-        self.assertGreater(row.gsx_col.width(), wg0)
+        for _ in range(5):
+            APP.processEvents()
+        w.layout_columns()
+        self.assertGreater(row().st_col.width(), ws0)
+        self.assertGreater(row().gsx_col.width(), wg0)
         w.resize(820, 600)
-        APP.processEvents()
-        self.assertGreaterEqual(row.st_col.width(), m.COL_STATICS_MIN)
-        self.assertGreaterEqual(row.gsx_col.width(), m.COL_GSX_MIN)
+        for _ in range(5):
+            APP.processEvents()
+        w.layout_columns()
+        self.assertGreaterEqual(row().st_col.width(), m.COL_STATICS_MIN)
+        self.assertGreaterEqual(row().gsx_col.width(), m.COL_GSX_MIN)
         w.resize(1280, 800)
-        APP.processEvents()
-        before = row.st_col.width()
+        for _ in range(5):                      # laisser la mise en page se terminer
+            APP.processEvents()
+        w.layout_columns()
+        self.assertGreater(w._avail_width(), 1000)
+        before = row().st_col.width()
         w._drag_column(1, 40)
         w._save_columns()
-        self.assertEqual(row.st_col.width(), before + 40)
+        self.assertEqual(row().st_col.width(), before + 40)
         self.assertEqual(m.Config().col_fs, w.config.col_fs)  # réglage mémorisé
 
         # fenêtres d'aide et dossiers
