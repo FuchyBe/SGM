@@ -78,6 +78,7 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 - **Dépose** l'archive (`.zip`, `.7z`, `.rar`) ou les fichiers `.ini`/`.py` sur la fenêtre de SGM, ou clique sur **Installer un profil GSX…**.
 - SGM n'extrait que les fichiers du profil (`.ini` et `.py` du même nom), demande quelle version installer s'il y en a plusieurs, indique la scène correspondante et demande confirmation avant de copier.
 - Au lancement, SGM vérifie ton dossier **Téléchargements** à la recherche d'archives récentes contenant un profil GSX et propose de les installer, une seule fois par archive. Désactivable dans **Paramètres**.
+- Après une installation depuis Téléchargements, SGM peut retirer l'archive (**Paramètres › Après installation depuis Téléchargements** : Demander / Supprimer automatiquement / Ne jamais supprimer). Les archives vont dans la Corbeille ; une archive dont l'installation a posé problème n'est jamais supprimée (alerte), ni une archive située hors de Téléchargements.
 - Les archives sont extraites de façon sûre : rien n'est écrit hors d'un dossier temporaire, les autres fichiers sont ignorés.
 - Le `.zip` fonctionne directement. Les `.7z` et `.rar` nécessitent **7-Zip** (7-zip.org).
 
@@ -171,6 +172,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - **Sécurité** : un aéroport n'est jamais chargé deux fois ; les cas peu clairs ne sont jamais basculés (« À vérifier » + icône dossier pour le faire à la main) ; un `.bgl` absent de `layout.json` n'est jamais touché ; bibliothèques de modèles et aplanissements ignorés.
 - **Correction** : SGM ≤ v0.6 pouvait désactiver un fichier d'aéroport complet nommé `…-airport-statics.bgl` (Homa Sim), laissant la scène sans aéroport. SGM affiche maintenant « Aucune version active » et n'en réactive qu'une.
 - **Restaurer l'état d'origine** : clic droit sur une scène › Restaurer l'état d'origine…, ou Aide › Tout restaurer à l'origine. SGM enregistre chaque scène et profil GSX avant sa première modification ; restauration tout ou rien.
+- **Archives GSX** : après une installation depuis Téléchargements, demander / supprimer automatiquement / ne jamais supprimer l'archive (Corbeille) ; jamais en cas d'erreur.
 - **Interface** : un filtre par colonne (Statics et GSX, même logique), colonnes Statics et GSX plus larges qui suivent la taille de la fenêtre et se règlent à la main.
 - **Rapport d'analyse des statics** (menu Aide) : analyse en lecture seule, sans donnée personnelle, pour améliorer les règles. Aide › Signaler un problème propose de le créer et de le joindre.
 
