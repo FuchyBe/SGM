@@ -130,7 +130,9 @@ To run without building: `pip install pyside6`, then `python statics_manager.py`
 
 ## Report a problem or suggest an idea
 
-Use **Help › Report a problem…** or **Help › Suggest an idea…** in SGM. It opens a pre-filled page in the public GitHub issue tracker (https://github.com/FuchyBe/SGM/issues, a free GitHub account is required).
+Use **Help › Report a problem…** or **Help › Suggest an idea…** in SGM. A small window asks for a title, what happened (or your idea), the scenery concerned and the message shown by SGM. Two boxes add a statics analysis report and the SGM log (ticked for a problem); **Show what will be shared** displays the exact text and files.
+
+**Prepare and open GitHub** creates a `.zip` in `SGM_data\reports`, opens its folder and the public GitHub issue tracker (https://github.com/FuchyBe/SGM/issues, a free GitHub account is required) with your text already filled in. Drag the `.zip` into the page, check, then click **Submit**: nothing is sent before.
 
 The SGM version, the simulator and the Windows version are added automatically. No personal information is sent: please do not paste your e-mail address or full file paths containing your user name.
 
@@ -142,7 +144,6 @@ The SGM version, the simulator and the Windows version are added automatically. 
 
 SGM keeps a log of what it does (launch, scans, every switch with the files renamed or copied, GSX installs, errors) in `SGM_data\logs\sgm.log`. Your user folder is replaced by `~`, so it contains no user name. It is limited to 5 files of 1 MB. **Help › Open log folder** opens it.
 
-When you report a problem, SGM offers to create the analysis report and always prepares a copy of the log in `SGM_data\reports`: drag these files into the GitHub page before submitting.
 
 ## Support the project
 
@@ -175,6 +176,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 
 **Next version (in development)**
 - **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
+- **Report a problem / Suggest an idea window**: your text goes straight into the GitHub page, report and log in one `.zip`, exact preview of what is shared.
 
 **beta v0.7**
 - **Statics: many more developer methods recognised**, built from a real library of more than 2,000 packages and the developers' own instructions: `.off`, `.disabled`, "static" singular and "parked" files, identical twin files, `.nostatic` versions (official Orbx / Drzewiecki method, compatible with the Orbx Central control panel, including the `layout.json` swap), `_static` / `_nostatic` pairs, complete airport files with statics, UK2000 `.staticq`. SGM keeps each developer's own naming.

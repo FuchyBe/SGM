@@ -41,8 +41,9 @@ from PySide6.QtCore import (QEvent, Property, QEasingCurve, QPropertyAnimation, 
                             QSize, Qt, QThread, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QFontMetricsF,
                            QIcon, QImage, QPainter, QPainterPath, QPen, QPixmap)
-from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QComboBox, QInputDialog,
-                               QDialog, QFileDialog, QFrame, QHBoxLayout,
+from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QCheckBox, QComboBox, QCompleter,
+                               QInputDialog, QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
+                               QPlainTextEdit,
                                QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
                                QPushButton, QScrollArea, QSizePolicy, QTextBrowser, QToolButton,
                                QVBoxLayout, QWidget)
@@ -2096,46 +2097,83 @@ def gsx_restore(dest_dir: Path, names=None) -> int:
     return n
 
 
-def copy_log_for_report() -> Path | None:
-    """Copie du journal (déjà sans chemin personnel) dans le dossier des rapports, à joindre au signalement."""
-    for h in LOG.handlers:
-        h.flush()
-    src = log_file()
-    if not src.is_file():
-        return None
-    d = data_dir() / "reports"
-    try:
-        d.mkdir(parents=True, exist_ok=True)
-        out = d / f"sgm-log-{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
-        out.write_text(scrub(src.read_text(encoding="utf-8", errors="replace")), encoding="utf-8")
-    except OSError:
-        return None
-    return out
+ISSUE_FIELDS = {
+    "bug": (("what", "What happened?"), ("expected", "What did you expect?"), ("steps", "Steps to reproduce"),
+            ("scene", "Scenery concerned (name, developer, ICAO)"), ("message", "Message shown by SGM (if any)")),
+    "idea": (("idea", "Your idea"), ("why", "Why would it help you?")),
+}
+ISSUE_BODY_MAX = 5000          # le texte passe dans l'adresse de la page GitHub : rester bien sous 8 000 caractères
 
 
-def report_url(kind: str, sim: str, lang: str, attachment=()) -> str:
+def issue_text(kind: str, sim: str, lang: str, fields: dict | None = None, summary: str = "",
+               attachment=(), limit: int | None = ISSUE_BODY_MAX) -> tuple:
+    """(titre, texte) de l'issue. Titres de sections en anglais (suivi public), texte de l'utilisateur tel quel,
+    dossier personnel retiré. `limit` raccourcit chaque réponse si le total dépasse (texte complet dans le .zip)."""
+    kind = "bug" if kind == "bug" else "idea"
+    fields = {k: scrub(v).strip() for k, v in (fields or {}).items() if v and str(v).strip()}
+    title = ("Bug: " if kind == "bug" else "Idea: ") + scrub(summary).strip()
+    names = [attachment] if isinstance(attachment, str) else list(attachment)
+    names = [n for n in names if n]
+    foot = ("---\n"
+            f"SGM beta v{APP_VERSION} · {sim} · {platform.system()} {platform.release()} · UI language: {lang}\n"
+            "_Please do not post personal information (e-mail, full file paths with your user name)._")
+    files = ""
+    if names:
+        files = ("### Files from SGM\n"
+                 "Please drag " + ", ".join(f"`{n}`" for n in names) +
+                 " (folder opened by SGM) into this box.\n\n")
+
+    def build(cap):
+        out = ""
+        for key, head in ISSUE_FIELDS[kind]:
+            txt = fields.get(key, "")
+            if key == "steps" and not txt:
+                txt = "1. \n2. "
+            if cap is not None and len(txt) > cap:
+                txt = txt[:cap].rstrip() + " […] _(full text in the attached file)_"
+            out += f"### {head}\n{txt}\n\n"
+        return out + files + foot
+
+    body = build(None)
+    if limit and len(body) > limit:
+        cap = 2000
+        while cap > 100 and len(build(cap)) > limit:
+            cap = int(cap * 0.8)
+        body = build(cap)
+    return title, body
+
+
+def report_url(kind: str, sim: str, lang: str, attachment=(), fields: dict | None = None,
+               summary: str = "") -> str:
     """Lien « nouvelle issue » prérempli. Aucune donnée personnelle : ni chemin, ni nom d'utilisateur."""
-    title = "Bug: " if kind == "bug" else "Idea: "
-    if kind == "bug":
-        body = ("### What happened?\n\n\n"
-                "### What did you expect?\n\n\n"
-                "### Steps to reproduce\n1. \n2. \n\n"
-                "### Scenery concerned (name, developer, ICAO)\n\n\n"
-                "### Message shown by SGM (if any)\n\n\n")
-        names = [attachment] if isinstance(attachment, str) else list(attachment)
-        names = [n for n in names if n]
-        if names:
-            body += ("### Files from SGM (statics analysis report, log)\n"
-                     "Please drag " + ", ".join(f"`{n}`" for n in names) +
-                     " (folder opened by SGM) into this box.\n\n")
-    else:
-        body = ("### Your idea\n\n\n"
-                "### Why would it help you?\n\n\n")
-    body += ("---\n"
-             f"SGM beta v{APP_VERSION} · {sim} · {platform.system()} {platform.release()} · UI language: {lang}\n"
-             "_Please do not post personal information (e-mail, full file paths with your user name)._")
+    title, body = issue_text(kind, sim, lang, fields, summary, attachment)
     return ISSUES_NEW_URL + "?" + urlencode({"title": title, "body": body,
                                             "labels": "bug" if kind == "bug" else "enhancement"})
+
+
+def build_report_package(kind: str, sim: str, lang: str, fields: dict | None = None, summary: str = "",
+                         report: dict | None = None, include_log: bool = False) -> Path:
+    """Fichier .zip à glisser dans l'issue : message complet, rapport d'analyse, journal (sans chemin personnel)."""
+    d = data_dir() / "reports"
+    d.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    out = d / f"sgm-{'bug' if kind == 'bug' else 'idea'}-{stamp}.zip"
+    title, body = issue_text(kind, sim, lang, fields, summary, limit=None)
+    tmp = out.with_suffix(".zip.tmp")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("message.md", f"# {title}\n\n{body}\n")
+        if report is not None:
+            z.writestr("statics-report.json", scrub(json.dumps(report, indent=1, ensure_ascii=False)))
+        if include_log:
+            for h in LOG.handlers:
+                h.flush()
+            for f in (log_file().with_name("sgm.log.1"), log_file()):     # précédent puis actuel
+                if f.is_file():
+                    z.writestr(f.name, scrub(f.read_text(encoding="utf-8", errors="replace")))
+    os.replace(tmp, out)
+    LOG.info("Paquet de signalement créé : %s (rapport : %s, journal : %s)", out.name,
+             "oui" if report is not None else "non", "oui" if include_log else "non")
+    return out
 
 
 def sim_running(sim: str) -> bool:
@@ -2282,6 +2320,15 @@ QScrollBar::handle:vertical:hover {{ background: #3A4352; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ height: 0; background: none; }}
 QToolTip {{ background: {C['surface2']}; color: {C['text']}; border: 1px solid {C['border2']}; padding: 6px; }}
 QMessageBox {{ background: {C['surface']}; }}
+QPlainTextEdit {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 8px;
+                  padding: 5px 8px; color: {C['text']}; selection-background-color: {C['accent']}; }}
+QPlainTextEdit:focus {{ border-color: {C['border2']}; background: {C['surface2']}; }}
+QPlainTextEdit#preview {{ color: {C['muted']}; font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; }}
+QLabel#fieldLabel {{ color: {C['muted']}; font-size: 12px; }}
+QCheckBox {{ color: {C['text']}; spacing: 8px; }}
+QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {C['border2']}; border-radius: 4px;
+                        background: {C['surface']}; }}
+QCheckBox::indicator:checked {{ background: {C['accent']}; border-color: {C['accent']}; }}
 QTextBrowser#doc {{ background: {C['surface']}; color: {C['text']}; border: 1px solid {C['border']};
                     border-radius: 10px; padding: 14px 18px; font-size: 13px; }}
 """
@@ -3135,6 +3182,182 @@ class DocDialog(QDialog):
         v.addLayout(row)
 
 
+class ReportDialog(QDialog):
+    """Fenêtre « Signaler un problème / Proposer une idée » : texte, pièces jointes, aperçu exact.
+    Rien n'est envoyé par SGM : il prépare un .zip et ouvre la page GitHub préremplie."""
+
+    def __init__(self, kind: str, sim: str, scene_names=(), parent=None):
+        super().__init__(parent)
+        self.sim = sim
+        self.kind = "bug" if kind == "bug" else "idea"
+        self.setWindowTitle(APP_NAME)
+        self.setMinimumWidth(640)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 20, 22, 18)
+        v.setSpacing(10)
+        top = QHBoxLayout()
+        self.h = QLabel()
+        self.h.setObjectName("h1")
+        self.h.setStyleSheet("font-size: 17px;")
+        top.addWidget(self.h)
+        top.addStretch()
+        chips = QFrame()
+        chips.setObjectName("chips")
+        ch = QHBoxLayout(chips)
+        ch.setContentsMargins(3, 3, 3, 3)
+        ch.setSpacing(2)
+        self.kind_btns = {}
+        group = QButtonGroup(self)
+        for k, key in (("bug", "rd_kind_bug"), ("idea", "rd_kind_idea")):
+            b = QPushButton(tr(key))
+            b.setObjectName("chipBtn")
+            b.setCheckable(True)
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda _c=False, k=k: self.set_kind(k))
+            group.addButton(b)
+            ch.addWidget(b)
+            self.kind_btns[k] = b
+        top.addWidget(chips)
+        v.addLayout(top)
+        hint = QLabel(tr("rd_hint"))
+        hint.setObjectName("hint")
+        hint.setWordWrap(True)
+        v.addWidget(hint)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(8)
+        self.summary = QLineEdit()
+        self.summary.setPlaceholderText(tr("rd_summary_ph"))
+        self.summary.setMaxLength(120)
+        self.inputs, self.rows = {}, {}
+        specs = [("summary", "rd_summary", self.summary)]
+        for key, label, multi in (("what", "rd_what", 3), ("expected", "rd_expected", 0), ("steps", "rd_steps", 3),
+                                  ("scene", "rd_scene", 0), ("message", "rd_message", 0),
+                                  ("idea", "rd_idea", 4), ("why", "rd_why", 2)):
+            if multi:
+                w = QPlainTextEdit()
+                w.setTabChangesFocus(True)
+                w.setFixedHeight(22 + 18 * multi)
+                w.textChanged.connect(self.update_preview)
+            else:
+                w = QLineEdit()
+                w.textChanged.connect(self.update_preview)
+            self.inputs[key] = w
+            specs.append((key, label, w))
+        self.summary.textChanged.connect(self.update_preview)
+        scene = self.inputs["scene"]
+        scene.setPlaceholderText(tr("rd_scene_ph"))
+        if scene_names:
+            comp = QCompleter(sorted(set(scene_names)), scene)
+            comp.setCaseSensitivity(Qt.CaseInsensitive)
+            comp.setFilterMode(Qt.MatchContains)
+            scene.setCompleter(comp)
+        for r, (key, label, w) in enumerate(specs):
+            lab = QLabel(tr(label))
+            lab.setObjectName("fieldLabel")
+            lab.setWordWrap(True)
+            lab.setContentsMargins(0, 7, 0, 0)          # aligné sur le texte des champs
+            grid.addWidget(lab, r, 0, Qt.AlignTop)
+            grid.addWidget(w, r, 1)
+            self.rows[key] = (lab, w)
+        grid.setColumnStretch(1, 1)
+        v.addLayout(grid)
+
+        self.cb_report = QCheckBox(tr("rd_attach_report"))
+        self.cb_log = QCheckBox(tr("rd_attach_log"))
+        for cb in (self.cb_report, self.cb_log):
+            cb.toggled.connect(self.update_preview)
+            v.addWidget(cb)
+        priv = QLabel(tr("rd_privacy"))
+        priv.setObjectName("hint")
+        priv.setWordWrap(True)
+        v.addWidget(priv)
+
+        self.prev_btn = QPushButton(tr("rd_preview_show"))
+        self.prev_btn.setObjectName("linkBtn")
+        self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.clicked.connect(self.toggle_preview)
+        v.addWidget(self.prev_btn, 0, Qt.AlignLeft)
+        self.preview = QPlainTextEdit()
+        self.preview.setObjectName("preview")
+        self.preview.setReadOnly(True)
+        self.preview.setMinimumHeight(170)
+        self.preview.hide()
+        v.addWidget(self.preview)
+
+        btns = QHBoxLayout()
+        btns.addStretch()
+        cancel = QPushButton(tr("rd_cancel"))
+        cancel.clicked.connect(self.reject)
+        self.send = QPushButton(tr("rd_send"))
+        self.send.setObjectName("primary")
+        self.send.setCursor(Qt.PointingHandCursor)
+        self.send.clicked.connect(self.accept_if_filled)
+        btns.addWidget(cancel)
+        btns.addWidget(self.send)
+        v.addSpacing(4)
+        v.addLayout(btns)
+        self.set_kind(self.kind)
+
+    # ── état
+    def set_kind(self, kind: str):
+        self.kind = kind
+        self.kind_btns[kind].setChecked(True)
+        self.h.setText(tr("rd_title_bug" if kind == "bug" else "rd_title_idea"))
+        own = {k for k, _ in ISSUE_FIELDS[kind]}
+        for key, (lab, w) in self.rows.items():
+            show = key == "summary" or key in own
+            lab.setVisible(show)
+            w.setVisible(show)
+        self.cb_report.setChecked(kind == "bug")
+        self.cb_log.setChecked(kind == "bug")
+        self.update_preview()
+        self.adjustSize()
+
+    def fields(self) -> dict:
+        out = {}
+        for key, _ in ISSUE_FIELDS[self.kind]:
+            w = self.inputs[key]
+            out[key] = w.toPlainText() if isinstance(w, QPlainTextEdit) else w.text()
+        return out
+
+    def main_text(self) -> str:
+        f = self.fields()
+        return (f.get("what") or f.get("idea") or "").strip()
+
+    def attachment_name(self) -> str:
+        if not (self.cb_report.isChecked() or self.cb_log.isChecked()):
+            return ""
+        return f"sgm-{self.kind}-…zip"
+
+    def update_preview(self, *_):
+        if not hasattr(self, "preview") or self.preview.isHidden():
+            return
+        title, body = issue_text(self.kind, self.sim, get_lang(), self.fields(), self.summary.text(),
+                                 [self.attachment_name()] if self.attachment_name() else ())
+        parts = [title, "", body]
+        if self.attachment_name():
+            inside = ["message.md"] + (["statics-report.json"] if self.cb_report.isChecked() else []) + \
+                     (["sgm.log"] if self.cb_log.isChecked() else [])
+            parts += ["", "════════", f"{tr('rd_files')} {self.attachment_name()}  ({', '.join(inside)})"]
+        self.preview.setPlainText("\n".join(parts))
+
+    def toggle_preview(self):
+        show = self.preview.isHidden()
+        self.preview.setVisible(show)
+        self.prev_btn.setText(tr("rd_preview_hide" if show else "rd_preview_show"))
+        self.update_preview()
+        self.adjustSize()
+
+    def accept_if_filled(self):
+        if not self.main_text():
+            warn(self, tr("rd_empty"))
+            self.inputs["what" if self.kind == "bug" else "idea"].setFocus()
+            return
+        self.accept()
+
+
 class MainWindow(QMainWindow):
     """Fenêtre principale. `state` permet de la recréer (changement de langue) sans relancer l'analyse."""
 
@@ -3606,21 +3829,34 @@ class MainWindow(QMainWindow):
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_dir())))
 
     def open_report(self, kind: str):
-        files = []
-        if kind == "bug":
-            if ask(self, tr("report_attach_q")):
-                res = self._create_report()
-                if res:
-                    files.append(res[0])
-            log = copy_log_for_report()
-            if log:
-                files.append(log)
-            if files:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(files[0].parent)))
-                QMessageBox.information(self, APP_NAME, tr("report_attach_files",
-                                                           files="\n".join("• " + f.name for f in files)))
-        LOG.info("Signalement ouvert (%s), pièces jointes : %s", kind, ", ".join(f.name for f in files) or "aucune")
-        QDesktopServices.openUrl(QUrl(report_url(kind, self.config.sim, get_lang(), [f.name for f in files])))
+        names = [s.title for s in self.scenes.values()] + [s.icao for s in self.scenes.values() if s.icao]
+        dlg = ReportDialog(kind, self.config.sim, names, self)
+        ok = dlg.exec() == QDialog.Accepted
+        kind, fields, summary = dlg.kind, dlg.fields(), dlg.summary.text()
+        want_report, want_log = dlg.cb_report.isChecked(), dlg.cb_log.isChecked()
+        dlg.deleteLater()
+        if not ok:
+            return
+        report = None
+        if want_report:
+            res = self._create_report()
+            if res:
+                report = res[1]
+        package = None
+        if report is not None or want_log:
+            try:
+                package = build_report_package(kind, self.config.sim, get_lang(), fields, summary,
+                                               report, want_log)
+            except OSError as e:
+                warn(self, tr("report_fail", err=e))
+        url = report_url(kind, self.config.sim, get_lang(), [package.name] if package else (), fields, summary)
+        LOG.info("Signalement préparé (%s), pièce jointe : %s", kind, package.name if package else "aucune")
+        if package:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(package.parent)))
+            QMessageBox.information(self, APP_NAME, tr("rd_done", name=package.name))
+        else:
+            QMessageBox.information(self, APP_NAME, tr("rd_done_nofile"))
+        QDesktopServices.openUrl(QUrl(url))
 
     def donate(self):
         if DONATE_URL:

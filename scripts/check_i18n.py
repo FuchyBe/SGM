@@ -22,7 +22,8 @@ TAG_RE = re.compile(r"</?([a-z0-9]+)")
 LONG_KEYS = {"help_html", "disclaimer_html", "licenses_html"}
 # textes courts affichés dans des zones de largeur fixe (boutons, colonnes, menus)
 SHORT_PREFIXES = ("btn_", "st_", "cat_", "filter_", "col_", "mode_", "lbl_", "grp_", "note_")  # menus et barre d'état : largeur libre
-SAME_OK = {"ok", "gsx", "sgm", "paypal", "github", "msfs", "statics", "on", "off", "lite", "full", "vdgs", "icao", "flightsim", "to", "bgl", "json", "layout"}
+SAME_OK = {"ok", "gsx", "sgm", "paypal", "github", "msfs", "statics", "on", "off", "lite", "full", "vdgs", "icao", "flightsim", "to", "bgl", "json", "layout",
+           "problem", "idea"}   # mots identiques en de, pl (Problem) et es, it (Idea)
 # clés volontairement identiques à l'anglais dans toutes les langues (repli normal)
 SAME_KEYS = {"f_on", "f_off", "f_gsx", "col_statics", "st_on", "st_off", "grp_on", "grp_off", "statics_tip",
              "standard", "stats_on", "stats_off", "stats_gsx", "all_progress", "auto", "help_lang_note"}
