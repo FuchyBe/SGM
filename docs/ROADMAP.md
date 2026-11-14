@@ -7,15 +7,13 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-14, dans cet ordre.
 
-1. **Préparer la v0.8** — numéro de version, changelog et texte flightsim.to (journal, Signaler, bouton flightsim.to,
-   téléchargements, colonnes, Tout ON/OFF, Annuler, Profils). S.
-2. **Mise à jour automatique** — GitHub Releases + SHA-256 + programme de mise à jour, `SGM_data` préservé.
+1. **Mise à jour automatique** — GitHub Releases + SHA-256 + programme de mise à jour, `SGM_data` préservé.
    Accès réseau optionnel accepté par Fabian (2026-11-14). Fiche `docs/rd/2026-11-14-mise-a-jour-et-remontee.md`,
    étape 4. M.
 
 ## En cours (PR à tester)
 
-- Profils de statics — PR #17.
+- Préparation de la beta v0.8 — branche `sprint/2026-11-15-v0.8`.
 
 ## À trier
 
@@ -38,6 +36,8 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **beta v0.8** — Annuler, profils de statics, colonnes ajustées au texte, Tout ON/OFF dans l'en-tête Statics (cas simples), Analyser vérifie les téléchargements, fenêtre Signaler / Suggérer, journal, bouton flightsim.to.
+- **Profils de statics** (PR #17).
 - **Annuler la dernière action** (PR #16).
 - **Colonnes ajustées au texte, Tout OFF / Tout ON dans l'en-tête Statics** (PR #15).
 - **Analyser vérifie les téléchargements, dossiers de téléchargement réglables** (PR #14).

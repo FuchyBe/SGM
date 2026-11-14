@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.7
+# SGM — Statics & GSX Manager · beta v0.8
 
 <p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
 
@@ -32,7 +32,7 @@ SGM le fait pour toi :
 
 Il n'y a rien à installer.
 
-1. Décompresse `SGM_beta_v0.7.zip` où tu veux (dossier d'outils, clé USB…).
+1. Décompresse `SGM_beta_v0.8.zip` où tu veux (dossier d'outils, clé USB…).
 2. Lance `SGM.exe`, dans le dossier `SGM`.
 
 Garde tout le dossier `SGM` ensemble : `SGM.exe` a besoin du dossier `_internal` placé à côté de lui.
@@ -128,7 +128,7 @@ Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre
 Prérequis : Python 3.10 ou plus récent.
 
 1. Place ensemble `statics_manager.py`, `i18n.py`, `build_exe.bat`, les deux README et le dossier `licenses`.
-2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.7.zip`.
+2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.8.zip`.
 
 Pour lancer sans compiler : `pip install pyside6`, puis `python statics_manager.py`.
 
@@ -178,15 +178,15 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 
 ## Historique des versions
 
-**Prochaine version (en développement)**
+**beta v0.8**
+- **Annuler** (bouton ou Ctrl+Z, 10 actions gardées) : une bascule, Tout ON/OFF, un profil GSX, une restauration — fichiers remis exactement, refus si un fichier a changé depuis.
+- **Profils de statics** : enregistre l'état ON/OFF de tes scènes sous un nom (« Trafic IA dense », « Vols photo ») et applique-le d'un clic (cas simples uniquement, annulable).
+- **Colonnes ajustées à leur texte** (une ligne), les noms de scènes prennent le reste ; réglage à la main mémorisé, double-clic pour revenir à l'automatique.
+- **Tout OFF / Tout ON** déplacés dans l'en-tête de la colonne Statics ; cas simples uniquement, les scènes à vérifier ne sont pas touchées.
+- **Analyser vérifie aussi tes dossiers de téléchargement** (archives de profils GSX) ; dossiers modifiables et ajoutables dans **Dossiers**.
+- **Fenêtre Signaler un problème / Proposer une idée** : ton texte arrive directement dans la page GitHub, rapport et journal dans un seul `.zip`, aperçu exact de ce qui est partagé.
 - **Journal** (`SGM_data\logs`, sans nom d'utilisateur), joint aux signalements de bug ; Aide › Ouvrir le dossier du journal.
 - **Bouton flightsim.to** : recherche web limitée à flightsim.to (la recherche du site ignorait l'OACI depuis un lien) ; le réglage de recherche est retiré.
-- **Profils de statics** : enregistre l'état ON/OFF de tes scènes sous un nom (par ex. « Trafic IA dense », « Vols photo ») et applique-le d'un clic (cas simples uniquement, annulable).
-- **Annuler la dernière action** (bouton ou Ctrl+Z, 10 actions gardées) : bascules, Tout ON/OFF, profils GSX, restaurations ; fichiers remis exactement, refus s'ils ont changé depuis.
-- **Analyser vérifie aussi tes dossiers de téléchargement** (archives de profils GSX) ; dossiers modifiables et ajoutables dans **Dossiers**.
-- **Tout OFF / Tout ON** déplacés dans l'en-tête de la colonne Statics ; cas simples uniquement, les scènes à vérifier ne sont pas touchées.
-- **Colonnes ajustées automatiquement à leur texte** (une ligne), les noms de scènes prennent le reste ; réglage à la main mémorisé, double-clic pour revenir à l'automatique.
-- **Fenêtre Signaler un problème / Proposer une idée** : ton texte arrive directement dans la page GitHub, rapport et journal dans un seul `.zip`, aperçu exact de ce qui est partagé.
 
 **beta v0.7**
 - **Statics : beaucoup plus de méthodes d'éditeurs reconnues**, à partir d'une vraie bibliothèque de plus de 2 000 paquets et des instructions des éditeurs : `.off`, `.disabled`, fichiers « static » au singulier et « parked », doubles identiques, versions `.nostatic` (méthode officielle Orbx / Drzewiecki, compatible avec le panneau Orbx Central, échange de `layout.json` compris), paires `_static` / `_nostatic`, fichiers d'aéroport complet avec statics, UK2000 `.staticq`. SGM garde la convention de chaque éditeur.

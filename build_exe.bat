@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
-set VERSION=0.7
+set VERSION=0.8
 echo === SGM - Statics ^& GSX Manager : creation du paquet portable (beta v%VERSION%) ===
 echo.
 
