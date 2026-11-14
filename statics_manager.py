@@ -37,8 +37,8 @@ from pathlib import Path, PurePosixPath
 
 from PySide6.QtCore import (QEvent, Property, QEasingCurve, QPropertyAnimation, QRectF,
                             QSize, Qt, QThread, QTimer, QUrl, Signal)
-from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont,
-                           QIcon, QPainter, QPainterPath, QPen, QPixmap)
+from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QFontMetricsF,
+                           QIcon, QImage, QPainter, QPainterPath, QPen, QPixmap)
 from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QComboBox, QInputDialog,
                                QDialog, QFileDialog, QFrame, QHBoxLayout,
                                QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
@@ -3920,26 +3920,58 @@ def heart_icon() -> QIcon:
     return icon
 
 
-def make_icon() -> QIcon:
-    pm = QPixmap(64, 64)
-    pm.fill(Qt.transparent)
-    p = QPainter(pm)
+ICON_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
+
+
+def paint_logo(p: QPainter, size: int):
+    """Icône de SGM (proposition C, choisie par Fabian) : « SGM » sur trois marques de piste,
+    vert = statics, bleu = GSX. Sous 32 px, seul le « S » reste (les trois lettres deviennent illisibles)."""
+    s = size / 256.0
     p.setRenderHint(QPainter.Antialiasing)
-    p.setPen(Qt.NoPen)
-    p.setBrush(QColor(C["surface2"]))
-    p.drawRoundedRect(QRectF(2, 2, 60, 60), 14, 14)
-    p.setBrush(QColor(C["accent"]))
-    p.drawRoundedRect(QRectF(12, 38, 40, 14), 7, 7)
-    p.setBrush(QColor("#F3F5F7"))
-    p.drawEllipse(QRectF(36, 40, 10, 10))
-    p.setPen(QColor(C["text"]))
+    p.setRenderHint(QPainter.TextAntialiasing)
+    pen = QPen(QColor(C["border2"]))
+    pen.setWidthF(max(1.0, 6 * s))
+    p.setPen(pen)
+    p.setBrush(QColor(C["surface"]))
+    p.drawRoundedRect(QRectF(8 * s, 8 * s, 240 * s, 240 * s), 54 * s, 54 * s)
+    small = size < 32
+    text = "S" if small else "SGM"
     f = QFont()
-    f.setPixelSize(22)
-    f.setBold(True)
+    f.setFamilies(["Segoe UI", "Inter", "DejaVu Sans", "Arial"])
+    f.setWeight(QFont.ExtraBold)
+    f.setPixelSize(max(6, round((150 if small else 92) * s)))
+    if not small:
+        f.setLetterSpacing(QFont.AbsoluteSpacing, -2 * s)
+    # Le texte doit tenir dans 76 % de la largeur, quelle que soit la police disponible.
+    w = QFontMetricsF(f).horizontalAdvance(text)
+    if w > 0.76 * size:
+        f.setPixelSize(max(6, int(f.pixelSize() * 0.76 * size / w)))
     p.setFont(f)
-    p.drawText(QRectF(0, 6, 64, 30), Qt.AlignCenter, "✈")
+    p.setPen(QColor(C["text"]))
+    top = (8 if small else 40) * s
+    bottom = (168 if small else 170) * s
+    p.drawText(QRectF(0, top, size, bottom - top), Qt.AlignHCenter | Qt.AlignBottom, text)
+    p.setPen(Qt.NoPen)
+    y, h = 176 * s, max(2.0, 12 * s)
+    for x, col in ((44, C["accent"]), (108, C["accent"]), (172, C["blue"])):
+        p.setBrush(QColor(col))
+        p.drawRoundedRect(QRectF(x * s, y, 40 * s, h), h / 2, h / 2)
+
+
+def logo_image(size: int) -> QImage:
+    img = QImage(size, size, QImage.Format_ARGB32)
+    img.fill(Qt.transparent)
+    p = QPainter(img)
+    paint_logo(p, size)
     p.end()
-    return QIcon(pm)
+    return img
+
+
+def make_icon() -> QIcon:
+    icon = QIcon()
+    for n in ICON_SIZES:
+        icon.addPixmap(QPixmap.fromImage(logo_image(n)))
+    return icon
 
 
 def dark_title_bar(win: QWidget):

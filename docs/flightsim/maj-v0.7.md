@@ -41,6 +41,7 @@ Titre de la version : **beta v0.7 — Statics for every developer + Restore orig
 - Unclear cases are shown "To check" with a folder icon to do it manually.
 
 **New**
+- **New icon** — for the app, its window and the taskbar.
 - **Restore original state** — per scenery (right-click) or everything (Help menu), all or nothing.
 - **Statics analysis report** (Help menu) — read-only, no personal data; offered when you report a problem.
 

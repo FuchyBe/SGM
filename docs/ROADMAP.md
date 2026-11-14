@@ -7,9 +7,7 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-14, dans cet ordre.
 
-1. **Nouvelle icône de l'application** — origine : Fabian. Agent : `directeur-artistique` : 3 à 4 propositions,
-   Fabian choisit, puis intégration (exe, fenêtre, barre des tâches, README, flightsim.to). S.
-2. **Supprimer les archives de profils GSX après installation** — origine : Fabian (2026-11-14).
+1. **Supprimer les archives de profils GSX après installation** — origine : Fabian (2026-11-14).
    - Nouveau réglage « Après l'installation d'un profil depuis Téléchargements » : **Demander** (par défaut) /
      **Supprimer automatiquement** / **Ne jamais supprimer**, mémorisé dans la configuration.
    - « Demander » : après l'installation, une fenêtre liste les archives installées avec succès et demande la
@@ -24,7 +22,8 @@ Placés par Fabian le 2026-11-14, dans cet ordre.
 
 ## En cours (PR à tester)
 
-- Filtres harmonisés + colonnes ×1,5 redimensionnables — branche `sprint/2026-11-14-colonnes-filtres`.
+- Filtres harmonisés + colonnes ×1,5 redimensionnables — PR #7.
+- Nouvelle icône (proposition C, choisie par Fabian) — PR #8.
 
 ## À trier
 

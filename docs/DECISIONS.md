@@ -48,3 +48,9 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
 - Fabian valide d'abord un **plan des ajouts** (section « Prêt » de la ROADMAP), puis **chaque changement**
   (PR) avant intégration.
 - Code et signalements : dépôt **public** **FuchyBe/SGM**, séparé de Hangar.
+
+## Identité visuelle
+
+- **Icône : proposition C** « Monogramme » (SGM sur trois marques de piste, vert = statics, bleu = GSX), choisie
+  par Fabian le 2026-11-14. Sous 32 px, seul le « S » reste. Source unique : `paint_logo()` dans
+  `statics_manager.py` ; `scripts/make_ico.py` fabrique `assets/SGM.ico` et les PNG.

@@ -1,5 +1,9 @@
 # Identité visuelle de SGM
 
+**Icône retenue : C « Monogramme »** (choix de Fabian, 2026-11-14) — `assets/SGM.ico`, `assets/SGM-256.png`,
+`assets/SGM-512.png` (visuel pour flightsim.to). Sous 32 px, seul le « S » reste, sur les trois marques.
+Pour la modifier : `paint_logo()` dans `statics_manager.py`, puis `python scripts/make_ico.py`.
+
 Propositions de l'agent `directeur-artistique`. Fabian choisit ; l'icône retenue est ensuite intégrée dans l'exe
 (`SGM.ico` 16 → 256 px), la fenêtre, la barre des tâches, le README et la page flightsim.to.
 

@@ -1,5 +1,7 @@
 # SGM — Statics & GSX Manager · beta v0.7
 
+<p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
+
 **Static aircraft and GSX profiles manager for Microsoft Flight Simulator 2024 and 2020**
 by **Fabian Fuchs** · freeware · portable · 12 languages
 
@@ -171,6 +173,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - **Safety**: an airport is never loaded twice; unclear cases are never switched ("To check" + folder icon to do it manually); a `.bgl` missing from `layout.json` is never touched; model libraries and terrain flattens are ignored.
 - **Fix**: SGM ≤ v0.6 could disable a complete airport file named `…-airport-statics.bgl` (Homa Sim), leaving the scenery without an airport. SGM now shows "No version active" and re-enables only one version.
 - **Restore original state**: right-click a scenery › Restore original state…, or Help › Restore everything to original. SGM records each scenery and GSX profile as it was before its first change; restoring is all or nothing.
+- **New icon** (application, window and taskbar).
 - **Interface**: one filter per column (Statics and GSX, same logic), wider Statics and GSX columns that follow the window size and can be resized by hand.
 - **Statics analysis report** (Help menu): read-only scan, no personal data, to help improve the detection rules. Help › Report a problem offers to create it and attach it.
 
