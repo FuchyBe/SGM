@@ -138,7 +138,11 @@ The SGM version, the simulator and the Windows version are added automatically. 
 
 **Help › Create a statics analysis report…** scans all your sceneries without changing anything and saves a `.json` file in `SGM_data\reports`. It lists the statics-like files found in each scenery (names inside the scenery, sizes, fingerprints, whether they are in `layout.json`, and how SGM understood them). It contains no personal path or user name. Attach it to a GitHub issue to help improve SGM's detection rules.
 
-When you report a problem, SGM offers to create this report at the same time: drag the file into the GitHub page before submitting.
+### Log
+
+SGM keeps a log of what it does (launch, scans, every switch with the files renamed or copied, GSX installs, errors) in `SGM_data\logs\sgm.log`. Your user folder is replaced by `~`, so it contains no user name. It is limited to 5 files of 1 MB. **Help › Open log folder** opens it.
+
+When you report a problem, SGM offers to create the analysis report and always prepares a copy of the log in `SGM_data\reports`: drag these files into the GitHub page before submitting.
 
 ## Support the project
 
@@ -168,6 +172,9 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Microsoft Flight Simulator is a trademark of Microsoft Corporation. GSX is a product of FSDreamTeam / Virtuali. All other names and trademarks are the property of their respective owners.
 
 ## Version history
+
+**Next version (in development)**
+- **Log** (`SGM_data\logs`, no user name), attached to bug reports; Help › Open log folder.
 
 **beta v0.7**
 - **Statics: many more developer methods recognised**, built from a real library of more than 2,000 packages and the developers' own instructions: `.off`, `.disabled`, "static" singular and "parked" files, identical twin files, `.nostatic` versions (official Orbx / Drzewiecki method, compatible with the Orbx Central control panel, including the `layout.json` swap), `_static` / `_nostatic` pairs, complete airport files with statics, UK2000 `.staticq`. SGM keeps each developer's own naming.

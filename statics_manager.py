@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import logging.handlers
 import os
 import re
 import shutil
@@ -115,6 +117,75 @@ def app_dir() -> Path:
 
 
 _DATA_DIR: Path | None = None
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Journal local (SGM_data/logs/sgm.log) — jamais de chemin personnel
+# ════════════════════════════════════════════════════════════════════════════
+
+LOG = logging.getLogger("sgm")
+LOG.addHandler(logging.NullHandler())
+LOG_MAX_BYTES = 1_000_000
+LOG_BACKUPS = 4                                   # sgm.log + 4 anciens = 5 Mo au maximum
+_USERS_RE = re.compile(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\r\n\"'<>|:*?]+", re.I)   # espaces permis
+_HOME_RE = re.compile(r"(?<![\w.])/(?:home|Users)/[^/\s\"']+")
+
+
+def scrub(text: str) -> str:
+    """Retire du texte le dossier personnel (nom d'utilisateur Windows compris) : remplacé par « ~ »."""
+    text = str(text)
+    for home in {str(Path.home()), os.environ.get("USERPROFILE", "")}:
+        if home and len(home) > 3:
+            for h in {home, home.replace("\\", "/")}:
+                text = re.sub(re.escape(h), "~", text, flags=re.I)
+    text = _USERS_RE.sub("~", text)
+    return _HOME_RE.sub("~", text)
+
+
+class ScrubFormatter(logging.Formatter):
+    def format(self, record):
+        return scrub(super().format(record))
+
+
+def log_dir() -> Path:
+    return data_dir() / "logs"
+
+
+def log_file() -> Path:
+    return log_dir() / "sgm.log"
+
+
+def setup_logging() -> bool:
+    """Active le journal tournant. Sans effet si le dossier n'est pas inscriptible."""
+    if any(isinstance(h, logging.handlers.RotatingFileHandler) for h in LOG.handlers):
+        return True
+    try:
+        log_dir().mkdir(parents=True, exist_ok=True)
+        h = logging.handlers.RotatingFileHandler(log_file(), maxBytes=LOG_MAX_BYTES,
+                                                 backupCount=LOG_BACKUPS, encoding="utf-8")
+    except OSError:
+        return False
+    h.setFormatter(ScrubFormatter("%(asctime)s %(levelname)-7s %(message)s", "%Y-%m-%d %H:%M:%S"))
+    LOG.addHandler(h)
+    LOG.setLevel(logging.INFO)
+    LOG.propagate = False
+    previous = sys.excepthook
+
+    def hook(kind, value, tb):
+        LOG.critical("Erreur inattendue", exc_info=(kind, value, tb))
+        previous(kind, value, tb)
+    sys.excepthook = hook
+    return True
+
+
+def close_logging():
+    for h in [h for h in LOG.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]:
+        h.close()
+        LOG.removeHandler(h)
+
+
+def scene_label(scene) -> str:
+    return f"{scene.title} [{scene.root.name}]"
 
 
 def license_dir() -> Path:
@@ -1178,7 +1249,7 @@ def snapshot_scene(scene: Scene):
     write_atomic(d / "origin.json", json.dumps(record, indent=2, ensure_ascii=False))
 
 
-def restore_scene_statics(root: Path):
+def _restore_scene_statics(root: Path):
     """Remet les fichiers statics, layout.json et manifest.json comme avant SGM.
     Tout ou rien : si un fichier ne correspond pas à l'origine, rien n'est modifié (RestoreError)."""
     d = origin_dir(root)
@@ -1424,6 +1495,8 @@ def write_statics_report(report: dict) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"sgm-statics-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
     write_atomic(out, json.dumps(report, indent=1, ensure_ascii=False))
+    LOG.info("Rapport d'analyse créé : %s (%s scènes avec fichiers statics)", out.name,
+             report.get("summary", {}).get("scenes_with_candidates", "?"))
     return out
 
 
@@ -1468,7 +1541,7 @@ def gsx_has_origin(dest_dir: Path, names) -> bool:
     return any(n.lower() in files for n in names)
 
 
-def gsx_restore(dest_dir: Path, names=None) -> int:
+def _gsx_restore(dest_dir: Path, names=None) -> int:
     """Remet les fichiers GSX notés dans le journal (tous, ou seulement `names`). Renvoie le nombre traité."""
     j = _gsx_load(dest_dir)
     jd = _gsx_journal_dir(dest_dir)
@@ -1515,6 +1588,7 @@ def _move(src: Path, dst: Path):
     if dst.exists():
         raise ToggleError(tr("err_exists", name=dst.name))
     os.rename(src, dst)
+    LOG.info("  renommé %s -> %s", src.name, dst.name)
     forget_hash(src)
     forget_hash(dst)
 
@@ -1542,7 +1616,7 @@ def _swap_layout_files(root: Path, groups: list, target: str):
         os.rename(ljs, lj)
 
 
-def set_scene_state(scene: Scene, target: str):
+def _set_scene_state(scene: Scene, target: str):
     groups = [g for g in scene.groups if g.toggleable and g.state != target]
     if not groups:
         return
@@ -1554,6 +1628,8 @@ def set_scene_state(scene: Scene, target: str):
     to_backup += [scene.root / n for n in (LAYOUT_STATIC, LAYOUT_NOSTATIC) if (scene.root / n).is_file()]
     backup_files(scene.root, to_backup)
     _swap_layout_files(scene.root, groups, target)
+    if any(g.mode == "rswap" for g in groups):
+        LOG.info("  layout.json échangé (méthode officielle .static / .nostatic)")
     meta = PackageMeta(scene.root)              # relu : layout.json a pu être échangé
     try:
         for g in groups:
@@ -1703,7 +1779,7 @@ def gsx_other_installed(scene: Scene, variant: GsxVariant, dest_dir: Path) -> li
     return out
 
 
-def copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
+def _copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
     dest_dir.mkdir(parents=True, exist_ok=True)
     replaced = [dest_dir / f.name for f in variant.files
                 if (dest_dir / f.name).is_file() and not same_content(f, dest_dir / f.name)]
@@ -1808,7 +1884,7 @@ def icaos_of(files: list[Path]) -> set[str]:
     return {f.name[:4].upper() for f in files if f.suffix.lower() == ".ini" and GSX_NAME_RE.match(f.name)}
 
 
-def install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
+def _install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
     """Copie des fichiers de profil dans GSX ; sauvegarde ce qui est remplacé."""
     dest_dir.mkdir(parents=True, exist_ok=True)
     replaced = [dest_dir / f.name for f in files
@@ -1950,12 +2026,94 @@ def trash_archives(paths: list) -> list:
     for p in paths:
         try:
             send_to_trash(p)
+            LOG.info("Archive mise à la corbeille : %s", Path(p).name)
         except OSError as e:
+            LOG.warning("Archive non supprimée : %s (%s)", Path(p).name, e)
             failed.append((Path(p).name, str(e)))
     return failed
 
 
-def report_url(kind: str, sim: str, lang: str, attachment: str = "") -> str:
+# ── Enveloppes journalisées des opérations sur les fichiers ──
+
+def _group_desc(g) -> str:
+    names = [x.name for x in (g.active, g.on_path, g.off_path, g.on_file, g.off_file, g.alt_on, g.alt_off) if x]
+    return f"{g.mode}[{', '.join(dict.fromkeys(names))}]"
+
+
+def set_scene_state(scene: Scene, target: str):
+    groups = [g for g in scene.groups if g.toggleable and g.state != target]
+    if not groups:
+        return
+    LOG.info("Statics %s : %s -> %s ; %s", scene_label(scene), scene.state, target,
+             " ; ".join(_group_desc(g) for g in groups))
+    try:
+        _set_scene_state(scene, target)
+    except Exception:
+        LOG.exception("Échec de la bascule %s", scene_label(scene))
+        raise
+    LOG.info("  terminé")
+
+
+def restore_scene_statics(root: Path):
+    LOG.info("Restauration de l'origine : %s", root.name)
+    try:
+        _restore_scene_statics(root)
+    except RestoreError as e:
+        LOG.warning("  restauration refusée : %s", e)
+        raise
+    except Exception:
+        LOG.exception("  échec de la restauration")
+        raise
+    LOG.info("  terminé")
+
+
+def copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
+    LOG.info("GSX %s : copie de %s", scene_label(scene), ", ".join(f.name for f in variant.files))
+    try:
+        out = _copy_gsx(scene, variant, dest_dir)
+    except Exception:
+        LOG.exception("  échec de la copie GSX")
+        raise
+    LOG.info("  copié : %s", ", ".join(map(str, out)) or "rien")
+    return out
+
+
+def install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
+    LOG.info("GSX : installation de %s", ", ".join(f.name for f in files))
+    try:
+        out = _install_profile_files(files, dest_dir)
+    except Exception:
+        LOG.exception("  échec de l'installation")
+        raise
+    LOG.info("  installé : %s", ", ".join(map(str, out)) or "rien")
+    return out
+
+
+def gsx_restore(dest_dir: Path, names=None) -> int:
+    n = _gsx_restore(dest_dir, names)
+    if n:
+        LOG.info("GSX : %d profil(s) remis à l'origine", n)
+    return n
+
+
+def copy_log_for_report() -> Path | None:
+    """Copie du journal (déjà sans chemin personnel) dans le dossier des rapports, à joindre au signalement."""
+    for h in LOG.handlers:
+        h.flush()
+    src = log_file()
+    if not src.is_file():
+        return None
+    d = data_dir() / "reports"
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        out = d / f"sgm-log-{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
+        out.write_text(scrub(src.read_text(encoding="utf-8", errors="replace")), encoding="utf-8")
+    except OSError:
+        return None
+    return out
+
+
+def report_url(kind: str, sim: str, lang: str, attachment=()) -> str:
     """Lien « nouvelle issue » prérempli. Aucune donnée personnelle : ni chemin, ni nom d'utilisateur."""
     title = "Bug: " if kind == "bug" else "Idea: "
     if kind == "bug":
@@ -1964,9 +2122,12 @@ def report_url(kind: str, sim: str, lang: str, attachment: str = "") -> str:
                 "### Steps to reproduce\n1. \n2. \n\n"
                 "### Scenery concerned (name, developer, ICAO)\n\n\n"
                 "### Message shown by SGM (if any)\n\n\n")
-        if attachment:
-            body += ("### Statics analysis report\n"
-                     f"Please drag the file `{attachment}` (folder opened by SGM) into this box.\n\n")
+        names = [attachment] if isinstance(attachment, str) else list(attachment)
+        names = [n for n in names if n]
+        if names:
+            body += ("### Files from SGM (statics analysis report, log)\n"
+                     "Please drag " + ", ".join(f"`{n}`" for n in names) +
+                     " (folder opened by SGM) into this box.\n\n")
     else:
         body = ("### Your idea\n\n\n"
                 "### Why would it help you?\n\n\n")
@@ -2155,6 +2316,7 @@ def ask(parent, text: str, default_yes=True) -> bool:
 
 
 def warn(parent, text: str):
+    LOG.warning("Alerte affichée : %s", " ".join(str(text).split()))
     QMessageBox.warning(parent, APP_NAME, text)
 
 
@@ -3236,6 +3398,7 @@ class MainWindow(QMainWindow):
                                   ("m_disclaimer", self.show_disclaimer, None),
                                   ("m_licenses", self.show_licenses, None),
                                   ("m_backups", self.open_backups, None),
+                                  ("m_open_log", self.open_logs, None),
                                   ("m_restore_all", self.restore_all, None)):
             a = QAction(tr(key), self)
             if shortcut:
@@ -3438,16 +3601,26 @@ class MainWindow(QMainWindow):
         d.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(d)))
 
+    def open_logs(self):
+        log_dir().mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_dir())))
+
     def open_report(self, kind: str):
-        attachment = ""
-        if kind == "bug" and ask(self, tr("report_attach_q")):
-            res = self._create_report()
-            if res:
-                path, _report = res
-                attachment = path.name
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
-                QMessageBox.information(self, APP_NAME, tr("report_attach_how", name=path.name))
-        QDesktopServices.openUrl(QUrl(report_url(kind, self.config.sim, get_lang(), attachment)))
+        files = []
+        if kind == "bug":
+            if ask(self, tr("report_attach_q")):
+                res = self._create_report()
+                if res:
+                    files.append(res[0])
+            log = copy_log_for_report()
+            if log:
+                files.append(log)
+            if files:
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(files[0].parent)))
+                QMessageBox.information(self, APP_NAME, tr("report_attach_files",
+                                                           files="\n".join("• " + f.name for f in files)))
+        LOG.info("Signalement ouvert (%s), pièces jointes : %s", kind, ", ".join(f.name for f in files) or "aucune")
+        QDesktopServices.openUrl(QUrl(report_url(kind, self.config.sim, get_lang(), [f.name for f in files])))
 
     def donate(self):
         if DONATE_URL:
@@ -3689,6 +3862,9 @@ class MainWindow(QMainWindow):
         for s in scenes:
             s.is_new = s.key in self.session_new
         self.scenes = {s.key: s for s in scenes}
+        LOG.info("Analyse : %d scènes, %d avec statics gérables, %d à vérifier, %d avec profil GSX",
+                 len(scenes), sum(1 for s in scenes if s.toggleable),
+                 sum(1 for s in scenes if s.state in (UNKNOWN, CONFLICT)), sum(1 for s in scenes if s.gsx_variants))
         self.rebuild_rows()
         self.set_busy(False)
         self._scan_time = datetime.now().strftime("%H:%M")
@@ -4114,8 +4290,13 @@ def main():
     app.setStyle("Fusion")
     app.setStyleSheet(QSS)
     app.setWindowIcon(make_icon())
-    lang = Config().lang
+    cfg = Config()
+    lang = cfg.lang
     set_lang(lang)
+    setup_logging()
+    LOG.info("SGM beta v%s démarré · %s · %s %s · Python %s · langue %s%s", APP_VERSION, cfg.sim,
+             platform.system(), platform.release(), platform.python_version(), lang,
+             " · exe" if getattr(sys, "frozen", False) else "")
     app.setLayoutDirection(Qt.RightToLeft if lang in RTL_LANGS else Qt.LeftToRight)
     app.main_window = MainWindow()
     dark_title_bar(app.main_window)
