@@ -119,6 +119,10 @@ Before its very first change to a scenery, SGM records how it was in `SGM_data\o
 - Restoring is all or nothing: if a file no longer matches (edited by hand), nothing is changed and the files to check are listed.
 - If the developer has updated the scenery since, its files are already original: nothing is done.
 
+## Updates of SGM
+
+At the first launch, SGM asks whether it may check for a new version. If you agree, once a day at most it asks GitHub (github.com/FuchyBe/SGM) for the latest version number: this is the only internet connection SGM makes, and nothing else is sent. When a new version exists, **Update now** downloads it, checks its published SHA-256 fingerprint, closes SGM, replaces its files and restarts — `SGM_data` (settings, backups, profiles) is never touched, and the previous version is put back if something goes wrong. **Help › Check for updates…** checks at any time; **Settings › Check for updates at launch** turns it on or off.
+
 ## Updates of sceneries
 
 A scenery update (for example through the Marketplace or an installer) may restore its original files. Just switch it again in SGM.
@@ -177,6 +181,9 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Microsoft Flight Simulator is a trademark of Microsoft Corporation. GSX is a product of FSDreamTeam / Virtuali. All other names and trademarks are the property of their respective owners.
 
 ## Version history
+
+**Next version (in development)**
+- **Automatic updates** (optional, asked at first launch): checks GitHub once a day at most, downloads, verifies SHA-256 and restarts; `SGM_data` kept, previous version restored on failure.
 
 **beta v0.8**
 - **Undo** (button or Ctrl+Z, 10 actions kept): a switch, All ON/OFF, a GSX profile, a restore — files back exactly as before, refused if a file changed since.

@@ -7,13 +7,11 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-14, dans cet ordre.
 
-1. **Mise à jour automatique** — GitHub Releases + SHA-256 + programme de mise à jour, `SGM_data` préservé.
-   Accès réseau optionnel accepté par Fabian (2026-11-14). Fiche `docs/rd/2026-11-14-mise-a-jour-et-remontee.md`,
-   étape 4. M.
+_(vide — Fabian déplace ici les sujets à développer, dans l'ordre souhaité)_
 
 ## En cours (PR à tester)
 
-- Préparation de la beta v0.8 — branche `sprint/2026-11-15-v0.8`.
+- Mise à jour automatique — branche `sprint/2026-11-15-mise-a-jour`.
 
 ## À trier
 
@@ -36,6 +34,7 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **beta v0.8** publiée dans `main` (PR #18).
 - **beta v0.8** — Annuler, profils de statics, colonnes ajustées au texte, Tout ON/OFF dans l'en-tête Statics (cas simples), Analyser vérifie les téléchargements, fenêtre Signaler / Suggérer, journal, bouton flightsim.to.
 - **Profils de statics** (PR #17).
 - **Annuler la dernière action** (PR #16).

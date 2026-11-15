@@ -27,6 +27,7 @@ os.environ["LOCALAPPDATA"] = str(tmp / "local")
 os.environ["HOME"] = os.environ["USERPROFILE"] = str(tmp / "home")
 (tmp / "home" / "Downloads").mkdir(parents=True)
 
+os.environ["SGM_NO_UPDATE"] = "1"   # jamais de réseau
 import statics_manager as m  # noqa: E402
 
 m._DATA_DIR = tmp / "SGM_data"
