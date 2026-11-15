@@ -2693,12 +2693,16 @@ def _http_get(url: str, limit: int = 2 * 1024 * 1024, progress=None) -> bytes:
 
 
 def fetch_latest_release(getter=None) -> dict | None:
+    """Dernière version publiée, ou None s'il n'y en a pas encore (GitHub répond 404 tant qu'aucune release
+    n'est publiée : un brouillon ne compte pas). Autre problème réseau : UpdateError."""
     getter = getter or _http_get
     try:
         data = json.loads(getter(RELEASES_API).decode("utf-8"))
     except UpdateError:
         raise
     except Exception as e:
+        if getattr(e, "code", None) == 404:
+            return None
         raise UpdateError(str(e))
     return release_info(data)
 

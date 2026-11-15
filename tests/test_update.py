@@ -63,6 +63,18 @@ class UpdateEngineTest(SandboxTest):
         with self.assertRaises(m.UpdateError):
             m.fetch_latest_release(lambda url, *a: b"pas du json")
 
+    def test_aucune_release_publiee_404(self):
+        import urllib.error
+
+        def g404(url, *a):
+            raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+
+        def g500(url, *a):
+            raise urllib.error.HTTPError(url, 500, "Server Error", {}, None)
+        self.assertIsNone(m.fetch_latest_release(g404))       # brouillon seulement : « à jour », pas une erreur
+        with self.assertRaises(m.UpdateError):
+            m.fetch_latest_release(g500)
+
     def test_empreinte(self):
         h = "a" * 64
         self.assertEqual(m.expected_sha256(f"{h}  SGM_beta_v9.9.zip\n", "SGM_beta_v9.9.zip"), h)
