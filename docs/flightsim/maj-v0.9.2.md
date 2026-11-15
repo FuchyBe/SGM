@@ -14,8 +14,8 @@ Les textes à recopier sont en anglais, entre les lignes `---`.
    « beta v0.9.2 ».
 5. **Short description** et **Description** : remplace les textes actuels par ceux ci-dessous.
 6. **Mots-clés** : ajoute ceux de la liste.
-7. **Images** (facultatif) : les captures de `docs/captures/feat-2026-11-15-design/` montrent la nouvelle
-   interface.
+7. **Images** : remplace la galerie par les 4 visuels de `docs/flightsim/visuels/` (1920 × 1080), dans l'ordre :
+   `1-hero.png` (vignette), `2-statics.png`, `3-gsx.png`, `4-securite.png`.
 8. Le message de don et « About Me » ne changent pas.
 
 ---
