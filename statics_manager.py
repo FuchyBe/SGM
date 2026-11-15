@@ -55,7 +55,7 @@ from i18n import LANGS, RTL_LANGS, get_lang, set_lang, tr
 
 APP_NAME = "SGM"
 APP_FULL = "Statics & GSX Manager"
-APP_VERSION = "0.9.3"
+APP_VERSION = "1.0"
 APP_AUTHOR = "Fabian Fuchs"
 # Lien de don public (PayPal.me)
 DONATE_URL = "https://paypal.me/Fuchy"
@@ -1945,7 +1945,7 @@ def build_statics_report(sources: list, sim: str, progress=None) -> dict:
         st = r.get("sgm_state", "error")
         states[st] = states.get(st, 0) + 1
     unused = sum(1 for r in scenes for f in r.get("files", []) if not f.get("used_by_sgm"))
-    return {"schema": REPORT_SCHEMA, "app": f"SGM beta v{APP_VERSION}", "sim": sim,
+    return {"schema": REPORT_SCHEMA, "app": f"SGM v{APP_VERSION}", "sim": sim,
             "created": datetime.now().strftime("%Y-%m-%d %H:%M"), "packages_scanned": len(seen),
             "summary": {"scenes_with_candidates": len(scenes), "by_sgm_state": states,
                         "candidate_files_not_used_by_sgm": unused},
@@ -2726,7 +2726,7 @@ def issue_text(kind: str, sim: str, lang: str, fields: dict | None = None, summa
     names = [attachment] if isinstance(attachment, str) else list(attachment)
     names = [n for n in names if n]
     foot = ("---\n"
-            f"SGM beta v{APP_VERSION} · {sim} · {platform.system()} {platform.release()} · UI language: {lang}\n"
+            f"SGM v{APP_VERSION} · {sim} · {platform.system()} {platform.release()} · UI language: {lang}\n"
             "_Please do not post personal information (e-mail, full file paths with your user name)._")
     files = ""
     if names:
@@ -2847,8 +2847,9 @@ def release_info(data: dict) -> dict | None:
             zips.append(a)
         elif low.endswith(".sha256") or low in ("sha256sums.txt", "sha256sums"):
             sha_a = a
-    # le paquet de l'application : SGM_beta_vX.Y(.Z).zip ; sinon un seul .zip SGM, jamais un choix au hasard
-    exact = [a for a in zips if re.fullmatch(r"sgm_beta_v[\d.]+\.zip", str(a["name"]).lower())]
+    # le paquet de l'application : SGM_vX.Y(.Z).zip (SGM_beta_vX.Y avant la 1.0) ; sinon un seul .zip SGM,
+    # jamais un choix au hasard
+    exact = [a for a in zips if re.fullmatch(r"sgm_(?:beta_)?v[\d.]+\.zip", str(a["name"]).lower())]
     zip_a = exact[0] if len(exact) == 1 else (zips[0] if len(zips) == 1 else None)
     if zip_a is None:
         return None
@@ -4916,7 +4917,7 @@ class MainWindow(QMainWindow):
         hl = QHBoxLayout(corner)
         hl.setContentsMargins(0, 0, 4, 0)
         hl.setSpacing(4)
-        credit = QLabel(f"beta v{APP_VERSION}  ·  {APP_AUTHOR}")
+        credit = QLabel(f"v{APP_VERSION}  ·  {APP_AUTHOR}")
         credit.setObjectName("credit")
         heart = QToolButton()
         heart.setObjectName("cornerBtn")
@@ -4998,7 +4999,7 @@ class MainWindow(QMainWindow):
             pyside_v, qt_v = PySide6.__version__, qVersion()
         except Exception:
             pyside_v = qt_v = "?"
-        rows = [(f"{APP_NAME} — {APP_FULL}", f"beta v{APP_VERSION}"), ("Qt for Python (PySide6)", pyside_v),
+        rows = [(f"{APP_NAME} — {APP_FULL}", f"v{APP_VERSION}"), ("Qt for Python (PySide6)", pyside_v),
                 ("Qt", qt_v), ("Python", sys.version.split()[0])]
         doc = tr("licenses_html")
         doc += f"<h3>{tr('versions_title')}</h3><ul>" + "".join(f"<li>{a} — <b>{b}</b></li>" for a, b in rows) + "</ul>"
@@ -6266,7 +6267,7 @@ def main():
     lang = cfg.lang
     set_lang(lang)
     setup_logging()
-    LOG.info("SGM beta v%s démarré · %s · %s %s · Python %s · langue %s%s", APP_VERSION, cfg.sim,
+    LOG.info("SGM v%s démarré · %s · %s %s · Python %s · langue %s%s", APP_VERSION, cfg.sim,
              platform.system(), platform.release(), platform.python_version(), lang,
              " · exe" if getattr(sys, "frozen", False) else "")
     app.setLayoutDirection(Qt.RightToLeft if lang in RTL_LANGS else Qt.LeftToRight)

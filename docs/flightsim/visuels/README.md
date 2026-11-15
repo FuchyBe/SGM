@@ -1,4 +1,4 @@
-# Visuels flightsim.to (beta v0.9.3)
+# Visuels flightsim.to (v1.0)
 
 Images 1920 × 1080, à téléverser dans cet ordre (la première sert de vignette) :
 

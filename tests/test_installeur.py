@@ -168,14 +168,16 @@ class InstallUpdateTest(SandboxTest):
     def test_release_avec_installeur_et_sha256sums(self):
         pre = m.DOWNLOAD_PREFIX + "v1.0/"
         data = {"tag_name": "v1.0", "assets": [
-            {"name": "SGM_beta_v1.0.zip", "browser_download_url": pre + "SGM_beta_v1.0.zip", "size": 10},
+            {"name": "SGM_v1.0.zip", "browser_download_url": pre + "SGM_v1.0.zip", "size": 10},
             {"name": "SGM_Setup_v1.0.exe", "browser_download_url": pre + "SGM_Setup_v1.0.exe", "size": 10},
             {"name": "SHA256SUMS.txt", "browser_download_url": pre + "SHA256SUMS.txt", "size": 1}]}
         info = m.release_info(data)
-        self.assertEqual(info["zip_name"], "SGM_beta_v1.0.zip")      # l'installeur n'est jamais pris pour le zip
+        self.assertEqual(info["zip_name"], "SGM_v1.0.zip")      # l'installeur n'est jamais pris pour le zip
         self.assertTrue(info["sha_url"].endswith("SHA256SUMS.txt"))
-        sums = f"{'a' * 64}  SGM_beta_v1.0.zip\n{'b' * 64}  SGM_Setup_v1.0.exe\n"
-        self.assertEqual(m.expected_sha256(sums, "SGM_beta_v1.0.zip"), "a" * 64)
+        sums = f"{'a' * 64}  SGM_v1.0.zip\n{'b' * 64}  SGM_Setup_v1.0.exe\n"
+        self.assertEqual(m.expected_sha256(sums, "SGM_v1.0.zip"), "a" * 64)
+        data["assets"].append({"name": "SGM_extras.zip", "browser_download_url": pre + "SGM_extras.zip", "size": 5})
+        self.assertEqual(m.release_info(data)["zip_name"], "SGM_v1.0.zip")   # nom exact préféré dès la 1.0
 
 
 class InstallerScriptTest(SandboxTest):
@@ -189,6 +191,9 @@ class InstallerScriptTest(SandboxTest):
         self.assertIn('Source: "SGM.installed"', iss)
         self.assertTrue((ROOT / "installer" / m.INSTALL_MARKER).is_file())
         self.assertIn('Excludes: "SGM_data\\*"', iss)               # jamais de données portables dans l'installeur
+        run = re.search(r"^\[Run\]\n(?:;.*\n)*(.+)$", iss, re.M).group(1)
+        self.assertIn(r'Filename: "{win}\explorer.exe"', run)       # jamais lancé comme enfant de l'installeur
+        self.assertIn(r'Parameters: """{app}\SGM.exe"""', run)
         self.assertIn("MB_DEFBUTTON2", iss)                           # données gardées par défaut
         self.assertIn(r"{userappdata}\SGM", iss)
         langs = re.findall(r'^Name: "(\w+)"; MessagesFile', iss, re.M)
