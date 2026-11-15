@@ -54,7 +54,7 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 ## Fonctions
 
 ### Avions statiques
-- **Profils** (barre d'outils) : enregistre l'état ON/OFF de tes scènes sous un nom et applique-le plus tard d'un clic ; seules les scènes qui diffèrent sont basculées, les scènes à vérifier ne sont jamais touchées, et l'application d'un profil s'annule.
+- **Profils de statics** (barre d'outils, ou Outils › Profils de statics) : enregistre l'état ON/OFF de tes scènes sous un nom et applique-le plus tard d'un clic ; seules les scènes qui diffèrent sont basculées, les scènes à vérifier ne sont jamais touchées, et l'application d'un profil s'annule.
 - Les fichiers sont détectés quand leur nom contient `static`, `statics` ou `parked`, à n'importe quelle profondeur dans la scène. Les bibliothèques de modèles (`modelLib…`) et les aplanissements de terrain sont ignorés.
 - Les méthodes des éditeurs sont reconnues (à partir d'une vraie bibliothèque de plus de 2 000 paquets) :
   - **Renommage** : `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` ou `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM garde la convention de l'éditeur.
@@ -94,28 +94,28 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 
 ### Interface
 - 12 langues : English, Français, Deutsch, Español, Italiano, Português, Nederlands, Polski, Русский, 中文, 日本語, العربية (de droite à gauche).
-- Recherche (nom, OACI, éditeur), bouton **Nouvelles**, et un **filtre par colonne** dans les en-têtes, avec la même logique : Statics (Toutes, ON, OFF, À vérifier, Sans statics) et Profil GSX (Tous, Installé, À installer, Installé à la main, Sans profil, À vérifier).
+- Recherche (nom, OACI, éditeur), bouton **Nouvelles scènes**, et un **filtre par colonne** dans les en-têtes, avec la même logique : Statics (Toutes, ON, OFF, À vérifier, Sans statics) et Profil GSX (Tous, Installé, À installer, Installé à la main, Sans profil, À vérifier).
 - Les colonnes Statics et GSX s'ajustent automatiquement à leur texte (une ligne) et laissent toute la place restante aux noms de scènes. Tire les traits entre les en-têtes pour les régler toi-même (réglage mémorisé) ; double-clic sur un trait pour revenir à l'ajustement automatique.
 - Infobulles détaillant chaque fichier.
 - Icône de dossier sur chaque ligne pour ouvrir le dossier de la scène.
-- Menu Aide : guide d'utilisation, avertissement, licences, dossier des sauvegardes.
+- **Menus et raccourcis** : *Paramètres* (langue, simulateur, dossiers, téléchargements, mises à jour), *Outils* (analyser, installer un profil GSX, profils de statics, annuler, tout restaurer, rapport d'analyse, dossiers des sauvegardes et du journal) et *Aide*. Ctrl+F recherche, Échap vide la recherche puis les filtres, F5 analyser, Ctrl+Z annuler, F1 guide.
 
 ## Sauvegardes
 
-**Annuler** (bouton à droite de *Profils*, ou **Ctrl+Z**) défait la dernière action — une bascule, Tout ON / Tout OFF en entier, un profil GSX copié ou installé, une restauration — et se réutilise pour remonter plus loin (10 actions gardées). Les fichiers reviennent exactement comme avant ; si l'un d'eux a changé depuis, rien n'est modifié.
+**Annuler** (bouton à droite de *Profils de statics*, ou **Ctrl+Z**) défait la dernière action — une bascule, Tout ON / Tout OFF en entier, un profil GSX copié ou installé, une restauration — et se réutilise pour remonter plus loin (10 actions gardées). Les fichiers reviennent exactement comme avant ; si l'un d'eux a changé depuis, rien n'est modifié.
 
 Avant chaque modification, les fichiers concernés sont copiés dans `SGM_data\backups` :
 - un dossier par scène, avec les 10 sauvegardes les plus récentes ;
 - les fichiers GSX dans `backups\_GSX`.
 
-**Aide › Ouvrir le dossier des sauvegardes** l'ouvre.
+**Outils › Ouvrir le dossier des sauvegardes** l'ouvre.
 
 ### Restaurer l'état d'origine
 
 Avant sa toute première modification d'une scène, SGM enregistre son état dans `SGM_data\origin` (fichiers statics, `layout.json`, `manifest.json`). Cet enregistrement n'est jamais effacé par les sauvegardes suivantes. SGM note aussi chaque profil GSX qu'il remplace, retire ou ajoute.
 
 - **Clic droit sur une scène › Restaurer l'état d'origine…** remet cette scène et ses profils GSX comme avant SGM.
-- **Aide › Tout restaurer à l'origine…** le fait pour toutes les scènes et le dossier GSX, par exemple avant de supprimer SGM.
+- **Outils › Tout restaurer à l'origine…** le fait pour toutes les scènes et le dossier GSX, par exemple avant de supprimer SGM.
 - La restauration est tout ou rien : si un fichier ne correspond plus (modifié à la main), rien n'est changé et les fichiers à vérifier sont listés.
 - Si l'éditeur a mis la scène à jour entre-temps, ses fichiers sont déjà d'origine : rien n'est fait.
 
@@ -146,11 +146,11 @@ La version de SGM, le simulateur et la version de Windows sont ajoutés automati
 
 ### Rapport d'analyse des statics
 
-**Aide › Créer un rapport d'analyse des statics…** parcourt toutes tes scènes sans rien modifier et enregistre un fichier `.json` dans `SGM_data\reports`. Il liste les fichiers de type statics trouvés dans chaque scène (noms à l'intérieur de la scène, tailles, empreintes, présence dans `layout.json`, interprétation de SGM). Il ne contient aucun chemin personnel ni nom d'utilisateur. Joins-le à une issue GitHub pour aider à améliorer les règles de détection de SGM.
+**Outils › Créer un rapport d'analyse des statics…** parcourt toutes tes scènes sans rien modifier et enregistre un fichier `.json` dans `SGM_data\reports`. Il liste les fichiers de type statics trouvés dans chaque scène (noms à l'intérieur de la scène, tailles, empreintes, présence dans `layout.json`, interprétation de SGM). Il ne contient aucun chemin personnel ni nom d'utilisateur. Joins-le à une issue GitHub pour aider à améliorer les règles de détection de SGM.
 
 ### Journal
 
-SGM note ce qu'il fait (lancement, analyses, chaque bascule avec les fichiers renommés ou copiés, installations GSX, erreurs) dans `SGM_data\logs\sgm.log`. Ton dossier personnel est remplacé par `~` : aucun nom d'utilisateur. Il est limité à 5 fichiers de 1 Mo. **Aide › Ouvrir le dossier du journal** l'ouvre.
+SGM note ce qu'il fait (lancement, analyses, chaque bascule avec les fichiers renommés ou copiés, installations GSX, erreurs) dans `SGM_data\logs\sgm.log`. Ton dossier personnel est remplacé par `~` : aucun nom d'utilisateur. Il est limité à 5 fichiers de 1 Mo. **Outils › Ouvrir le dossier du journal** l'ouvre.
 
 
 ## Soutenir le projet

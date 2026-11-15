@@ -54,7 +54,7 @@ The full user guide is in the app: **Help › User guide** (F1).
 ## Features
 
 ### Static aircraft
-- **Profiles** (toolbar): save the ON/OFF state of your sceneries under a name and apply it later in one click; only the sceneries that differ are switched, sceneries to check are never touched, and applying a profile can be undone.
+- **Statics profiles** (toolbar, or Tools › Statics profiles): save the ON/OFF state of your sceneries under a name and apply it later in one click; only the sceneries that differ are switched, sceneries to check are never touched, and applying a profile can be undone.
 - Files are detected when their name contains `static`, `statics` or `parked`, at any depth inside the scenery. Model libraries (`modelLib…`) and terrain flattens are ignored.
 - The methods used by developers are recognised (based on a real library of more than 2,000 packages):
   - **Renaming**: `xxx_statics.bgl` (ON) ↔ `xxx_statics.bgl.off`, `xxx_statics.off` or `.disabled` (OFF) — iniBuilds, Drzewiecki Design, Orbx, JetStream, UK2000, Burning Blue… SGM keeps the developer's own naming.
@@ -94,28 +94,28 @@ The full user guide is in the app: **Help › User guide** (F1).
 
 ### Interface
 - 12 languages: English, Français, Deutsch, Español, Italiano, Português, Nederlands, Polski, Русский, 中文, 日本語, العربية (right-to-left).
-- Search (name, ICAO, developer), **New** button, and one **filter per column** in the column headers, with the same logic: Statics (All, ON, OFF, To check, No statics) and GSX profile (All, Installed, To install, Installed manually, No profile, To check).
+- Search (name, ICAO, developer), **New sceneries** button, and one **filter per column** in the column headers, with the same logic: Statics (All, ON, OFF, To check, No statics) and GSX profile (All, Installed, To install, Installed manually, No profile, To check).
 - The Statics and GSX columns fit their text automatically (one line), leaving all the remaining space to the scenery names. Drag the lines between the headers to set them yourself (setting remembered); double-click a line to go back to the automatic fit.
 - Tooltips with the details of each file.
 - Folder icon on each row to open the scenery folder.
-- Help menu: user guide, disclaimer, licences, backups folder.
+- **Menus and shortcuts**: *Settings* (language, simulator, folders, downloads, updates), *Tools* (scan, install a GSX profile, statics profiles, undo, restore everything, analysis report, backups and log folders) and *Help*. Ctrl+F search, Esc clears the search then the filters, F5 scan, Ctrl+Z undo, F1 guide.
 
 ## Backups
 
-**Undo** (button to the right of *Profiles*, or **Ctrl+Z**) cancels the last action — a switch, All ON / All OFF as a whole, a GSX profile copied or installed, a restore — and can be pressed again to go further back (10 actions kept). Files go back exactly as they were; if one was changed since, nothing is modified.
+**Undo** (button to the right of *Statics profiles*, or **Ctrl+Z**) cancels the last action — a switch, All ON / All OFF as a whole, a GSX profile copied or installed, a restore — and can be pressed again to go further back (10 actions kept). Files go back exactly as they were; if one was changed since, nothing is modified.
 
 Before every change, the modified files are copied to `SGM_data\backups`:
 - one folder per scenery, keeping the 10 most recent backups;
 - GSX files in `backups\_GSX`.
 
-**Help › Open backups folder** opens it.
+**Tools › Open backups folder** opens it.
 
 ### Restore the original state
 
 Before its very first change to a scenery, SGM records how it was in `SGM_data\origin` (statics files, `layout.json`, `manifest.json`). This record is never deleted by later backups. SGM also records every GSX profile it replaced, removed or added.
 
 - **Right-click a scenery › Restore original state…** puts that scenery and its GSX profiles back as they were before SGM.
-- **Help › Restore everything to original…** does it for every scenery and the GSX folder, for example before removing SGM.
+- **Tools › Restore everything to original…** does it for every scenery and the GSX folder, for example before removing SGM.
 - Restoring is all or nothing: if a file no longer matches (edited by hand), nothing is changed and the files to check are listed.
 - If the developer has updated the scenery since, its files are already original: nothing is done.
 
@@ -146,11 +146,11 @@ The SGM version, the simulator and the Windows version are added automatically. 
 
 ### Statics analysis report
 
-**Help › Create a statics analysis report…** scans all your sceneries without changing anything and saves a `.json` file in `SGM_data\reports`. It lists the statics-like files found in each scenery (names inside the scenery, sizes, fingerprints, whether they are in `layout.json`, and how SGM understood them). It contains no personal path or user name. Attach it to a GitHub issue to help improve SGM's detection rules.
+**Tools › Create a statics analysis report…** scans all your sceneries without changing anything and saves a `.json` file in `SGM_data\reports`. It lists the statics-like files found in each scenery (names inside the scenery, sizes, fingerprints, whether they are in `layout.json`, and how SGM understood them). It contains no personal path or user name. Attach it to a GitHub issue to help improve SGM's detection rules.
 
 ### Log
 
-SGM keeps a log of what it does (launch, scans, every switch with the files renamed or copied, GSX installs, errors) in `SGM_data\logs\sgm.log`. Your user folder is replaced by `~`, so it contains no user name. It is limited to 5 files of 1 MB. **Help › Open log folder** opens it.
+SGM keeps a log of what it does (launch, scans, every switch with the files renamed or copied, GSX installs, errors) in `SGM_data\logs\sgm.log`. Your user folder is replaced by `~`, so it contains no user name. It is limited to 5 files of 1 MB. **Tools › Open log folder** opens it.
 
 
 ## Support the project
