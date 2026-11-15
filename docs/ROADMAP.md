@@ -5,16 +5,14 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 ## Prêt
 
-Placés par Fabian le 2026-11-15, dans cet ordre.
+Placés par Fabian le 2026-11-15.
 
-1. **8 textes français manquants** — `all_progress`, `stats_gsx`, `stats_on`, `stats_off`, `help_lang_note`,
-   `statics_tip`, `standard`, `auto` retombent sur l'anglais (relevé par 3AM). S.
-2. **Tester .7z et .rar avec 7-Zip** — extraction jamais testée ; tests et durcissement. S.
-3. **Release v0.8 sur GitHub** — guider Fabian pour « Préparer une release (brouillon) » ; Fabian publie. S.
+1. **Publier la v0.9 sur GitHub** — Fabian lance « Préparer une release (brouillon) » puis publie (aucun agent ne
+   publie). S.
 
 ## En cours (PR à tester)
 
-- Sécurité G4 à G6 — branche `sprint/2026-11-15-securite-g4-g6`.
+- beta v0.9 — branche `sprint/2026-11-15-v0.9`.
 
 ## À trier
 
@@ -38,6 +36,8 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **beta v0.9** (préparée) — mise à jour automatique, sécurité G1 à G6, .7z testé, français complet, accroches 3AM.
+- **Archives .7z / .rar testées** (PR #25), **français complet** (PR #24), **sécurité G4 à G6** (PR #23).
 - **Points d'accroche pour 3AM, S1 à S12** (PR #22).
 - **Sécurité G1 à G3** (PR #21).
 - **Mise à jour automatique** (PR #19) — GitHub Releases, SHA-256, retour arrière.
