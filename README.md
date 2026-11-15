@@ -183,6 +183,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 ## Version history
 
 **Next version (in development)**
+- **Safety**: "Restore everything" never removes or overwrites a GSX profile you modified after SGM installed it; archives are sent to the Recycle Bin only from a fixed drive (kept on USB sticks / network drives instead of being deleted for good); file changes are blocked while MSFS 2020 **or** MSFS 2024 is running, and SGM asks if it cannot tell.
 - **Automatic updates** (optional, asked at first launch): checks GitHub once a day at most, downloads, verifies SHA-256 and restarts; `SGM_data` kept, previous version restored on failure.
 
 **beta v0.8**
