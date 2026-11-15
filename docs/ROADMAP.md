@@ -10,13 +10,19 @@ Placés par Fabian le 2026-11-15 (« je suis tes propositions »).
 1. **Publier la v0.9.2 sur GitHub** — Fabian publie (aucun agent ne publie) : Actions › « Préparer une release
    (brouillon) », puis « Publish release ». Ne pas publier le brouillon v0.9 (faille des chemins d'archive,
    corrigée en v0.9.2) : le supprimer. S.
-2. **Ergonomie (revue design D6 à D14)** — menus regroupés (Outils / Paramètres / Aide), raccourcis Ctrl+F, F5,
+2. **v0.9.3 : ergonomie (revue design D6 à D14)** — menus regroupés (Outils / Paramètres / Aide), raccourcis Ctrl+F, F5,
    Échap ; libellés « Défaire », « Profils statics », « Nouvelles scènes » ; question de mise à jour dans le bandeau ;
    colonne GSX plus légère ; hiérarchie de la fenêtre Dossiers. M.
-3. **Nouvelles fonctions (revue R&D, E1 à E5)** — statics remis par une mise à jour de scène (bandeau
+3. **Version installable et v1.0 RC** (placé par Fabian le 2026-11-15, voir DECISIONS) — installeur Inno Setup par
+   utilisateur, reprise du `SGM_data` portable par copie (premier lancement et Paramètres), désinstallation qui garde
+   les données, mise à jour automatique de la version installée (installeur vérifié SHA-256, lancé en silencieux),
+   release avec zip portable + installeur compatibles avec les v0.9.x, fin de « beta » (titres, README,
+   flightsim.to, visuels). M à L.
+4. **Nouvelles fonctions (revue R&D, E1 à E5)**, après la 1.0 — statics remis par une mise à jour de scène (bandeau
    « Réappliquer ») ; profil GSX peut-être périmé ; détection du trafic IA ; export / import des réglages et profils ;
    tri de « À trier ». Points à **décision de Fabian** avant développement : doublons OACI (SGM ou 3AM ?),
    Marketplace en lecture seule, ligne de commande. M à L.
+- **Signature de l'exécutable** — à décider par Fabian (coût d'un certificat), utile avant la 1.0 (SmartScreen).
 
 ## En cours (PR à tester)
 
