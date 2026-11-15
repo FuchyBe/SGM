@@ -24,7 +24,8 @@ LONG_KEYS = {"help_html", "disclaimer_html", "licenses_html"}
 SHORT_PREFIXES = ("btn_", "st_", "cat_", "filter_", "col_", "mode_", "lbl_", "grp_", "note_")  # menus et barre d'état : largeur libre
 SAME_OK = {"ok", "gsx", "sgm", "paypal", "github", "msfs", "statics", "on", "off", "lite", "full", "vdgs", "icao", "flightsim", "to", "bgl", "json", "layout",
            "problem", "idea", "downloads", "later"}   # mots identiques en de, pl (Problem) et es, it (Idea)
-# clés volontairement identiques à l'anglais dans toutes les langues (repli normal)
+# clés volontairement identiques à l'anglais (repli normal) ; en français elles sont écrites explicitement
+# (relevé de 3AM du 2026-11-15 : plus aucun texte français ne « retombe » sur l'anglais)
 SAME_KEYS = {"f_on", "f_off", "f_gsx", "col_statics", "st_on", "st_off", "grp_on", "grp_off", "statics_tip",
              "standard", "stats_on", "stats_off", "stats_gsx", "all_progress", "auto", "help_lang_note"}
 # langues où l'on mesure la longueur en caractères (les idéogrammes sont plus larges : on double)
@@ -57,7 +58,7 @@ def check() -> tuple[list, list]:
                     warnings.append(f"[{code}] balises HTML différentes dans {key}")
                 continue
             plain = re.sub(r"[\W\d_]+", " ", src).strip().lower()
-            if dst == src and plain and not set(plain.split()) <= SAME_OK:
+            if dst == src and plain and key not in SAME_KEYS and not set(plain.split()) <= SAME_OK:
                 warnings.append(f"[{code}] identique à l'anglais : {key} = {src!r}")
             if key.startswith(SHORT_PREFIXES) and len(src) >= 4:
                 ratio = visual_len(dst, code) / max(1, len(src))

@@ -321,6 +321,23 @@ EN = {
 
 TR = {
     'fr': {
+        # termes identiques à l'anglais, écrits ici pour ne plus retomber sur l'anglais (relevé par 3AM)
+        'all_progress': 'Statics {label} — {i}/{n} — {name}',
+        'stats_on': '{n} ON',
+        'stats_off': '{n} OFF',
+        'stats_gsx': '{n} GSX',
+        'help_lang_note': 'Ce guide est disponible en anglais et en français.',
+        'statics_tip': 'Statics',
+        'standard': 'Standard',
+        'auto': 'auto',
+        'f_on': 'ON',
+        'f_off': 'OFF',
+        'f_gsx': 'GSX',
+        'col_statics': 'STATICS',
+        'st_on': 'Statics ON',
+        'st_off': 'Statics OFF',
+        'grp_on': 'ON',
+        'grp_off': 'OFF',
         'subtitle': 'Avions statiques et profils GSX',
         'search_ph': 'Rechercher une scène, un code OACI, un éditeur…',
         'f_all': 'Toutes',

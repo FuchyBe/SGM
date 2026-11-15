@@ -92,3 +92,9 @@ class TestTranslationChecker(unittest.TestCase):
         spec.loader.exec_module(mod)
         errors, _warnings = mod.check()
         self.assertEqual(errors, [])
+
+
+class FrenchCompleteTest(unittest.TestCase):
+    def test_aucun_texte_francais_ne_retombe_sur_l_anglais(self):
+        import i18n
+        self.assertEqual([k for k in i18n.EN if k not in i18n.TR["fr"]], [])
