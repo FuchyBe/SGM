@@ -1248,13 +1248,29 @@ class PackageMeta:
                 write_atomic(self.manifest_file, new_raw)
 
 
+def package_root(path: Path) -> Path:
+    """Dossier du paquet MSFS qui contient `path` (celui qui a layout.json ou manifest.json), sinon son dossier."""
+    path = Path(path)
+    for d in list(path.parents)[:8]:
+        if (d / "layout.json").is_file() or (d / "manifest.json").is_file():
+            return d
+    return path.parent
+
+
 def backup_files(root: Path, files: list[Path]):
+    """Copie de sauvegarde, rangée sous le nom du PAQUET et avec l'arborescence relative (sécurité G4 : deux
+    fichiers de même nom ne s'écrasent plus, et la sauvegarde d'une scène n'efface pas celles d'une autre)."""
     base = data_dir() / "backups" / re.sub(r'[<>:"/\\|?*]', "_", root.name)
     dest = base / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     dest.mkdir(parents=True, exist_ok=True)
     for f in files:
         if f.is_file():
-            shutil.copy2(f, dest / f.name)
+            try:
+                rel = Path(f).relative_to(root)
+            except ValueError:
+                rel = Path(Path(f).name)
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(f, dest / rel)
     old = sorted([d for d in base.iterdir() if d.is_dir()])
     for d in old[:-MAX_BACKUPS_PER_SCENE]:
         shutil.rmtree(d, ignore_errors=True)
@@ -1314,6 +1330,13 @@ class UndoRecorder:
             after = file_hash(p) if p.is_file() else None
             if after != h:
                 files.append({"path": str(p), "before": h, "after": after, "copy": copy})
+        # G6 : contenu seulement déplacé (renommage) = retrouvable par empreinte, la copie est inutile.
+        # Une seule copie évitée par fichier présent après (doubles identiques : la suivante reste copiée).
+        spare = [f["after"] for f in files if f["after"]]
+        for f in files:
+            if f["copy"] and f["before"] in spare and f["path"].lower().rsplit(".", 1)[-1] != "json":
+                spare.remove(f["before"])
+                f["copy"] = None
         if not files:
             shutil.rmtree(self.tmp, ignore_errors=True)
             return False
@@ -1445,7 +1468,7 @@ def undo_last() -> str:
     by_root = {}
     for p in paths.values():
         if p.is_file():
-            by_root.setdefault(p.parent, []).append(p)
+            by_root.setdefault(package_root(p), []).append(p)
     for parent, ps in by_root.items():
         backup_files(parent, ps)
     staged = []
@@ -2134,6 +2157,9 @@ def _copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
 
 ARCHIVE_EXT = (".zip", ".7z", ".rar")
 MAX_MEMBER_SIZE = 4 * 1024 * 1024        # un profil GSX fait quelques Ko : au-delà, on ignore
+MAX_ARCHIVE_MEMBERS = 20000              # sécurité G5 : plafonds vérifiés AVANT toute extraction
+MAX_PROFILE_FILES = 2000
+MAX_PROFILE_TOTAL = 64 * 1024 * 1024
 MAX_ARCHIVE_SCAN = 40                    # nombre d'archives récentes examinées dans Téléchargements
 DOWNLOAD_MAX_AGE_DAYS = 60
 
@@ -2162,12 +2188,40 @@ def _safe_rel(name: str) -> Path | None:
     return Path(*parts)
 
 
+def check_archive_limits(entries, archive_name: str):
+    """entries : [(nom, taille décompressée)]. Refuse une archive anormale avant d'extraire (sécurité G5)."""
+    entries = list(entries)
+    if len(entries) > MAX_ARCHIVE_MEMBERS:
+        raise ArchiveError("arch_error", name=archive_name, err=f"{len(entries)} files")
+    wanted = [(n, s) for n, s in entries if n.lower().endswith((".ini", ".py")) and s <= MAX_MEMBER_SIZE]
+    if len(wanted) > MAX_PROFILE_FILES or sum(s for _n, s in wanted) > MAX_PROFILE_TOTAL:
+        raise ArchiveError("arch_error", name=archive_name, err="too many / too large profile files")
+
+
+def _list_7z(exe: str, archive: Path) -> list:
+    res = subprocess.run([exe, "l", "-ba", "-slt", str(archive)], capture_output=True, timeout=60,
+                         creationflags=0x08000000 if os.name == "nt" else 0)
+    out, name = [], None
+    for line in res.stdout.decode("utf-8", "ignore").splitlines():
+        if line.startswith("Path = "):
+            name = line[7:].strip()
+        elif line.startswith("Size = ") and name is not None:
+            try:
+                out.append((name, int(line[7:].strip() or 0)))
+            except ValueError:
+                out.append((name, 0))
+            name = None
+    return out
+
+
 def extract_profiles(archive: Path, dest: Path):
     """Extrait uniquement les .ini et .py d'une archive dans `dest`."""
     ext = archive.suffix.lower()
     if ext == ".zip":
         try:
             with zipfile.ZipFile(archive) as zf:
+                check_archive_limits([(i.filename, i.file_size) for i in zf.infolist() if not i.is_dir()],
+                                     archive.name)
                 for info in zf.infolist():
                     if info.is_dir() or not info.filename.lower().endswith((".ini", ".py")):
                         continue
@@ -2187,6 +2241,11 @@ def extract_profiles(archive: Path, dest: Path):
         exe = find_7z()
         if not exe:
             raise ArchiveError("arch_need_7z", name=archive.name, ext=ext)
+        try:
+            entries = _list_7z(exe, archive)
+        except Exception as e:
+            raise ArchiveError("arch_error", name=archive.name, err=e)
+        check_archive_limits(entries, archive.name)
         try:
             res = subprocess.run([exe, "x", "-y", f"-o{dest}", str(archive), "*.ini", "*.py", "-r"],
                                  capture_output=True, timeout=120,
