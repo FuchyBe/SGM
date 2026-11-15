@@ -28,7 +28,7 @@ class TestRestore(SandboxTest):
         self.assertTrue(m.has_origin(root))
         m.restore_scene_statics(root)
         self.assertEqual(self.files(root), before)
-        self.assertFalse(m.has_origin(root))
+        self.assertTrue(m.has_origin(root))       # photo d'origine gardée (Annuler une restauration la retrouve)
 
     def test_variant_restores_original_unknown_content(self):
         root = make_pkg(self.community, "test-lfpg", "Paris LFPG", [
@@ -70,7 +70,7 @@ class TestRestore(SandboxTest):
         with self.assertRaises(m.RestoreError):
             m.restore_scene_statics(root)
         self.assertTrue((root / "s/z_statics.bgl").exists())
-        self.assertFalse(m.has_origin(root))
+        self.assertFalse(m.has_origin(root))      # scène mise à jour : photo invalidée
 
     def test_snapshot_taken_only_once(self):
         root = make_pkg(self.community, "test-w", "Test WWWW", [("s/w_statics.bgl", b"S" * 5, True)])
@@ -94,7 +94,7 @@ class TestRestore(SandboxTest):
         self.assertEqual((self.gsx / "eblg-x.ini").read_bytes(), profile("mine"))
         self.assertFalse((self.gsx / "eblg-x.py").exists())
         self.assertEqual((self.gsx / "other.ini").read_bytes(), profile("untouched"))
-        self.assertEqual(m.gsx_journal_dests(), [])
+        self.assertEqual(m.gsx_restore(self.gsx, ["eblg-x.ini", "eblg-x.py"]), 0)   # déjà à l'origine : rien à faire
 
     def test_restore_all_lists_every_scene(self):
         for n in ("a", "b"):
