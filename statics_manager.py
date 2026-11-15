@@ -1776,16 +1776,52 @@ def gsx_record(dest_dir: Path, names: list[str]):
         write_atomic(jd / "journal.json", json.dumps(j, indent=2, ensure_ascii=False))
 
 
+def gsx_mark_written(dest_dir: Path, names: list[str]):
+    """Après une écriture ou un retrait par SGM : note l'empreinte laissée par SGM (None = fichier retiré).
+    La restauration ne touchera un fichier que s'il est encore exactement dans cet état (sécurité G1)."""
+    j = _gsx_load(dest_dir)
+    changed = False
+    for n in names:
+        e = j["files"].get(n.lower())
+        if e is None:
+            continue
+        p = dest_dir / e["name"]
+        forget_hash(p)
+        e["written"] = file_hash(p) if p.is_file() else None
+        changed = True
+    if changed:
+        jd = _gsx_journal_dir(dest_dir)
+        jd.mkdir(parents=True, exist_ok=True)
+        write_atomic(jd / "journal.json", json.dumps(j, indent=2, ensure_ascii=False))
+
+
 def gsx_has_origin(dest_dir: Path, names) -> bool:
     files = _gsx_load(dest_dir)["files"]
     return any(n.lower() in files for n in names)
 
 
-def _gsx_restore(dest_dir: Path, names=None) -> int:
-    """Remet les fichiers GSX notés dans le journal (tous, ou seulement `names`). Renvoie le nombre traité."""
+def _gsx_restore(dest_dir: Path, names=None, skipped: list | None = None) -> int:
+    """Remet les fichiers GSX notés dans le journal (tous, ou seulement `names`). Renvoie le nombre traité.
+    Un profil modifié depuis le passage de SGM (retouché dans l'éditeur GSX, remplacé à la main…) n'est jamais
+    supprimé ni écrasé : il reste tel quel, son nom est ajouté à `skipped` et il reste dans le journal (G1)."""
     j = _gsx_load(dest_dir)
     jd = _gsx_journal_dir(dest_dir)
     keys = [k for k in j["files"] if names is None or k in {n.lower() for n in names}]
+    ok_keys = []
+    for k in keys:
+        e = j["files"][k]
+        p = dest_dir / e["name"]
+        forget_hash(p)
+        cur = file_hash(p) if p.is_file() else None
+        orig = jd / "files" / e["name"]
+        orig_h = (file_hash(orig) if orig.is_file() else "?") if e["existed"] else None
+        if cur == orig_h:                                  # déjà dans l'état d'origine
+            ok_keys.append(k)
+        elif "written" in e and cur == e["written"]:      # encore exactement ce que SGM a laissé
+            ok_keys.append(k)
+        elif skipped is not None:
+            skipped.append(e["name"])
+    keys = ok_keys
     if not keys:
         return 0
     current = [dest_dir / j["files"][k]["name"] for k in keys if (dest_dir / j["files"][k]["name"]).is_file()]
@@ -2046,6 +2082,7 @@ def _copy_gsx(scene: Scene, variant: GsxVariant, dest_dir: Path) -> list[str]:
         shutil.copy2(f, dest_dir / f.name)
         forget_hash(dest_dir / f.name)
         copied.append(f.name)
+    gsx_mark_written(dest_dir, copied + [r.name for r in removed])
     return copied
 
 
@@ -2149,6 +2186,7 @@ def _install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
         shutil.copy2(f, dest_dir / f.name)
         forget_hash(dest_dir / f.name)
         copied.append(f.name)
+    gsx_mark_written(dest_dir, copied)
     return copied
 
 
@@ -2249,12 +2287,34 @@ def cleanup_candidates(outcomes: dict, downloads=None) -> list:
     return [Path(a) for a, st in outcomes.items() if st == ARCH_OK and in_downloads(a, downloads)]
 
 
+DRIVE_FIXED = 3
+
+
+def drive_is_fixed(path: Path) -> bool:
+    """Disque fixe (interne ou disque dur USB) : seul cas où la Corbeille de Windows garde le fichier.
+    Clé USB, carte mémoire, disque réseau : Windows effacerait définitivement (sécurité G2)."""
+    if os.name != "nt":
+        return True
+    import ctypes
+    root = Path(path).resolve().anchor
+    if not root:
+        return False
+    return ctypes.windll.kernel32.GetDriveTypeW(root if root.endswith("\\") else root + "\\") == DRIVE_FIXED
+
+
+class NotRecyclable(OSError):
+    pass
+
+
 def send_to_trash(path: Path):
-    """Envoie un fichier dans la Corbeille de Windows (récupérable). Lève OSError en cas d'échec.
+    """Envoie un fichier dans la Corbeille de Windows (récupérable). Lève OSError en cas d'échec,
+    NotRecyclable si le fichier n'est pas sur un disque fixe (il est alors gardé).
     Hors Windows (tests) : déplacé dans SGM_data/trash."""
     path = Path(path)
     if not path.is_file():
         raise OSError(f"{path.name}: introuvable")
+    if not drive_is_fixed(path):
+        raise NotRecyclable(tr("trash_not_fixed", name=path.name))
     if os.name == "nt":
         import ctypes
         from ctypes import wintypes
@@ -2264,7 +2324,8 @@ def send_to_trash(path: Path):
                         ("pTo", wintypes.LPCWSTR), ("fFlags", ctypes.c_ushort),
                         ("fAnyOperationsAborted", wintypes.BOOL), ("hNameMappings", ctypes.c_void_p),
                         ("lpszProgressTitle", wintypes.LPCWSTR)]
-        fo_delete, flags = 3, 0x0004 | 0x0010 | 0x0040 | 0x0400   # SILENT | NOCONFIRMATION | ALLOWUNDO | NOERRORUI
+        # SILENT | NOCONFIRMATION | ALLOWUNDO | NOERRORUI | WANTNUKEWARNING (avertir avant tout effacement définitif)
+        fo_delete, flags = 3, 0x0004 | 0x0010 | 0x0040 | 0x0400 | 0x4000
         op = SHFILEOPSTRUCTW(None, fo_delete, str(path) + "\0", None, flags, False, None, None)
         res = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
         if res != 0 or op.fAnyOperationsAborted or path.exists():
@@ -2287,6 +2348,9 @@ def trash_archives(paths: list) -> list:
         try:
             send_to_trash(p)
             LOG.info("Archive mise à la corbeille : %s", Path(p).name)
+        except NotRecyclable as e:
+            LOG.warning("Archive gardée (pas sur un disque fixe) : %s", Path(p).name)
+            failed.append((Path(p).name, str(e)))
         except OSError as e:
             LOG.warning("Archive non supprimée : %s (%s)", Path(p).name, e)
             failed.append((Path(p).name, str(e)))
@@ -2349,8 +2413,11 @@ def install_profile_files(files: list[Path], dest_dir: Path) -> list[str]:
     return out
 
 
-def gsx_restore(dest_dir: Path, names=None) -> int:
-    n = _gsx_restore(dest_dir, names)
+def gsx_restore(dest_dir: Path, names=None, skipped: list | None = None) -> int:
+    skipped = [] if skipped is None else skipped
+    n = _gsx_restore(dest_dir, names, skipped)
+    if skipped:
+        LOG.warning("GSX : profil(s) modifié(s) depuis SGM, laissé(s) tel(s) quel(s) : %s", ", ".join(skipped))
     if n:
         LOG.info("GSX : %d profil(s) remis à l'origine", n)
     return n
@@ -2622,16 +2689,24 @@ def prepare_update(info: dict, progress=None, getter=None, base: Path | None = N
     return {"version": info["version"], "script": script, "src": src}
 
 
-def sim_running(sim: str) -> bool:
+def running_sims() -> list | None:
+    """Simulateurs MSFS en cours d'exécution (les deux versions : origin/, undo/ et _GSX leur sont communs).
+    None si la liste des programmes n'a pas pu être lue (état inconnu, sécurité G3)."""
     if os.name != "nt":
-        return False
+        return []
     try:
         res = subprocess.run(["tasklist", "/fo", "csv", "/nh"], capture_output=True,
                              timeout=10, creationflags=0x08000000)
+        if res.returncode != 0:
+            return None
         out = res.stdout.decode("utf-8", errors="ignore").lower()
     except Exception:
-        return False
-    return f'"{SIMS[sim]["process"]}"' in out
+        return None
+    return [s for s in SIMS if f'"{SIMS[s]["process"]}"' in out]
+
+
+def sim_running(sim: str) -> bool:
+    return sim in (running_sims() or [])
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -4434,9 +4509,12 @@ class MainWindow(QMainWindow):
                 except RestoreError as e:
                     msgs.append(str(e))
             folder = self.config.gsx_folder()
-            if folder and gsx_restore(Path(folder), [f.name for f in scene.gsx_files]):
+            kept = []
+            if folder and gsx_restore(Path(folder), [f.name for f in scene.gsx_files], kept):
                 self.config.gsx_choices.pop(scene.key, None)
                 self.config.save()
+            if kept:
+                msgs.append(tr("gsx_restore_kept", files="\n".join(f"• {n}" for n in kept)))
         self.update_undo_btn()
         self.refresh_gsx_index()
         self.refresh_scene(scene)
@@ -4462,8 +4540,11 @@ class MainWindow(QMainWindow):
                     restore_scene_statics(root)
                 except RestoreError as e:
                     errors.append(f"• {root.name} : {e}")
+            kept = []
             for d in dests:
-                gsx_restore(d)
+                gsx_restore(d, None, kept)
+            if kept:
+                errors.append(tr("gsx_restore_kept", files="\n".join(f"• {n}" for n in kept[:15])))
         self.config.gsx_choices.clear()
         self.config.save()
         self.status.setText(tr("restore_all_done", n=len(roots)))
@@ -5127,8 +5208,12 @@ class MainWindow(QMainWindow):
 
     # ── Bascule statics
     def ensure_sim_closed(self) -> bool:
-        if sim_running(self.config.sim):
-            warn(self, tr("sim_running", sim=self.config.sim))
+        """Bloque si MSFS 2020 OU MSFS 2024 tourne ; si on ne peut pas le savoir, demande (sécurité G3)."""
+        running = running_sims()
+        if running is None:
+            return ask(self, tr("sim_unknown"), default_yes=False)
+        if running:
+            warn(self, tr("sim_running", sim=" / ".join(running)))
             return False
         return True
 

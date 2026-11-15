@@ -7,16 +7,14 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-14, dans cet ordre.
 
-1. **Sécurité G1 à G3** — placé par Fabian le 2026-11-15, avant les accroches. Relevés par le gardien de 3AM
-   (fiche `docs/rd/2026-11-15-accroches-3am.md`, section « Sécurité ») : G1 « Tout restaurer » et profils GSX
-   retouchés, G2 Corbeille sur clé USB / disque réseau, G3 contrôle « simulateur fermé » pour 2020 et 2024. S/M.
-2. **Points d'accroche pour une application hôte (3AM)** — placé par Fabian le 2026-11-15 (conversation 3AM).
+1. **Points d'accroche pour une application hôte (3AM)** — placé par Fabian le 2026-11-15 (conversation 3AM).
    SGM porte lui-même les accroches dont 3AM a besoin (thème, contrôle de MSFS à trois états, sources, menu Aide,
    mise à jour inactive en mode hôte), **sans aucun effet sur SGM seul**. Fiche `docs/rd/2026-11-15-accroches-3am.md`
    (S1 à S12). S/M.
 
 ## En cours (PR à tester)
 
+- Sécurité G1 à G3 — branche `sprint/2026-11-15-securite`.
 
 ## À trier
 

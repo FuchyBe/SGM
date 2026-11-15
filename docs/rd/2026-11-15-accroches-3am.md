@@ -42,6 +42,10 @@ le test de contrat de 3AM (`tests/test_sgm_contrat.py`) dira « déjà présent 
 
 ## Sécurité (relecture de SGM 0.8 par le gardien de 3AM, 15 novembre)
 
+> **G1, G2 et G3 corrigés dans SGM** (branche `sprint/2026-11-15-securite`) : empreinte `written` dans le journal GSX,
+> Corbeille seulement sur disque fixe + `FOF_WANTNUKEWARNING`, `running_sims()` (2020 et 2024, « inconnu » → question).
+> Les correctifs provisoires de 3AM pourront être retirés après fusion. G4 à G6 restent dans « À trier ».
+
 Relevé en intégrant SGM 0.8 dans 3AM. Ces points touchent **aussi SGM seul** ; ils sont dans « À trier » de la
 feuille de route, à placer dans « Prêt » par Fabian. Dans 3AM 0.9.3, G1, G2 et G3 sont couverts provisoirement (script
 d'accroches de 3AM, marqués « en attendant SGM ») ; ces correctifs disparaîtront quand SGM les aura.
