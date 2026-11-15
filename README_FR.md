@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.9.2
+# SGM — Statics & GSX Manager · beta v0.9.3
 
 <p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
 
@@ -32,7 +32,7 @@ SGM le fait pour toi :
 
 Il n'y a rien à installer.
 
-1. Décompresse `SGM_beta_v0.9.2.zip` où tu veux (dossier d'outils, clé USB…).
+1. Décompresse `SGM_beta_v0.9.3.zip` où tu veux (dossier d'outils, clé USB…).
 2. Lance `SGM.exe`, dans le dossier `SGM`.
 
 Garde tout le dossier `SGM` ensemble : `SGM.exe` a besoin du dossier `_internal` placé à côté de lui.
@@ -132,7 +132,7 @@ Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre
 Prérequis : Python 3.10 ou plus récent.
 
 1. Place ensemble `statics_manager.py`, `i18n.py`, `build_exe.bat`, les deux README et le dossier `licenses`.
-2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.9.2.zip`.
+2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.9.3.zip`.
 
 Pour lancer sans compiler : `pip install pyside6`, puis `python statics_manager.py`.
 
@@ -181,6 +181,11 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Microsoft Flight Simulator est une marque de Microsoft Corporation. GSX est un produit de FSDreamTeam / Virtuali. Les autres noms et marques appartiennent à leurs propriétaires.
 
 ## Historique des versions
+
+**beta v0.9.3**
+- **Menus réorganisés** : *Paramètres*, un nouveau menu *Outils* (analyser, installer un profil GSX, profils de statics, annuler, tout restaurer, rapport d'analyse, dossiers des sauvegardes et du journal) et *Aide*.
+- **Raccourcis clavier** : Ctrl+F recherche, Échap vide la recherche puis les filtres, F5 analyser, Ctrl+Z annuler, F1 guide.
+- Libellés plus clairs (*Profils de statics*, *Nouvelles scènes*), question de mise à jour dans un bandeau au lieu d'une fenêtre bloquante, colonne GSX allégée, fenêtre Dossiers en sections titrées.
 
 **beta v0.9.2**
 - **Sécurité** : les archives contenant des chemins absolus ou réseau sont refusées ; les archives .7z / .rar avec un fichier de profil démesuré sont refusées avant extraction ; la mise à jour ne remplace que les fichiers de SGM et accepte tout nom de dossier.
