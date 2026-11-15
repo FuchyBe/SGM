@@ -30,6 +30,9 @@ class LogTest(SandboxTest):
         self.assertNotIn("bob", s)
         self.assertIn(r"~\Downloads\a.zip", s)
         self.assertIn(r"D:\MSFS\Community\pkg", s)
+        s2 = m.scrub(r"C:\Users\O'Brien\x et \\PC\c$\Users\bob\y")
+        self.assertNotIn("Brien", s2)
+        self.assertNotIn("bob", s2)
         self.assertNotIn(str(self.tmp / "home"), m.scrub(str(self.tmp / "home" / "Downloads" / "x.zip")))
 
     def test_bascule_journalisee_sans_chemin(self):
@@ -46,12 +49,25 @@ class LogTest(SandboxTest):
         root = make_pkg(self.community, "test-ebbr", "Brussels EBBR", [
             ("scenery/EBBR_statics.bgl", b"S" * 40, True)])
         scene = self.scan()["test-ebbr"]
-        (root / "scenery/EBBR_statics.bgl.off").write_bytes(b"x")     # cible déjà présente
-        with self.assertRaises(Exception):
-            m.set_scene_state(scene, m.OFF)
+        real = m.os.rename
+        m.os.rename = lambda *a: (_ for _ in ()).throw(PermissionError(13, "verrouillé"))
+        try:
+            with self.assertRaises(Exception):
+                m.set_scene_state(scene, m.OFF)
+        finally:
+            m.os.rename = real
         log = self.text()
         self.assertIn("Échec de la bascule Brussels EBBR", log)
         self.assertIn("Traceback", log)
+
+    def test_scene_modifiee_depuis_l_analyse(self):
+        root = make_pkg(self.community, "test-ebbr", "Brussels EBBR", [
+            ("scenery/EBBR_statics.bgl", b"S" * 40, True)])
+        scene = self.scan()["test-ebbr"]
+        (root / "scenery/EBBR_statics.bgl.off").write_bytes(b"x")     # changé depuis l'analyse
+        with self.assertRaises(m.ToggleError):
+            m.set_scene_state(scene, m.OFF)
+        self.assertIn("Bascule refusée", self.text())
 
     def test_gsx_et_restauration(self):
         f = self.tmp / "home" / "Downloads" / "ebbr.ini"

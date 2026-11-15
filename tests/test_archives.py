@@ -21,13 +21,15 @@ class TestArchives(SandboxTest):
             z.writestr("../../escape.ini", profile("x"))
             z.writestr("/abs/abs.ini", profile("y"))
             z.writestr("C:/win/c.ini", profile("z"))
+            z.writestr("//serveur/partage/unc.ini", profile("u"))      # partage réseau : jamais (sécurité)
+            z.writestr("\\\\serveur\\partage\\unc2.ini", profile("u"))
             z.writestr("big/eddf-big.ini", b"[section.1]\n" + b"x" * (5 * 1024 * 1024))
             z.writestr("ok/eddf-ok.ini", profile("ok"))
             z.writestr("run.exe", b"MZ")
         out = Path(tempfile.mkdtemp(dir=self.tmp))
         m.extract_profiles(evil, out)
         files = sorted(str(p.relative_to(out)).replace("\\", "/") for p in out.rglob("*") if p.is_file())
-        self.assertEqual(files, ["abs/abs.ini", "ok/eddf-ok.ini"])
+        self.assertEqual(files, ["ok/eddf-ok.ini"])          # chemins absolus et réseau : ignorés
         self.assertFalse((self.tmp / "escape.ini").exists())
         self.assertFalse(Path("/abs/abs.ini").exists())
 

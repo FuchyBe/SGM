@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import quote_plus, urlencode
 import platform
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from PySide6.QtCore import (QEvent, Property, QEasingCurve, QPropertyAnimation, QRectF,
                             QSize, Qt, QThread, QTimer, QUrl, Signal)
@@ -46,7 +46,8 @@ from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QChe
                                QInputDialog, QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
                                QPlainTextEdit, QProgressDialog,
                                QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
-                               QPushButton, QScrollArea, QSizePolicy, QTextBrowser, QToolButton,
+                               QPushButton, QScrollArea, QSizePolicy, QStyle, QStyleOptionButton,
+                               QTextBrowser, QToolButton,
                                QVBoxLayout, QWidget)
 
 from i18n import LANGS, RTL_LANGS, get_lang, set_lang, tr
@@ -132,7 +133,8 @@ LOG = logging.getLogger("sgm")
 LOG.addHandler(logging.NullHandler())
 LOG_MAX_BYTES = 1_000_000
 LOG_BACKUPS = 4                                   # sgm.log + 4 anciens = 5 Mo au maximum
-_USERS_RE = re.compile(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\r\n\"'<>|:*?]+", re.I)   # espaces permis
+_USERS_RE = re.compile(r"(?:[A-Za-z]:|[\\/]{2}[^\\/\s]+[\\/]+[A-Za-z]\$)[\\/]+Users[\\/]+[^\\/\r\n\"<>|:*?]+",
+                       re.I)   # espaces et apostrophes permis ; aussi \\PC\c$\Users\nom
 _HOME_RE = re.compile(r"(?<![\w.])/(?:home|Users)/[^/\s\"']+")
 
 
@@ -1260,7 +1262,9 @@ def package_root(path: Path) -> Path:
 def backup_files(root: Path, files: list[Path]):
     """Copie de sauvegarde, rangée sous le nom du PAQUET et avec l'arborescence relative (sécurité G4 : deux
     fichiers de même nom ne s'écrasent plus, et la sauvegarde d'une scène n'efface pas celles d'une autre)."""
-    base = data_dir() / "backups" / re.sub(r'[<>:"/\\|?*]', "_", root.name)
+    tag = hashlib.sha1(norm_key(root).encode("utf-8")).hexdigest()[:6]    # deux paquets de même nom (2020 / 2024)
+    safe = re.sub(r'[<>:"/\\|?*]', "_", root.name)
+    base = data_dir() / "backups" / f"{safe}-{tag}"
     dest = base / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     dest.mkdir(parents=True, exist_ok=True)
     for f in files:
@@ -1312,7 +1316,7 @@ class UndoRecorder:
             k = norm_key(p)
             if k in self.before:
                 continue
-            h, copy = None, None
+            h, copy, size = None, None, 0
             if p.is_file():
                 h = file_hash(p)
                 size = p.stat().st_size
@@ -1321,15 +1325,15 @@ class UndoRecorder:
                     copy = f"{len(self.before)}_{p.name}"
                     shutil.copy2(p, self.tmp / copy)
                     self.used += size
-            self.before[k] = (p, h, copy)
+            self.before[k] = (p, h, copy, size)
 
     def finish(self) -> bool:
         files = []
-        for p, h, copy in self.before.values():
+        for p, h, copy, size in self.before.values():
             forget_hash(p)
             after = file_hash(p) if p.is_file() else None
             if after != h:
-                files.append({"path": str(p), "before": h, "after": after, "copy": copy})
+                files.append({"path": str(p), "before": h, "after": after, "copy": copy, "size": size})
         # G6 : contenu seulement déplacé (renommage) = retrouvable par empreinte, la copie est inutile.
         # Une seule copie évitée par fichier présent après (doubles identiques : la suivante reste copiée).
         spare = [f["after"] for f in files if f["after"]]
@@ -1425,6 +1429,57 @@ def undo_label() -> str:
         return ""
 
 
+class _Tx:
+    """Opérations de fichiers réversibles. Tout ou rien : rollback() remet chaque fichier à sa place,
+    commit() efface seulement les anciennes versions mises de côté (« .sgm-old »)."""
+
+    def __init__(self):
+        self.done, self.created, self.aside = [], [], []
+
+    def move(self, a: Path, b: Path):
+        os.replace(a, b)
+        self.done.append((b, a))
+
+    def set_aside(self, p: Path):                  # fichier remplacé ou supprimé : gardé jusqu'au commit
+        if p.exists():
+            q = p.with_name(p.name + ".sgm-old")
+            self.move(p, q)
+            self.aside.append(q)
+
+    def prepare(self, src: Path, dst: Path) -> Path:
+        tmp = dst.with_name(dst.name + ".sm-tmp")
+        shutil.copy2(src, tmp)
+        self.created.append(tmp)
+        return tmp
+
+    def place(self, tmp: Path, dst: Path):
+        self.set_aside(dst)
+        self.move(tmp, dst)
+
+    def rollback(self) -> bool:
+        ok = True
+        for cur, orig in reversed(self.done):
+            try:
+                if cur.exists() and not orig.exists():
+                    os.rename(cur, orig)
+            except OSError:
+                ok = False
+        for t in self.created:
+            try:
+                if t.exists():
+                    t.unlink()
+            except OSError:
+                ok = False
+        return ok
+
+    def commit(self):
+        for q in self.aside:
+            try:
+                q.unlink()
+            except OSError:
+                pass
+
+
 def undo_last() -> str:
     """Remet les fichiers de la dernière action dans leur état d'avant. Tout ou rien (UndoError)."""
     stack = undo_stack()
@@ -1458,6 +1513,17 @@ def undo_last() -> str:
             continue
         # deux fichiers identiques avant (doubles) : le second est recopié depuis le premier remis en place
         twin = next((dd for s, dd in moves if cur.get(norm_key(s)) == f["before"]), None)
+        if twin is None:                             # double identique resté intact à côté (.staticq, .off…)
+            for sib in (dst.parent.iterdir() if dst.parent.is_dir() else []):
+                try:
+                    if sib.is_file() and sib.stat().st_size == f.get("size", -1) and file_hash(sib) == f["before"]:
+                        copies.append((sib, dst))
+                        twin = sib
+                        break
+                except OSError:
+                    continue
+            if twin is not None:
+                continue
         if twin is None:
             raise UndoError(tr("undo_changed", files=f"• {dst.name}"))
         from_target.append((twin, dst))
@@ -1471,19 +1537,29 @@ def undo_last() -> str:
             by_root.setdefault(package_root(p), []).append(p)
     for parent, ps in by_root.items():
         backup_files(parent, ps)
-    staged = []
-    for s, dd in moves:
-        tmp = s.with_name(s.name + ".sgm-undo")
-        os.rename(s, tmp)
-        staged.append((tmp, dd))
-    for q in deletes:
-        q.unlink()
-    for tmp, dd in staged:
-        os.replace(tmp, dd)
-    for s, dd in copies + from_target:
-        tmp = dd.with_name(dd.name + ".sm-tmp")
-        shutil.copy2(s, tmp)
-        os.replace(tmp, dd)
+    tx = _Tx()
+    try:
+        prepared = [(tx.prepare(s, dd), dd) for s, dd in copies]     # avant tout renommage (sources intactes)
+        staged = []
+        for s, dd in moves:                          # d'abord vers des noms temporaires (échanges de noms)
+            tmp = s.with_name(s.name + ".sgm-undo")
+            tx.move(s, tmp)
+            staged.append((tmp, dd))
+        for q in deletes:
+            tx.set_aside(q)
+        for tmp, dd in staged:
+            tx.place(tmp, dd)
+        for tmp, dd in prepared:
+            tx.place(tmp, dd)
+        for s, dd in from_target:
+            tx.place(tx.prepare(s, dd), dd)
+    except OSError as e:
+        back = tx.rollback()
+        for pth in paths.values():
+            forget_hash(pth)
+        LOG.warning("Annulation interrompue (retour arrière %s) : %s", "complet" if back else "partiel", e)
+        raise UndoError(tr("undo_failed", err=e) if back else tr("err_access", file=getattr(e, "filename", None) or e))
+    tx.commit()
     for p in paths.values():
         forget_hash(p)
     shutil.rmtree(d, ignore_errors=True)
@@ -1546,6 +1622,9 @@ def snapshot_scene(scene: Scene):
         if (scene.root / n).is_file():
             to_copy.append(scene.root / n)
             record["files"][n] = file_hash(scene.root / n)
+    if not record["files"]:                         # rien trouvé (scène déplacée…) : pas de photo vide
+        shutil.rmtree(d, ignore_errors=True)
+        return
     for p in to_copy:
         if p.is_file():
             target = files_dir / rel(p)
@@ -1639,33 +1718,36 @@ def _restore_scene_statics(root: Path):
     # 2. Exécution, après sauvegarde de l'état actuel
     undo_watch(root / "layout.json", root / "manifest.json", *cur.values(), *(root / r for r in wanted))
     backup_files(root, [root / "layout.json", root / "manifest.json"] + list(cur.values()))
+    tx = _Tx()
     try:
+        prepared = [(tx.prepare(s, dd), dd) for s, dd in copies if s.is_relative_to(files_dir)]
+        later = [(s, dd) for s, dd in copies if not s.is_relative_to(files_dir)]
         staged = []
         for s, dd in moves:                      # d'abord vers des noms temporaires (échanges de noms)
             tmp = s.with_name(s.name + ".sgm-restore")
-            os.rename(s, tmp)
-            forget_hash(s)
+            tx.move(s, tmp)
             staged.append((tmp, dd))
         for q in deletes:
-            if q.exists():
-                q.unlink()
-                forget_hash(q)
+            tx.set_aside(q)
         for tmp, dd in staged:
-            os.replace(tmp, dd)
-            forget_hash(dd)
-        for s, dd in copies:
-            tmp = dd.with_name(dd.name + ".sm-tmp")
-            shutil.copy2(s, tmp)
-            os.replace(tmp, dd)
-            forget_hash(dd)
+            tx.place(tmp, dd)
+        for tmp, dd in prepared:
+            tx.place(tmp, dd)
+        for s, dd in later:                      # copies d'un fichier déjà remis en place (doubles)
+            tx.place(tx.prepare(s, dd), dd)
         for r in ("layout.json", "manifest.json"):
             if r in copied and (files_dir / r).is_file():
-                tmp = root / (r + ".sm-tmp")
-                shutil.copy2(files_dir / r, tmp)
-                os.replace(tmp, root / r)
-    except PermissionError as e:
-        raise RestoreError(tr("err_access", file=e.filename))
-    shutil.rmtree(d, ignore_errors=True)
+                tx.place(tx.prepare(files_dir / r, root / r), root / r)
+    except OSError as e:
+        tx.rollback()
+        for p in list(cur.values()) + [root / r for r in wanted]:
+            forget_hash(p)
+        raise RestoreError(tr("err_access", file=getattr(e, "filename", None) or e))
+    tx.commit()
+    for p in list(cur.values()) + [root / r for r in wanted]:
+        forget_hash(p)
+    # La photo d'origine est GARDÉE : elle décrit toujours l'état d'origine (et « Annuler » une restauration
+    # doit retrouver la même photo). Une mise à jour de la scène l'invalide (version de l'éditeur).
 
 
 def origin_roots() -> list[Path]:
@@ -1898,22 +1980,22 @@ def _gsx_restore(dest_dir: Path, names=None, skipped: list | None = None) -> int
         bdir.mkdir(parents=True, exist_ok=True)
         for p in current:
             shutil.copy2(p, bdir / p.name)
+    done = 0
     for k in keys:
-        e = j["files"].pop(k)
+        e = j["files"][k]                     # le journal d'origine est GARDÉ (Annuler une restauration le retrouve)
         p = dest_dir / e["name"]
+        forget_hash(p)
+        cur = file_hash(p) if p.is_file() else None
         if e["existed"]:
             src = jd / "files" / e["name"]
-            if src.is_file():
+            if src.is_file() and cur != file_hash(src):
                 shutil.copy2(src, p)
-                src.unlink()
+                done += 1
         elif p.is_file():
             p.unlink()
+            done += 1
         forget_hash(p)
-    if j["files"]:
-        write_atomic(jd / "journal.json", json.dumps(j, indent=2, ensure_ascii=False))
-    else:
-        shutil.rmtree(jd, ignore_errors=True)
-    return len(keys)
+    return done
 
 
 def gsx_journal_dests() -> list[Path]:
@@ -2182,8 +2264,11 @@ def find_7z() -> str | None:
 
 def _safe_rel(name: str) -> Path | None:
     """Chemin relatif sûr (pas de .., pas de lecteur, pas de chemin absolu)."""
-    parts = [p for p in PurePosixPath(name.replace("\\", "/")).parts if p not in ("", ".", "/")]
-    if not parts or any(p == ".." or ":" in p for p in parts):
+    norm = name.replace("\\", "/")
+    if norm.startswith("/") or PureWindowsPath(name).anchor or ":" in norm:
+        return None                                   # absolu, lecteur, partage réseau //serveur/… (sécurité)
+    parts = [p for p in PurePosixPath(norm).parts if p not in ("", ".")]
+    if not parts or any(p == ".." or p.startswith("/") for p in parts):
         return None
     return Path(*parts)
 
@@ -2231,6 +2316,8 @@ def extract_profiles(archive: Path, dest: Path):
                     if rel is None:
                         continue
                     target = dest / rel
+                    if not target.resolve().is_relative_to(dest.resolve()):
+                        continue
                     target.parent.mkdir(parents=True, exist_ok=True)
                     with zf.open(info) as src, open(target, "wb") as out:
                         out.write(src.read(MAX_MEMBER_SIZE + 1)[:MAX_MEMBER_SIZE])
@@ -2246,6 +2333,9 @@ def extract_profiles(archive: Path, dest: Path):
         except Exception as e:
             raise ArchiveError("arch_error", name=archive.name, err=e)
         check_archive_limits(entries, archive.name)
+        big = [n for n, s in entries if n.lower().endswith((".ini", ".py")) and s > MAX_MEMBER_SIZE]
+        if big:
+            raise ArchiveError("arch_error", name=archive.name, err=f"{Path(big[0]).name}: too large")
         try:
             res = subprocess.run([exe, "x", "-y", f"-o{dest}", str(archive), "*.ini", "*.py", "-r"],
                                  capture_output=True, timeout=120,
@@ -2467,10 +2557,29 @@ def _group_desc(g) -> str:
     return f"{g.mode}[{', '.join(dict.fromkeys(names))}]"
 
 
+def scene_unchanged(scene: Scene, groups) -> bool:
+    """La scène est encore exactement comme à l'analyse (relue sur le disque) : mêmes groupes, mêmes états."""
+    if not scene.root.is_dir():
+        return False
+    try:
+        fresh = scan_package(scene.root, scene.source)
+    except Exception:
+        return False
+    if fresh is None:
+        return False
+    sig = lambda g: (g.mode, str(g.active), g.state, tuple(str(q) for q in g.paths()))
+    now = {sig(g) for g in fresh.groups}
+    return all(sig(g) in now for g in groups)
+
+
 def set_scene_state(scene: Scene, target: str):
     groups = [g for g in scene.groups if g.toggleable and g.state != target]
     if not groups:
         return
+    # scène déplacée ou modifiée depuis l'analyse : on ne touche à rien (et aucune photo d'origine vide)
+    if not scene_unchanged(scene, groups):
+        LOG.warning("Bascule refusée, fichiers introuvables : %s", scene_label(scene))
+        raise ToggleError(tr("err_scene_gone", name=scene.title))
     LOG.info("Statics %s : %s -> %s ; %s", scene_label(scene), scene.state, target,
              " ; ".join(_group_desc(g) for g in groups))
     try:
@@ -2626,7 +2735,9 @@ class UpdateError(Exception):
 
 def parse_version(text: str) -> tuple:
     """« v0.10 », « beta v0.8.1 », « 0.8 » -> (0, 10) / (0, 8, 1) / (0, 8). Vide si illisible."""
-    m = re.search(r"(\d+(?:\.\d+)+)", str(text or ""))
+    text = str(text or "")
+    m = (re.search(r"(?i)\bv(\d+(?:\.\d+)*)", text)          # « v0.10 » d'abord (« SGM 2024 beta v0.10 »)
+         or re.search(r"(\d+\.\d+(?:\.\d+)*)", text) or re.fullmatch(r"\s*(\d+)\s*", text))
     return tuple(int(x) for x in m.group(1).split(".")) if m else ()
 
 
@@ -2652,17 +2763,20 @@ def release_info(data: dict) -> dict | None:
     version = ".".join(map(str, parse_version(data.get("tag_name") or data.get("name") or "")))
     if not version:
         return None
-    zip_a = sha_a = None
+    zips, sha_a = [], None
     for a in data.get("assets") or []:
         name = str(a.get("name") or "")
         url = str(a.get("browser_download_url") or "")
-        if not url.startswith(DOWNLOAD_PREFIX):
+        if not url.startswith(DOWNLOAD_PREFIX) or ".." in url or "/" in name or "\\" in name or ".." in name:
             continue
         low = name.lower()
         if low.startswith("sgm") and low.endswith(".zip"):
-            zip_a = a
+            zips.append(a)
         elif low.endswith(".sha256") or low in ("sha256sums.txt", "sha256sums"):
             sha_a = a
+    # le paquet de l'application : SGM_beta_vX.Y(.Z).zip ; sinon un seul .zip SGM, jamais un choix au hasard
+    exact = [a for a in zips if re.fullmatch(r"sgm_beta_v[\d.]+\.zip", str(a["name"]).lower())]
+    zip_a = exact[0] if len(exact) == 1 else (zips[0] if len(zips) == 1 else None)
     if zip_a is None:
         return None
     return {"version": version, "notes": str(data.get("body") or "")[:20000],
@@ -2736,36 +2850,49 @@ def unpack_update(zip_path: Path, dest: Path) -> Path:
     return exe[0].parent
 
 
+def _bat(path) -> str:
+    """Chemin pour un script .bat : les % sont doublés (sinon lus comme variables)."""
+    return str(path).replace("%", "%%")
+
+
 def updater_script(src: Path, dst: Path, pid: int, backup: Path, log: Path) -> str:
-    """Script Windows lancé après la fermeture de SGM : sauvegarde de la version actuelle, copie de la nouvelle
-    (SGM_data jamais touché), retour à l'ancienne en cas d'échec, puis relance de SGM."""
-    return "\r\n".join([
+    """Script Windows lancé après la fermeture de SGM : sauvegarde des SEULS éléments que la nouvelle version
+    remplace, copie de la nouvelle version (SGM_data jamais touché), retour à l'ancienne en cas d'échec, relance.
+    `src` doit exister (liste des éléments à remplacer)."""
+    items = sorted(p.name for p in Path(src).iterdir() if p.name.lower() != "sgm_data")
+    lines = [
         "@echo off",
         "chcp 65001 >nul",
-        "setlocal",
-        f'set "SRC={src}"',
-        f'set "DST={dst}"',
-        f'set "BAK={backup}"',
-        f'set "LOG={log}"',
-        f'echo SGM : mise a jour en attente de la fermeture (PID {pid}) > "%LOG%"',
+        "setlocal DisableDelayedExpansion",
+        f'set "SRC={_bat(src)}"',
+        f'set "DST={_bat(dst)}"',
+        f'set "BAK={_bat(backup)}"',
+        f'set "LOG={_bat(log)}"',
+        f'echo SGM : mise a jour en attente de la fermeture (PID {int(pid)}) > "%LOG%"',
         ":wait",
-        f'tasklist /FI "PID eq {pid}" 2>nul | find "{pid}" >nul && (timeout /t 1 /nobreak >nul & goto wait)',
-        'robocopy "%DST%" "%BAK%" /E /XD SGM_data /R:2 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
-        "if %ERRORLEVEL% GEQ 8 goto fail",
-        'robocopy "%SRC%" "%DST%" /E /XD SGM_data /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
-        "if %ERRORLEVEL% GEQ 8 goto rollback",
-        'echo OK >> "%LOG%"',
-        'start "" "%DST%\\SGM.exe"',
-        "goto end",
-        ":rollback",
-        'echo ECHEC : retour a la version precedente >> "%LOG%"',
-        'robocopy "%BAK%" "%DST%" /E /XD SGM_data /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
-        ":fail",
-        'start "" "%DST%\\SGM.exe"',
-        ":end",
-        "endlocal",
-        "",
-    ])
+        f'tasklist /FI "PID eq {int(pid)}" /FI "IMAGENAME eq SGM.exe" /NH 2>nul | find /I "SGM.exe" >nul '
+        '&& (timeout /t 1 /nobreak >nul & goto wait)',
+    ]
+    copy = '/R:3 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"'
+    for it in items:                                   # 1. sauvegarde de ce qui va être remplacé
+        n = _bat(it)
+        if (Path(src) / it).is_dir():
+            lines.append(f'if exist "%DST%\\{n}\\" robocopy "%DST%\\{n}" "%BAK%\\{n}" /E {copy}')
+        else:
+            lines.append(f'if exist "%DST%\\{n}" robocopy "%DST%" "%BAK%" "{n}" {copy}')
+        lines.append("if %ERRORLEVEL% GEQ 8 goto fail")
+    for it in items:                                   # 2. copie de la nouvelle version
+        n = _bat(it)
+        if (Path(src) / it).is_dir():
+            lines.append(f'robocopy "%SRC%\\{n}" "%DST%\\{n}" /E {copy}')
+        else:
+            lines.append(f'robocopy "%SRC%" "%DST%" "{n}" {copy}')
+        lines.append("if %ERRORLEVEL% GEQ 8 goto rollback")
+    lines += ['echo OK >> "%LOG%"', 'start "" "%DST%\\SGM.exe"', "goto end", ":rollback",
+              'echo ECHEC : retour a la version precedente >> "%LOG%"',
+              'robocopy "%BAK%" "%DST%" /E /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
+              ":fail", 'start "" "%DST%\\SGM.exe"', ":end", "endlocal", ""]
+    return "\r\n".join(lines)
 
 
 def prepare_update(info: dict, progress=None, getter=None, base: Path | None = None) -> dict:
@@ -2956,11 +3083,11 @@ QPushButton#gsx[gsx="same"] {{ color: {C['muted']}; border-color: {C['border2']}
 QPushButton#gsx[gsx="diff"] {{ color: {C['warn']}; border-color: {C['warn_line']}; }}
 QFrame#vsep {{ background: {C['border']}; min-width: 1px; max-width: 1px; border: none; }}
 QFrame#vsepHidden {{ background: transparent; min-width: 1px; max-width: 1px; border: none; }}
-QLabel#colHead {{ color: {C['faint']}; font-size: {px(10)}; font-weight: 700; letter-spacing: 1.2px; }}
+QLabel#colHead {{ color: {C['muted']}; font-size: {px(10)}; font-weight: 700; letter-spacing: 1.2px; }}
 QLabel#colHead[plain="true"] {{ font-size: {px(11)}; letter-spacing: 0px; }}
-QLabel#note {{ color: {C['faint']}; font-size: {px(11)}; }}
+QLabel#note {{ color: {C['muted']}; font-size: {px(11)}; }}
 QLabel#note[warn="true"] {{ color: {C['warn']}; }}
-QLabel#none {{ color: {C['faint']}; font-size: {px(12)}; }}
+QLabel#none {{ color: {C['muted']}; font-size: {px(12)}; }}
 QPushButton#ghost {{ background: transparent; border: none; color: {C['muted']}; padding: 4px 8px; }}
 QPushButton#ghost:hover {{ color: {C['text']}; }}
 QFrame#chips {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 9px; }}
@@ -3152,6 +3279,30 @@ class ChevronCombo(QComboBox):
         p.drawPath(path)
 
 
+class CheckBox(QCheckBox):
+    """Case à cocher avec une vraie coche dessinée (l'état ne passe pas seulement par la couleur)."""
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        if not self.isChecked():
+            return
+        opt = QStyleOptionButton()
+        self.initStyleOption(opt)
+        r = self.style().subElementRect(QStyle.SE_CheckBoxIndicator, opt, self)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        draw_check_mark(p, QRectF(r).adjusted(-1, -1, 1, 1), True, C["accent_dark"])
+        p.end()
+
+
+_LTR_RE = re.compile(r"[\w*.\-]*\.[\w.*\-]+(?:\s*(?:↔|->|→)\s*[\w*.\-]*\.[\w.*\-]+)?")
+
+
+def ltr_fragments(text: str) -> str:
+    """Interface de droite à gauche : noms de fichiers (.bgl ↔ .bgl.off) isolés en gauche-à-droite."""
+    return _LTR_RE.sub(lambda m: "\u202a" + m.group(0) + "\u202c", text)   # LRE … PDF (rendu sûr dans Qt)
+
+
 class ElidedLabel(QLabel):
     def __init__(self, text="", parent=None):
         super().__init__(parent)
@@ -3169,7 +3320,8 @@ class ElidedLabel(QLabel):
         self._refresh()
 
     def _refresh(self):
-        super().setText(self.fontMetrics().elidedText(self._full, Qt.ElideRight, max(10, self.width())))
+        full = ltr_fragments(self._full) if get_lang() in RTL_LANGS else self._full
+        super().setText(self.fontMetrics().elidedText(full, Qt.ElideRight, max(10, self.width())))
 
 
 def state_text(st: str) -> str:
@@ -3205,6 +3357,7 @@ COL_GSX_W = 450
 COL_STATICS_MIN = 250        # minimums : bascule, boutons et icônes toujours visibles
 COL_GSX_MIN = 320
 COL_SCENE_MIN = 230
+COMPACT_BELOW = 1040         # largeur de liste sous laquelle l'en-tête passe en version courte
 COL_REF_W = 1200             # largeur de liste de référence pour les proportions par défaut
 STATICS_FILTERS = ("all", "on", "off", "check", "none")
 GSX_FILTERS = ("all", "installed", "todo", "manual", "none", "check")
@@ -3226,8 +3379,8 @@ def fit_widths(avail: int, natural: tuple, floors: tuple) -> tuple[int, int]:
     cut = min(ns + ng - room, extra_s + extra_g)
     if extra_s + extra_g <= 0:
         return ns, ng
-    cs = round(cut * extra_s / (extra_s + extra_g))
-    return ns - cs, ng - (cut - cs)
+    cg = min(cut, extra_g)                     # la colonne GSX cède d'abord : le nom de la scène reste lisible
+    return ns - (cut - cg), ng - cg
 
 
 def column_widths(avail: int, fs: float, fg: float, mins=(COL_STATICS_MIN, COL_GSX_MIN)) -> tuple[int, int]:
@@ -3392,12 +3545,16 @@ class ColumnHeader(QWidget):
             lbl.setProperty("plain", plain)
             combo = ChevronCombo()
             combo.setObjectName("colFilter")
+            # largeur réduite (le texte choisi est court) ; la liste déroulante garde la largeur de ses entrées
+            combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+            combo.setMinimumContentsLength(7)
             combo.setCursor(Qt.PointingHandCursor)
             combo.setToolTip(tr("tip_col_filter"))
             prefix = "fst_" if col == "statics" else "fgx_"
             for k in filters:
                 combo.addItem(tr(prefix + k), k)
             combo.currentIndexChanged.connect(lambda _i, c=col, cb=combo: self._changed(c, cb))
+            combo.view().setMinimumWidth(combo.view().sizeHintForColumn(0) + 36)
             bl.addWidget(lbl)
             bl.addWidget(combo)
             bl.addStretch()
@@ -3440,6 +3597,16 @@ class ColumnHeader(QWidget):
         combo.setCurrentIndex(i)
         combo.blockSignals(False)
         polish(combo, active=(combo.currentData() or "all") != "all")
+
+    _compact = False
+
+    def set_compact(self, on: bool):
+        """Fenêtre étroite : « Tout OFF / Tout ON » deviennent « OFF / ON » (l'infobulle garde le sens complet)."""
+        if on == self._compact or not hasattr(self, "bulk_btns"):
+            return
+        self._compact = on
+        for target, key in ((OFF, "btn_all_off"), (ON, "btn_all_on")):
+            self.bulk_btns[target].setText(("OFF" if target == OFF else "ON") if on else tr(key))
 
     def natural_widths(self) -> tuple[int, int]:
         """Largeur minimale lisible de chaque en-tête (titre + filtre)."""
@@ -3631,8 +3798,9 @@ class SceneRow(QFrame):
         b.clicked.connect(lambda _=False: self.search_requested.emit(self.scene))
         self._add_gsx_widget(b)
 
-    def natural_widths(self) -> tuple[int, int]:
-        """Largeur de chaque colonne quand tout son texte tient sur une ligne."""
+    def natural_widths(self, notes: bool = True) -> tuple[int, int]:
+        """Largeur de chaque colonne quand tout son texte tient sur une ligne (sans les notes si notes=False :
+        la ligne principale — état, interrupteur, boutons — doit toujours rester entière)."""
         def line(lay) -> int:
             ws = [lay.itemAt(i).widget() for i in range(lay.count())]
             ws = [w for w in ws if w is not None and (not w.isHidden() or w is self.switch)]
@@ -3641,6 +3809,8 @@ class SceneRow(QFrame):
         def note(lbl) -> int:
             return lbl.fontMetrics().horizontalAdvance(lbl._full) + 2 if lbl._full else 0
         st_line = self.st_col.layout().itemAt(0).layout()
+        if not notes:
+            return line(st_line) + 2, line(self.gsx_line) + 2
         return (max(line(st_line), note(self.st_note)) + 2,
                 max(line(self.gsx_line), note(self.gsx_note)) + 2)
 
@@ -4175,8 +4345,8 @@ class ReportDialog(QDialog):
         grid.setColumnStretch(1, 1)
         v.addLayout(grid)
 
-        self.cb_report = QCheckBox(tr("rd_attach_report"))
-        self.cb_log = QCheckBox(tr("rd_attach_log"))
+        self.cb_report = CheckBox(tr("rd_attach_report"))
+        self.cb_log = CheckBox(tr("rd_attach_log"))
         for cb in (self.cb_report, self.cb_log):
             cb.toggled.connect(self.update_preview)
             v.addWidget(cb)
@@ -4450,7 +4620,14 @@ class MainWindow(QMainWindow):
             hd.reset.connect(self._auto_columns)
         self._col_auto = self.config.col_auto
         self._natural = None                  # largeurs du texte (mode automatique), recalculées si besoin
-        self.list_l.addWidget(self.col_header)
+        # en-tête FIXE au-dessus de la zone qui défile (il ne disparaît plus en descendant dans la liste)
+        self.header_box = QWidget()
+        hb = QHBoxLayout(self.header_box)
+        hb.setContentsMargins(0, 0, 0, 0)
+        hb.setSpacing(0)
+        hb.addWidget(self.col_header)
+        hb.addStretch()
+        root.addWidget(self.header_box)
         self.empty = QLabel(tr("empty_scanning"))
         self.empty.setObjectName("empty")
         self.empty.setAlignment(Qt.AlignCenter)
@@ -4916,6 +5093,8 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, lambda: self.install_paths(paths))
 
     def install_paths(self, paths: list):
+        if not self.ensure_sim_closed():
+            return
         names = ", ".join(Path(p).name for p in paths[:2]) + ("…" if len(paths) > 2 else "")
         with undoable(f"GSX — {names}"):
             self._install_paths(paths)
@@ -5247,7 +5426,8 @@ class MainWindow(QMainWindow):
             if not ask(self, tr("update_ready", ver=res["version"])):
                 return
             LOG.info("Lancement de la mise à jour vers v%s", res["version"])
-            subprocess.Popen(["cmd", "/c", str(res["script"])], cwd=str(res["script"].parent),
+            # chaîne passée telle quelle à cmd (/s : guillemets extérieurs retirés) : & et espaces sans risque
+            subprocess.Popen(f'cmd /d /s /c ""{res["script"]}""', cwd=str(res["script"].parent),
                              creationflags=0x00000008 | 0x08000000)      # DETACHED_PROCESS | CREATE_NO_WINDOW
             QApplication.instance().quit()
         self.dl_upd.done.connect(finished)
@@ -5273,7 +5453,7 @@ class MainWindow(QMainWindow):
             row.gsx_requested.connect(self.on_gsx)
             row.search_requested.connect(self.search_profile)
             row.restore_requested.connect(self.on_restore)
-            self.list_l.insertWidget(2 + i, row)
+            self.list_l.insertWidget(1 + i, row)
             self.rows[s.key] = row
         self.apply_filter()
         self.update_stats()
@@ -5342,22 +5522,31 @@ class MainWindow(QMainWindow):
 
     def _natural_widths(self) -> tuple[int, int]:
         if self._natural is None:
-            ns = ng = 0
+            ns = ng = cs = cg = 0
             for row in self.rows.values():
                 if not row.isHidden():
                     s, g = row.natural_widths()
-                    ns, ng = max(ns, s), max(ng, g)
+                    a, b = row.natural_widths(notes=False)
+                    ns, ng, cs, cg = max(ns, s), max(ng, g), max(cs, a), max(cg, b)
             self._natural = (ns, ng)
+            self._compact = (cs, cg)
         return self._natural
+
+    _compact = (0, 0)
 
     def current_col_widths(self) -> tuple[int, int]:
         avail = self._avail_width()
+        self.col_header.set_compact(avail < COMPACT_BELOW)
         if self._col_auto:
-            return fit_widths(avail, self._natural_widths(), self._floors())
+            nat = self._natural_widths()
+            fs, fg = self._floors()
+            return fit_widths(avail, nat, (max(fs, self._compact[0]), max(fg, self._compact[1])))
         return column_widths(avail, self.col_fs, self.col_fg, self._floors())
 
     def layout_columns(self):
         ws, wg = self.current_col_widths()
+        # l'en-tête (hors de la zone qui défile) a exactement la largeur des lignes
+        self.col_header.setFixedWidth(self._avail_width())
         self.col_header.set_widths(ws, wg)
         for row in self.rows.values():
             row.set_col_widths(ws, wg)
@@ -5500,6 +5689,8 @@ class MainWindow(QMainWindow):
 
     def on_gsx(self, scene: Scene, idx: int, folder: str):
         if not (0 <= idx < len(scene.gsx_variants)):
+            return
+        if not self.ensure_sim_closed():
             return
         v = scene.gsx_variants[idx]
         multi = len(scene.gsx_variants) > 1
@@ -5653,7 +5844,8 @@ class MainWindow(QMainWindow):
             self.update_undo_btn()
             return
         except OSError as e:
-            warn(self, tr("toggle_fail", name=label, err=e))
+            warn(self, tr("undo_failed", err=e))
+            return
         # scènes concernées relues ; choix de version GSX oubliés pour les profils remis
         keys = {norm_key(p) for p in touched}
         gsx_names = {p.name.lower() for p in touched}

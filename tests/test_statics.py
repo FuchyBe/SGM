@@ -89,7 +89,7 @@ class TestStatics(SandboxTest):
     def test_backup_made_before_change(self):
         make_pkg(self.community, "test-eblg", "Liege EBLG", [("s/EBLG_statics.bgl", b"S" * 10, True)])
         m.set_scene_state(self.scan()["test-eblg"], m.OFF)
-        backups = list((self.data / "backups" / "test-eblg").iterdir())
+        backups = list(next((self.data / "backups").glob("test-eblg-*")).iterdir())
         self.assertEqual(len(backups), 1)
         self.assertTrue((backups[0] / "layout.json").is_file())
 
