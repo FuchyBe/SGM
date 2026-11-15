@@ -15,7 +15,7 @@ Les textes à recopier sont en anglais, entre les lignes `---`.
 5. **Short description** et **Description** : remplace les textes actuels par ceux ci-dessous.
 6. **Mots-clés** : ajoute ceux de la liste.
 7. **Images** : remplace la galerie par les 4 visuels de `docs/flightsim/visuels/` (1920 × 1080), dans l'ordre :
-   `1-hero.png` (vignette), `2-statics.png`, `3-gsx.png`, `4-securite.png`.
+   `1-hero.png` (vignette), `2-statics.png`, `3-gsx.png`, `4-securite.png`, `5-interface.png` (interface expliquée).
 8. Le message de don et « About Me » ne changent pas.
 
 ---
