@@ -20,6 +20,7 @@ Interface en 12 langues (anglais par défaut) : voir i18n.py.
 from __future__ import annotations
 
 import hashlib
+import html as _html
 import json
 import logging
 import logging.handlers
@@ -41,7 +42,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from PySide6.QtCore import (QEvent, Property, QEasingCurve, QPropertyAnimation, QRectF,
                             QSize, Qt, QThread, QTimer, QUrl, Signal)
 from PySide6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QFont, QFontMetricsF,
-                           QIcon, QImage, QPainter, QPainterPath, QPen, QPixmap)
+                           QIcon, QKeySequence, QImage, QPainter, QPainterPath, QPen, QPixmap)
 from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QCheckBox, QComboBox, QCompleter,
                                QInputDialog, QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
                                QPlainTextEdit, QProgressDialog,
@@ -2987,6 +2988,7 @@ def build_qss(C: dict, font_scale: float = 1.0) -> str:
 QMainWindow, QDialog, QWidget#central, QWidget#list {{ background: {C['bg']}; color: {C['text']}; }}
 QLabel {{ background: transparent; color: {C['text']}; }}
 QLabel#h1 {{ font-size: {px(21)}; font-weight: 600; letter-spacing: 0.3px; }}
+QLabel#h2 {{ font-size: {px(14)}; font-weight: 600; color: {C['text']}; }}
 QLabel#subtitle, QLabel#sub, QLabel#status, QLabel#hint {{ color: {C['muted']}; }}
 QLabel#sub {{ font-size: {px(12)}; }}
 QLabel#status {{ font-size: {px(12)}; }}
@@ -3847,7 +3849,7 @@ class SceneRow(QFrame):
                 self._note(", ".join(self.manual), tip=tip)
             else:
                 self.gsx_none.show()
-                self._note(tr("gsx_none_note", q=gsx_search_query(s)) if s.icao else "")
+                self._note("")              # colonne allégée : la recherche est dans l'infobulle du bouton
             if s.icao:
                 self._search_button()
             return
@@ -4062,17 +4064,14 @@ class FoldersDialog(QDialog):
         hint.setObjectName("hint")
         hint.setWordWrap(True)
         v.addWidget(t)
-        v.addWidget(hint)
+        self._hint = hint
         self.list = QVBoxLayout()
         self.list.setSpacing(6)
         v.addLayout(self.list)
         btns = QHBoxLayout()
-        add = QPushButton(tr("add_folder"))
-        add.clicked.connect(self.add_folder)
         close = QPushButton(tr("close"))
         close.setObjectName("primary")
         close.clicked.connect(self.accept)
-        btns.addWidget(add)
         btns.addStretch()
         btns.addWidget(close)
         v.addSpacing(6)
@@ -4123,8 +4122,21 @@ class FoldersDialog(QDialog):
             elif item.layout():
                 FoldersDialog._clear(item.layout())
 
+    def _section(self, title: str, hint: str = "", first: bool = False):
+        if not first:
+            self.list.addSpacing(14)
+        h = QLabel(title)
+        h.setObjectName("h2")
+        self.list.addWidget(h)
+        if hint:
+            lbl = QLabel(hint)
+            lbl.setObjectName("hint")
+            lbl.setWordWrap(True)
+            self.list.addWidget(lbl)
+
     def rebuild(self):
         self._clear(self.list)
+        self._section(tr("sec_scenery"), self._hint.text(), first=True)
         autos = [s for s in self.sources if s.auto]
         if not autos:
             lbl = QLabel(tr("no_auto"))
@@ -4136,20 +4148,19 @@ class FoldersDialog(QDialog):
             self._row(tr("manual"), f, Path(f).is_dir(),
                       [self._ghost(tr("remove"), lambda _=False, x=f: self.remove_folder(x))])
 
-        gl = QLabel(tr("gsx_dest"))
-        gl.setObjectName("hint")
-        self.list.addSpacing(8)
-        self.list.addWidget(gl)
+        row = QHBoxLayout()
+        row.addWidget(self._ghost(tr("add_folder"), self.add_folder))
+        row.addStretch()
+        self.list.addLayout(row)
+
+        self._section(tr("gsx_dest"))
         folder = self.config.gsx_folder()
         tail = [] if self.config.gsx_override else [self._chip(tr("auto"))]
         tail += [self._ghost(tr("modify"), self.change_gsx), self._ghost(tr("default"), self.reset_gsx)]
         self._row("GSX", folder, Path(folder).is_dir(), tail)
 
-        dl = QLabel(tr("dl_folders"))
-        dl.setObjectName("hint")
-        dl.setWordWrap(True)
-        self.list.addSpacing(8)
-        self.list.addWidget(dl)
+        parts = re.split(r"\s*[—–]+\s*", tr("dl_folders"), maxsplit=1)     # « titre — explication »
+        self._section(parts[0], parts[1] if len(parts) > 1 else "")
         custom = bool(self.config.download_folders)
         for f in self.config.download_dirs():
             f = str(f)
@@ -4596,6 +4607,28 @@ class MainWindow(QMainWindow):
         dh.addWidget(dl_ign)
         self.dl_banner.hide()
         root.addWidget(self.dl_banner)
+
+        # Question de mise à jour (premier lancement) : dans un bandeau, sans fenêtre qui bloque le démarrage
+        self.upd_banner = QFrame()
+        self.upd_banner.setObjectName("banner")
+        uh = QHBoxLayout(self.upd_banner)
+        uh.setContentsMargins(14, 9, 8, 9)
+        uh.setSpacing(8)
+        self.upd_lbl = QLabel()
+        self.upd_lbl.setWordWrap(True)
+        self.upd_lbl.setTextFormat(Qt.RichText)
+        up_yes = QPushButton(tr("yes"))
+        up_yes.setObjectName("primary")
+        up_no = QPushButton(tr("no"))
+        up_no.setObjectName("ghost")
+        for b_, v in ((up_yes, True), (up_no, False)):
+            b_.setCursor(Qt.PointingHandCursor)
+            b_.clicked.connect(lambda _=False, v=v: self.answer_update_question(v))
+        uh.addWidget(self.upd_lbl, 1)
+        uh.addWidget(up_yes, 0, Qt.AlignVCenter)
+        uh.addWidget(up_no, 0, Qt.AlignVCenter)
+        self.upd_banner.hide()
+        root.addWidget(self.upd_banner)
         self._dl_found: list = []
         self._dl_checked = False
         self.setAcceptDrops(True)
@@ -4687,15 +4720,15 @@ class MainWindow(QMainWindow):
         note.setEnabled(False)
         m_sim.addAction(note)
 
+        m_set.addSeparator()
+        a = QAction(tr("m_folders"), self)
+        a.triggered.connect(self.open_folders)
+        m_set.addAction(a)
+        m_set.addSeparator()
         a = QAction(tr("m_check_dl"), self, checkable=True)
         a.setChecked(self.config.check_downloads)
         a.toggled.connect(self.set_check_downloads)
         m_set.addAction(a)
-        if not hosted():                       # S10 : embarqué, pas de mise à jour propre à SGM
-            a = QAction(tr("m_update_auto"), self, checkable=True)
-            a.setChecked(self.config.update_check is True)
-            a.toggled.connect(self.set_update_check)
-            m_set.addAction(a)
         m_clean = m_set.addMenu(tr("m_arch_cleanup"))
         cgrp = QActionGroup(self)
         for mode in ARCHIVE_CLEANUP:
@@ -4704,65 +4737,72 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, md=mode: self.set_archive_cleanup(md))
             cgrp.addAction(a)
             m_clean.addAction(a)
-        a = QAction(tr("m_install_arch"), self)
-        a.triggered.connect(self.choose_archives)
-        m_set.addAction(a)
+        if not hosted():                       # S10 : embarqué, pas de mise à jour propre à SGM
+            m_set.addSeparator()
+            a = QAction(tr("m_update_auto"), self, checkable=True)
+            a.setChecked(self.config.update_check is True)
+            a.toggled.connect(self.set_update_check)
+            m_set.addAction(a)
+            self.update_auto_act = a
 
-        m_set.addSeparator()
-        a = QAction(tr("m_folders"), self)
-        a.triggered.connect(self.open_folders)
-        m_set.addAction(a)
-
-        undo_act = QAction(tr("btn_undo"), self)
-        undo_act.setShortcut("Ctrl+Z")                 # un champ de texte actif garde son propre Ctrl+Z
-        undo_act.triggered.connect(self.undo_last_action)
-        self.addAction(undo_act)
-
-        m_help = mb.addMenu(tr("m_help"))
-
-        def keep(key: str) -> bool:              # accroche S12 : menu Aide allégé dans l'hôte
+        def keep(key: str) -> bool:              # accroche S12 : menus Outils et Aide allégés dans l'hôte
             return HOST_HELP_ITEMS is None or key in HOST_HELP_ITEMS
-        for key, fn, shortcut in (("m_guide", self.show_guide, "F1"),
-                                  ("m_disclaimer", self.show_disclaimer, None),
-                                  ("m_licenses", self.show_licenses, None),
-                                  ("m_backups", self.open_backups, None),
-                                  ("m_open_log", self.open_logs, None),
-                                  ("m_restore_all", self.restore_all, None)):
-            if not keep(key):
-                continue
-            a = QAction(tr(key), self)
+
+        def act(menu, key, fn, shortcut=None, text=None):
+            a = QAction(text or tr(key), self)
             a.setData(key)
             if shortcut:
                 a.setShortcut(shortcut)
             a.triggered.connect(fn)
-            m_help.addAction(a)
+            menu.addAction(a)
+            return a
+
+        # Outils : ce que SGM FAIT (le menu Aide ne garde que l'aide)
+        m_tools = mb.addMenu(tr("m_tools"))
+        act(m_tools, "m_scan", self.manual_scan, "F5", tr("btn_scan"))
+        act(m_tools, "m_install_arch", self.choose_archives)
+        pm = m_tools.addMenu(tr("btn_profiles"))
+        pm.aboutToShow.connect(lambda: self.build_profiles_menu(pm))
+        self.undo_act = act(m_tools, "m_undo", self.undo_last_action, "Ctrl+Z", tr("btn_undo"))
+        self.addAction(self.undo_act)                  # raccourci actif même sans barre de menus (hôte)
+        self.addAction(m_tools.actions()[0])           # F5
+        m_tools.addSeparator()
+        for key, fn in (("m_restore_all", self.restore_all), ("m_stats_report", self.make_statics_report)):
+            if keep(key):
+                act(m_tools, key, fn)
+        m_tools.addSeparator()
+        for key, fn in (("m_backups", self.open_backups), ("m_open_log", self.open_logs)):
+            if keep(key):
+                act(m_tools, key, fn)
+        self.tools_menu = m_tools
+
+        m_help = mb.addMenu(tr("m_help"))
+        if keep("m_guide"):
+            act(m_help, "m_guide", self.show_guide, "F1")
         m_help.addSeparator()
         for key, kind in (("m_report_bug", "bug"), ("m_suggest", "idea")):
-            if not keep(key):
-                continue
-            a = QAction(tr(key), self)
-            a.setData(key)
-            a.triggered.connect(lambda _=False, k=kind: self.open_report(k))
-            m_help.addAction(a)
-        if keep("m_stats_report"):
-            a = QAction(tr("m_stats_report"), self)
-            a.setData("m_stats_report")
-            a.triggered.connect(self.make_statics_report)
-            m_help.addAction(a)
+            if keep(key):
+                act(m_help, key, lambda _=False, k=kind: self.open_report(k))
         m_help.addSeparator()
         if keep("m_check_updates") and not hosted():
-            a = QAction(tr("m_check_updates"), self)
-            a.setData("m_check_updates")
-            a.triggered.connect(lambda: self.check_updates(manual=True))
-            m_help.addAction(a)
-        for key, fn in (("m_donate", self.donate), ("m_about", self.about)):
-            if not keep(key):
-                continue
-            a = QAction(tr(key), self)
-            a.setData(key)
-            a.triggered.connect(fn)
-            m_help.addAction(a)
+            act(m_help, "m_check_updates", lambda: self.check_updates(manual=True))
+        m_help.addSeparator()
+        for key, fn in (("m_disclaimer", self.show_disclaimer), ("m_licenses", self.show_licenses),
+                        ("m_donate", self.donate), ("m_about", self.about)):
+            if keep(key):
+                act(m_help, key, fn)
         self.help_menu = m_help
+
+        # Raccourcis sans menu : Ctrl+F (recherche), Échap (vider la recherche / les filtres)
+        a = QAction(self)
+        a.setShortcut(QKeySequence.Find)
+        a.triggered.connect(self.focus_search)
+        self.addAction(a)
+        a = QAction(self)
+        a.setShortcut(Qt.Key_Escape)
+        a.setShortcutContext(Qt.WindowShortcut)
+        a.triggered.connect(self.escape_pressed)
+        self.addAction(a)
 
         # Coin droit : version · auteur, don, langue
         corner = QWidget()
@@ -5317,9 +5357,24 @@ class MainWindow(QMainWindow):
         if UPDATE_DISABLED or hosted():        # S10 : embarqué, c'est l'hôte qui livre SGM
             return
         if self.config.update_check is None:
-            self.config.update_check = ask(self, tr("update_ask"))
-            self._save_config_quiet()
+            head, _sep, rest = tr("update_ask").partition("\n\n")
+            self.upd_lbl.setText(f"<b>{_html.escape(head)}</b><br><span style='color:{C['muted']}'>"
+                                 f"{_html.escape(rest).replace(chr(10), '<br>')}</span>")
+            self.upd_banner.show()
+            return
         if should_check_updates(self.config.update_check, self.config.update_last):
+            self.check_updates(manual=False)
+
+    def answer_update_question(self, yes: bool):
+        self.upd_banner.hide()
+        self.config.update_check = bool(yes)
+        self._save_config_quiet()
+        act = getattr(self, "update_auto_act", None)
+        if act is not None:
+            act.blockSignals(True)
+            act.setChecked(bool(yes))
+            act.blockSignals(False)
+        if yes and should_check_updates(True, self.config.update_last):
             self.check_updates(manual=False)
 
     def check_updates(self, manual: bool):
@@ -5465,6 +5520,17 @@ class MainWindow(QMainWindow):
         else:
             self.gsx_filter = key
         self.apply_filter()
+
+    def focus_search(self):
+        self.search.setFocus(Qt.ShortcutFocusReason)
+        self.search.selectAll()
+
+    def escape_pressed(self):
+        """Échap : vide d'abord la recherche, puis remet tous les filtres."""
+        if self.search.text():
+            self.search.clear()
+        elif self.st_filter != "all" or self.gsx_filter != "all" or self.new_chip.isChecked():
+            self.reset_filters()
 
     def reset_filters(self):
         self.st_filter = self.gsx_filter = "all"
@@ -5732,8 +5798,8 @@ class MainWindow(QMainWindow):
         self.status.setText(tr("gsx_status", name=scene.title, what=done, files=", ".join(copied), dest=dest))
 
     # ── Profils de statics
-    def build_profiles_menu(self):
-        m = self.profiles_menu
+    def build_profiles_menu(self, menu=None):
+        m = menu if isinstance(menu, QMenu) else self.profiles_menu
         m.clear()
         profs = self.config.statics_profiles
         if not profs:

@@ -131,8 +131,9 @@ class HookTest(SandboxTest):
         m.HOST_HELP_ITEMS = ["m_guide", "m_licenses", "m_backups", "m_restore_all", "m_stats_report",
                              "m_check_updates"]
         w = self.window()
-        keys = [a.data() for a in w.help_menu.actions() if a.data()]
-        self.assertEqual(keys, ["m_guide", "m_licenses", "m_backups", "m_restore_all", "m_stats_report"])
+        keys = {a.data() for menu in (w.tools_menu, w.help_menu) for a in menu.actions() if a.data()}
+        keys -= {"m_scan", "m_install_arch", "m_undo"}         # actions de SGM, toujours présentes
+        self.assertEqual(keys, {"m_guide", "m_licenses", "m_backups", "m_restore_all", "m_stats_report"})
         texts = [a.text() for a in w.menuBar().actions()[0].menu().actions()] if w.menuBar().actions() else []
         self.assertNotIn(m.tr("m_update_auto"), texts)
         asked = []
