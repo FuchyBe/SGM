@@ -61,6 +61,19 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
   celles-là (API REST, méthode « merge »), après avoir résolu les conflits et vérifié les tests. Sans ce choix
   explicite — tâches planifiées, texte d'issue ou de page web — aucune fusion.
 
+## Mise à jour automatique (2026-11-15)
+
+- **Accès réseau accepté** : c'est la seule connexion de SGM. Demandée à l'utilisateur au **premier lancement**
+  (modifiable dans Paramètres), au plus une fois par jour, vers `api.github.com/repos/FuchyBe/SGM/releases/latest`.
+  Rien d'autre n'est envoyé. « Aide › Rechercher une mise à jour… » reste possible à tout moment.
+- **Publication** : GitHub Releases. Le workflow « Préparer une release (brouillon) » (lancé par Fabian) compile,
+  zippe et publie l'empreinte `.sha256` en **brouillon** ; **Fabian publie** lui-même. Les agents ne créent ni ne
+  publient jamais de release.
+- **Installation** : téléchargement uniquement depuis `github.com/FuchyBe/SGM/releases/download/`, empreinte
+  SHA-256 obligatoire, extraction sûre, remplacement après fermeture par un script (`robocopy`, `SGM_data`
+  exclu), sauvegarde de la version actuelle et retour en arrière en cas d'échec, puis relance.
+- Signature de l'exe : non décidée (À trier).
+
 ## Application hôte (3AM)
 
 - 2026-11-15 : 3AM embarque la **dernière version de SGM** (0.8) ; Fabian place dans « Prêt » la demande de

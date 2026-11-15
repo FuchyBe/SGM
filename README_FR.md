@@ -119,6 +119,10 @@ Avant sa toute première modification d'une scène, SGM enregistre son état dan
 - La restauration est tout ou rien : si un fichier ne correspond plus (modifié à la main), rien n'est changé et les fichiers à vérifier sont listés.
 - Si l'éditeur a mis la scène à jour entre-temps, ses fichiers sont déjà d'origine : rien n'est fait.
 
+## Mises à jour de SGM
+
+Au premier lancement, SGM demande s'il peut vérifier l'existence d'une nouvelle version. Si tu acceptes, une fois par jour au plus, il demande à GitHub (github.com/FuchyBe/SGM) le numéro de la dernière version : c'est la seule connexion Internet de SGM, rien d'autre n'est envoyé. Quand une nouvelle version existe, **Mettre à jour** la télécharge, vérifie son empreinte SHA-256 publiée, ferme SGM, remplace ses fichiers et le relance — `SGM_data` (réglages, sauvegardes, profils) n'est jamais touché, et l'ancienne version est remise en cas de problème. **Aide › Rechercher une mise à jour…** vérifie à tout moment ; **Paramètres › Rechercher les mises à jour au lancement** l'active ou la désactive.
+
 ## Mises à jour des scènes
 
 Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre ses fichiers d'origine. Il suffit de la rebasculer dans SGM.
@@ -177,6 +181,9 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Microsoft Flight Simulator est une marque de Microsoft Corporation. GSX est un produit de FSDreamTeam / Virtuali. Les autres noms et marques appartiennent à leurs propriétaires.
 
 ## Historique des versions
+
+**Prochaine version (en développement)**
+- **Mise à jour automatique** (optionnelle, demandée au premier lancement) : vérifie GitHub une fois par jour au plus, télécharge, vérifie le SHA-256 et relance ; `SGM_data` gardé, ancienne version remise en cas d'échec.
 
 **beta v0.8**
 - **Annuler** (bouton ou Ctrl+Z, 10 actions gardées) : une bascule, Tout ON/OFF, un profil GSX, une restauration — fichiers remis exactement, refus si un fichier a changé depuis.

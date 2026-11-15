@@ -7,9 +7,9 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-14, dans cet ordre.
 
-1. **Mise à jour automatique** — GitHub Releases + SHA-256 + programme de mise à jour, `SGM_data` préservé.
-   Accès réseau optionnel accepté par Fabian (2026-11-14). Fiche `docs/rd/2026-11-14-mise-a-jour-et-remontee.md`,
-   étape 4. M. (Si SGM est embarqué dans 3AM : aucune mise à jour propre à SGM, voir n° 2, point S10.)
+1. **Sécurité G1 à G3** — placé par Fabian le 2026-11-15, avant les accroches. Relevés par le gardien de 3AM
+   (fiche `docs/rd/2026-11-15-accroches-3am.md`, section « Sécurité ») : G1 « Tout restaurer » et profils GSX
+   retouchés, G2 Corbeille sur clé USB / disque réseau, G3 contrôle « simulateur fermé » pour 2020 et 2024. S/M.
 2. **Points d'accroche pour une application hôte (3AM)** — placé par Fabian le 2026-11-15 (conversation 3AM).
    SGM porte lui-même les accroches dont 3AM a besoin (thème, contrôle de MSFS à trois états, sources, menu Aide,
    mise à jour inactive en mode hôte), **sans aucun effet sur SGM seul**. Fiche `docs/rd/2026-11-15-accroches-3am.md`
@@ -17,7 +17,6 @@ Placés par Fabian le 2026-11-14, dans cet ordre.
 
 ## En cours (PR à tester)
 
-- Préparation de la beta v0.8 — branche `sprint/2026-11-15-v0.8`.
 
 ## À trier
 
@@ -59,6 +58,8 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **Mise à jour automatique** (PR #19) — GitHub Releases, SHA-256, retour arrière.
+- **beta v0.8** publiée dans `main` (PR #18).
 - **beta v0.8** — Annuler, profils de statics, colonnes ajustées au texte, Tout ON/OFF dans l'en-tête Statics (cas simples), Analyser vérifie les téléchargements, fenêtre Signaler / Suggérer, journal, bouton flightsim.to.
 - **Profils de statics** (PR #17).
 - **Annuler la dernière action** (PR #16).
