@@ -1427,6 +1427,57 @@ def undo_label() -> str:
         return ""
 
 
+class _Tx:
+    """Opérations de fichiers réversibles. Tout ou rien : rollback() remet chaque fichier à sa place,
+    commit() efface seulement les anciennes versions mises de côté (« .sgm-old »)."""
+
+    def __init__(self):
+        self.done, self.created, self.aside = [], [], []
+
+    def move(self, a: Path, b: Path):
+        os.replace(a, b)
+        self.done.append((b, a))
+
+    def set_aside(self, p: Path):                  # fichier remplacé ou supprimé : gardé jusqu'au commit
+        if p.exists():
+            q = p.with_name(p.name + ".sgm-old")
+            self.move(p, q)
+            self.aside.append(q)
+
+    def prepare(self, src: Path, dst: Path) -> Path:
+        tmp = dst.with_name(dst.name + ".sm-tmp")
+        shutil.copy2(src, tmp)
+        self.created.append(tmp)
+        return tmp
+
+    def place(self, tmp: Path, dst: Path):
+        self.set_aside(dst)
+        self.move(tmp, dst)
+
+    def rollback(self) -> bool:
+        ok = True
+        for cur, orig in reversed(self.done):
+            try:
+                if cur.exists() and not orig.exists():
+                    os.rename(cur, orig)
+            except OSError:
+                ok = False
+        for t in self.created:
+            try:
+                if t.exists():
+                    t.unlink()
+            except OSError:
+                ok = False
+        return ok
+
+    def commit(self):
+        for q in self.aside:
+            try:
+                q.unlink()
+            except OSError:
+                pass
+
+
 def undo_last() -> str:
     """Remet les fichiers de la dernière action dans leur état d'avant. Tout ou rien (UndoError)."""
     stack = undo_stack()
@@ -1484,32 +1535,29 @@ def undo_last() -> str:
             by_root.setdefault(package_root(p), []).append(p)
     for parent, ps in by_root.items():
         backup_files(parent, ps)
-    staged, placed = [], []
+    tx = _Tx()
     try:
-        for s, dd in moves:
+        prepared = [(tx.prepare(s, dd), dd) for s, dd in copies]     # avant tout renommage (sources intactes)
+        staged = []
+        for s, dd in moves:                          # d'abord vers des noms temporaires (échanges de noms)
             tmp = s.with_name(s.name + ".sgm-undo")
-            os.rename(s, tmp)
-            staged.append((tmp, dd, s))
+            tx.move(s, tmp)
+            staged.append((tmp, dd))
         for q in deletes:
-            q.unlink()
-        for tmp, dd, s in staged:
-            os.replace(tmp, dd)
-            placed.append(tmp)
-        for s, dd in copies + from_target:
-            tmp = dd.with_name(dd.name + ".sm-tmp")
-            shutil.copy2(s, tmp)
-            os.replace(tmp, dd)
+            tx.set_aside(q)
+        for tmp, dd in staged:
+            tx.place(tmp, dd)
+        for tmp, dd in prepared:
+            tx.place(tmp, dd)
+        for s, dd in from_target:
+            tx.place(tx.prepare(s, dd), dd)
     except OSError as e:
-        for tmp, dd, s in staged:                    # aucun fichier ne reste sous un nom temporaire
-            if tmp not in placed and tmp.exists() and not s.exists():
-                try:
-                    os.rename(tmp, s)
-                except OSError:
-                    pass
+        back = tx.rollback()
         for pth in paths.values():
             forget_hash(pth)
-        LOG.warning("Annulation interrompue : %s", e)
-        raise UndoError(tr("undo_failed", err=e))
+        LOG.warning("Annulation interrompue (retour arrière %s) : %s", "complet" if back else "partiel", e)
+        raise UndoError(tr("undo_failed", err=e) if back else tr("err_access", file=getattr(e, "filename", None) or e))
+    tx.commit()
     for p in paths.values():
         forget_hash(p)
     shutil.rmtree(d, ignore_errors=True)
@@ -1668,39 +1716,34 @@ def _restore_scene_statics(root: Path):
     # 2. Exécution, après sauvegarde de l'état actuel
     undo_watch(root / "layout.json", root / "manifest.json", *cur.values(), *(root / r for r in wanted))
     backup_files(root, [root / "layout.json", root / "manifest.json"] + list(cur.values()))
-    staged = []
+    tx = _Tx()
     try:
+        prepared = [(tx.prepare(s, dd), dd) for s, dd in copies if s.is_relative_to(files_dir)]
+        later = [(s, dd) for s, dd in copies if not s.is_relative_to(files_dir)]
+        staged = []
         for s, dd in moves:                      # d'abord vers des noms temporaires (échanges de noms)
             tmp = s.with_name(s.name + ".sgm-restore")
-            os.rename(s, tmp)
-            forget_hash(s)
+            tx.move(s, tmp)
             staged.append((tmp, dd))
         for q in deletes:
-            if q.exists():
-                q.unlink()
-                forget_hash(q)
+            tx.set_aside(q)
         for tmp, dd in staged:
-            os.replace(tmp, dd)
-            forget_hash(dd)
-        for s, dd in copies:
-            tmp = dd.with_name(dd.name + ".sm-tmp")
-            shutil.copy2(s, tmp)
-            os.replace(tmp, dd)
-            forget_hash(dd)
+            tx.place(tmp, dd)
+        for tmp, dd in prepared:
+            tx.place(tmp, dd)
+        for s, dd in later:                      # copies d'un fichier déjà remis en place (doubles)
+            tx.place(tx.prepare(s, dd), dd)
         for r in ("layout.json", "manifest.json"):
             if r in copied and (files_dir / r).is_file():
-                tmp = root / (r + ".sm-tmp")
-                shutil.copy2(files_dir / r, tmp)
-                os.replace(tmp, root / r)
+                tx.place(tx.prepare(files_dir / r, root / r), root / r)
     except OSError as e:
-        for tmp, dd in staged:                   # retour arrière des renommages déjà faits
-            src = next((s for s, d2 in moves if d2 == dd), None)
-            if src is not None and tmp.exists() and not src.exists():
-                try:
-                    os.rename(tmp, src)
-                except OSError:
-                    pass
+        tx.rollback()
+        for p in list(cur.values()) + [root / r for r in wanted]:
+            forget_hash(p)
         raise RestoreError(tr("err_access", file=getattr(e, "filename", None) or e))
+    tx.commit()
+    for p in list(cur.values()) + [root / r for r in wanted]:
+        forget_hash(p)
     # La photo d'origine est GARDÉE : elle décrit toujours l'état d'origine (et « Annuler » une restauration
     # doit retrouver la même photo). Une mise à jour de la scène l'invalide (version de l'éditeur).
 

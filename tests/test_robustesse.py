@@ -86,8 +86,34 @@ class RobustesseTest(SandboxTest):
         finally:
             m.os.replace = real
         for root in (a, b):
-            self.assertEqual([p for p in root.rglob("*.sgm-undo")], [])   # aucun fichier sous un nom temporaire
+            self.assertEqual([p for p in root.rglob("*.sgm-*")], [])      # aucun fichier sous un nom temporaire
+        self.assertEqual((self.files(a), self.files(b)), after)            # tout est remis comme avant la tentative
         self.assertEqual(len(m.undo_stack()), 1)         # l'action reste annulable
+
+    def test_restauration_interrompue_remise_en_etat(self):
+        root = make_pkg(self.community, "e", "EBBR", [("s/EBBR_statics.bgl", b"S" * 40, True),
+                                                      ("s/EBBR_extra_statics.bgl", b"X" * 30, True)])
+        for _ in range(3):                                # layout.json et deux renommages à remettre
+            m.set_scene_state(self.scan()["e"], m.OFF)
+            m.set_scene_state(self.scan()["e"], m.ON)
+        m.set_scene_state(self.scan()["e"], m.OFF)
+        before = self.files(root)
+        real, calls = os.replace, []
+
+        def boom(s, d):
+            calls.append(s)
+            if len(calls) == 3:
+                raise PermissionError(13, "verrouillé", str(d))
+            return real(s, d)
+        m.os.replace = boom
+        try:
+            with self.assertRaises(m.RestoreError):
+                m.restore_scene_statics(root)
+        finally:
+            m.os.replace = real
+        self.assertEqual(self.files(root), before)
+        m.restore_scene_statics(root)                     # possible ensuite, sans reste
+        self.assertEqual([p for p in root.rglob("*.sgm-*")], [])
 
     def test_paquets_homonymes_sauvegardes_separees(self):
         c2 = self.tmp / "Community2020"
