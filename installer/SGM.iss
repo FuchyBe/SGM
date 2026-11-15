@@ -80,7 +80,9 @@ Name: "{userprograms}\SGM - Statics & GSX Manager"; Filename: "{app}\SGM.exe"
 Name: "{userdesktop}\SGM - Statics & GSX Manager"; Filename: "{app}\SGM.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\SGM.exe"; Description: "{cm:LaunchProgram,SGM}"; Flags: nowait postinstall skipifsilent
+; Lancé par l'Explorateur, comme depuis le menu Démarrer : lancé directement par l'installeur (processus enfant
+; qui se ferme), SGM restait figé au premier démarrage (constaté par Fabian le 2026-11-15).
+Filename: "{win}\explorer.exe"; Parameters: """{app}\SGM.exe"""; Description: "{cm:LaunchProgram,SGM}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 ; fichiers ajoutés par la mise à jour automatique (le dossier du programme seulement, jamais les données)

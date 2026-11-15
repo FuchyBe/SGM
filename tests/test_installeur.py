@@ -191,6 +191,9 @@ class InstallerScriptTest(SandboxTest):
         self.assertIn('Source: "SGM.installed"', iss)
         self.assertTrue((ROOT / "installer" / m.INSTALL_MARKER).is_file())
         self.assertIn('Excludes: "SGM_data\\*"', iss)               # jamais de données portables dans l'installeur
+        run = re.search(r"^\[Run\]\n(?:;.*\n)*(.+)$", iss, re.M).group(1)
+        self.assertIn(r'Filename: "{win}\explorer.exe"', run)       # jamais lancé comme enfant de l'installeur
+        self.assertIn(r'Parameters: """{app}\SGM.exe"""', run)
         self.assertIn("MB_DEFBUTTON2", iss)                           # données gardées par défaut
         self.assertIn(r"{userappdata}\SGM", iss)
         langs = re.findall(r'^Name: "(\w+)"; MessagesFile', iss, re.M)
