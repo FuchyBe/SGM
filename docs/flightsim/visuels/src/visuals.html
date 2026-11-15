@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SGM visuals</title>
+<style>
+@font-face { font-family: "Sign"; font-weight: 600; src: url(barlow-condensed-latin-600-normal.woff2); }
+@font-face { font-family: "Sign"; font-weight: 700; src: url(barlow-condensed-latin-700-normal.woff2); }
+@font-face { font-family: "Sign"; font-weight: 800; src: url(barlow-condensed-latin-800-normal.woff2); }
+:root {
+  --asphalt: #0E1014; --asphalt2: #13161C; --slab: #1A1E26; --text: #E7E9ED; --muted: #8B93A5;
+  --green: #4CC9A0; --blue: #7AA7F5; --amber: #E3B266; --sign: #F2C230; --red: #C8312B;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: Inter, "Noto Sans", sans-serif; color: var(--text); }
+.frame { width: 1920px; height: 1080px; position: relative; overflow: hidden; background: var(--asphalt);
+  margin-bottom: 40px; }
+/* dalles de béton du tarmac */
+.frame::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(var(--slab) 1px, transparent 1px), linear-gradient(90deg, var(--slab) 1px, transparent 1px);
+  background-size: 160px 160px; opacity: .55; }
+.frame > * { position: relative; }
+
+/* panneaux de guidage d'aérodrome */
+.signs { display: flex; gap: 0; border: 4px solid #000; border-radius: 6px; overflow: hidden; width: max-content;
+  box-shadow: 0 0 0 2px #2A2F3A, 0 18px 40px rgba(0,0,0,.55); }
+.sg { font-family: "Sign"; font-weight: 700; font-size: 44px; line-height: 1; padding: 12px 22px 10px;
+  letter-spacing: .5px; display: flex; align-items: center; gap: 12px; }
+.sg.loc { background: #000; color: var(--sign); box-shadow: inset 0 0 0 4px #000, inset 0 0 0 7px var(--sign); }
+.sg.dir { background: var(--sign); color: #000; }
+.sg.man { background: var(--red); color: #fff; box-shadow: inset 0 0 0 4px var(--red), inset 0 0 0 6px #000, inset 0 0 0 8px #fff; }
+.sg + .sg { border-left: 4px solid #000; }
+.sg svg { width: 34px; height: 34px; }
+
+h1, h2 { font-family: "Sign"; font-weight: 800; letter-spacing: -.5px; line-height: .92; }
+h2 { font-size: 88px; margin: 34px 0 26px; max-width: 740px; }
+.lead { font-size: 27px; line-height: 1.45; color: #C9CED8; max-width: 640px; }
+ul.pts { list-style: none; margin-top: 34px; display: grid; gap: 20px; max-width: 660px; }
+ul.pts li { font-size: 25px; line-height: 1.35; color: #C9CED8; padding-left: 44px; position: relative; }
+ul.pts li b { color: var(--text); font-weight: 600; }
+ul.pts li::before { content: ""; position: absolute; left: 6px; top: 12px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--g, var(--green)); box-shadow: 0 0 0 5px color-mix(in srgb, var(--g, var(--green)) 22%, transparent),
+  0 0 18px var(--g, var(--green)); }
+ul.blue li { --g: var(--blue); }
+
+.shot { position: absolute; border-radius: 14px; overflow: hidden; border: 1px solid #2D3441;
+  box-shadow: 0 40px 90px rgba(0,0,0,.7), 0 0 0 10px rgba(255,255,255,.025); background: #0E1014; }
+.shot img { display: block; }
+.foot { position: absolute; left: 110px; bottom: 64px; display: flex; align-items: center; gap: 18px;
+  font-size: 22px; color: var(--muted); }
+.foot img { width: 44px; height: 44px; }
+.foot b { color: var(--text); font-weight: 600; }
+
+/* ── 1. héros ── */
+#hero .left { position: absolute; left: 110px; top: 150px; width: 860px; }
+#hero .logo { width: 150px; height: 150px; filter: drop-shadow(0 20px 40px rgba(0,0,0,.6)); }
+#hero h1 { font-size: 168px; margin: 40px 0 10px; }
+#hero h1 span { display: block; font-size: 84px; font-weight: 600; color: #C9CED8; letter-spacing: 0; margin-top: 10px; }
+#hero .lead { margin-top: 30px; max-width: 780px; }
+#hero .signs { margin-top: 56px; }
+#hero .apron { position: absolute; right: 0; top: 0; width: 1000px; height: 1080px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 220px); mask-image: linear-gradient(90deg, transparent 0, #000 220px); }
+.toggle-card { position: absolute; display: flex; align-items: center; gap: 22px; padding: 18px 24px;
+  background: #161920; border: 1px solid #2D3441; border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+.toggle-card .lbl { font-size: 24px; font-weight: 600; }
+.toggle-card .sub { font-size: 17px; color: var(--muted); margin-top: 4px; }
+.sw { width: 74px; height: 40px; border-radius: 20px; background: #2A303C; position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; top: 5px; left: 5px; width: 30px; height: 30px; border-radius: 50%; background: #F3F5F7; }
+.sw.on { background: var(--green); }
+.sw.on::after { left: 39px; }
+.stack { position: absolute; left: 1010px; top: 170px; width: 800px; display: grid; gap: 34px; }
+.msg { background: #161920; border: 1px solid #2D3441; border-radius: 16px; padding: 30px 34px;
+  box-shadow: 0 30px 70px rgba(0,0,0,.6); display: grid; grid-template-columns: 56px 1fr; gap: 22px; align-items: start; }
+.msg .ic { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; }
+.msg .ic svg { width: 30px; height: 30px; }
+.msg h3 { font-size: 26px; font-weight: 600; margin-bottom: 8px; }
+.msg p { font-size: 20px; line-height: 1.45; color: #8B93A5; }
+.msg.hold { border-color: #5A2D2A; background: #1F1413; }
+.msg.hold .ic { background: #5A2D2A; }
+.msg.undo .ic { background: #12241E; }
+.msg.upd { border-color: #263A5C; background: #141C2A; }
+.msg.upd .ic { background: #172235; }
+.row { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.btn { font-size: 19px; font-weight: 600; padding: 9px 18px; border-radius: 9px; background: #1C2029; border: 1px solid #2D3441; }
+.btn.go { background: #4CC9A0; color: #0A1A14; border-color: #4CC9A0; }
+.kbd { font-size: 17px; font-weight: 600; color: #C9CED8; border: 1px solid #2D3441; border-bottom-width: 3px; border-radius: 7px; padding: 4px 10px; }
+.ok { color: #4CC9A0; font-size: 19px; font-weight: 600; }
+.msg.undo { margin-left: 60px; } .msg.upd { margin-left: 20px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="plane" viewBox="-60 -60 120 120">
+      <path d="M0,-54 C4.5,-54 6.5,-45 6.5,-36 L6.5,40 C6.5,47 3,53 0,55 C-3,53 -6.5,47 -6.5,40 L-6.5,-36 C-6.5,-45 -4.5,-54 0,-54Z
+               M6.5,-9 L54,14 L54,20 L6.5,9Z M-6.5,-9 L-54,14 L-54,20 L-6.5,9Z
+               M5,37 L23,47 L23,52 L4,48Z M-5,37 L-23,47 L-23,52 L-4,48Z"/>
+      <rect x="17" y="2" width="7" height="14" rx="3.5"/><rect x="-24" y="2" width="7" height="14" rx="3.5"/>
+    </symbol>
+    <radialGradient id="glowG"><stop offset="0" stop-color="#4CC9A0" stop-opacity=".9"/><stop offset="1" stop-color="#4CC9A0" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowB"><stop offset="0" stop-color="#7AA7F5" stop-opacity=".9"/><stop offset="1" stop-color="#7AA7F5" stop-opacity="0"/></radialGradient>
+    <radialGradient id="flood" cx=".5" cy=".3" r=".6"><stop offset="0" stop-color="#F6E6B8" stop-opacity=".16"/><stop offset="1" stop-color="#F6E6B8" stop-opacity="0"/></radialGradient>
+    <linearGradient id="body" x1="0" x2="1"><stop offset="0" stop-color="#C9CED8"/><stop offset=".5" stop-color="#F3F5F7"/><stop offset="1" stop-color="#BFC5D0"/></linearGradient>
+  </defs>
+</svg>
+
+<!-- ═══════════════ 1. HÉROS ═══════════════ -->
+<section class="frame" id="hero">
+  <svg class="apron" viewBox="0 0 1000 1080">
+    <!-- terminal -->
+    <rect x="0" y="0" width="1000" height="150" fill="#181B22"/>
+    <rect x="0" y="150" width="1000" height="6" fill="#2D3441"/>
+    <g fill="#F6E6B8" opacity=".5">
+      <rect x="60" y="70" width="140" height="8" rx="4"/><rect x="330" y="70" width="140" height="8" rx="4"/><rect x="600" y="70" width="140" height="8" rx="4"/><rect x="870" y="70" width="140" height="8" rx="4"/>
+    </g>
+    <!-- éclairage des postes -->
+    <ellipse cx="270" cy="420" rx="240" ry="330" fill="url(#flood)"/>
+    <ellipse cx="540" cy="420" rx="240" ry="330" fill="url(#flood)"/>
+    <ellipse cx="810" cy="420" rx="240" ry="330" fill="url(#flood)"/>
+    <!-- lignes de guidage jaunes -->
+    <g fill="none" stroke="#F2C230" stroke-width="5" opacity=".85">
+      <path d="M270,170 L270,720 Q270,830 160,830 L-20,830"/>
+      <path d="M540,170 L540,830"/>
+      <path d="M810,170 L810,720 Q810,830 920,830 L1020,830"/>
+      <path d="M-20,830 L1020,830"/>
+    </g>
+    <g fill="none" stroke="#F2C230" stroke-width="5" opacity=".85">
+      <path d="M205,250 L335,250"/><path d="M475,250 L605,250"/><path d="M745,250 L875,250"/>
+    </g>
+    <!-- numéros de poste peints -->
+    <g font-family="Sign" font-weight="800" font-size="58" fill="#F2C230" opacity=".85" text-anchor="middle">
+      <text x="222" y="700" text-anchor="end">A12</text><text x="492" y="700" text-anchor="end">A14</text><text x="762" y="700" text-anchor="end">A16</text>
+    </g>
+    <!-- feux d'axe verts et feux de bord bleus -->
+    <g fill="url(#glowG)">
+      <circle cx="40" cy="830" r="11"/><circle cx="130" cy="830" r="11"/><circle cx="220" cy="830" r="11"/><circle cx="310" cy="830" r="11"/><circle cx="400" cy="830" r="11"/><circle cx="490" cy="830" r="11"/><circle cx="580" cy="830" r="11"/><circle cx="670" cy="830" r="11"/><circle cx="760" cy="830" r="11"/><circle cx="850" cy="830" r="11"/><circle cx="940" cy="830" r="11"/>
+    </g>
+    <g fill="#B8F5E0"><circle cx="40" cy="830" r="3"/><circle cx="130" cy="830" r="3"/><circle cx="220" cy="830" r="3"/><circle cx="310" cy="830" r="3"/><circle cx="400" cy="830" r="3"/><circle cx="490" cy="830" r="3"/><circle cx="580" cy="830" r="3"/><circle cx="670" cy="830" r="3"/><circle cx="760" cy="830" r="3"/><circle cx="850" cy="830" r="3"/><circle cx="940" cy="830" r="3"/></g>
+    <g fill="url(#glowB)">
+      <circle cx="0" cy="960" r="13"/><circle cx="120" cy="960" r="13"/><circle cx="240" cy="960" r="13"/><circle cx="360" cy="960" r="13"/><circle cx="480" cy="960" r="13"/><circle cx="600" cy="960" r="13"/><circle cx="720" cy="960" r="13"/><circle cx="840" cy="960" r="13"/><circle cx="960" cy="960" r="13"/>
+    </g>
+    <g fill="#D6E4FF"><circle cx="0" cy="960" r="3.5"/><circle cx="120" cy="960" r="3.5"/><circle cx="240" cy="960" r="3.5"/><circle cx="360" cy="960" r="3.5"/><circle cx="480" cy="960" r="3.5"/><circle cx="600" cy="960" r="3.5"/><circle cx="720" cy="960" r="3.5"/><circle cx="840" cy="960" r="3.5"/><circle cx="960" cy="960" r="3.5"/></g>
+    <!-- avions : deux statiques présents, un poste vidé -->
+    <g>
+      <use href="#plane" x="140" y="200" width="260" height="260" fill="#000" opacity=".45" transform="translate(10 14)"/>
+      <use href="#plane" x="140" y="200" width="260" height="260" fill="url(#body)"/>
+      <use href="#plane" x="410" y="200" width="260" height="260" fill="none" stroke="#5E6678" stroke-width="1.2" stroke-dasharray="4 3"/>
+      <use href="#plane" x="680" y="200" width="260" height="260" fill="#000" opacity=".45" transform="translate(10 14)"/>
+      <use href="#plane" x="680" y="200" width="260" height="260" fill="url(#body)"/>
+    </g>
+  </svg>
+  <div class="toggle-card" style="right:330px; top:470px;">
+    <div><div class="lbl" style="color:#8B93A5">Statics OFF</div><div class="sub">Stand A14 cleared</div></div>
+    <div class="sw"></div>
+  </div>
+  <div class="toggle-card" style="right:60px; top:470px;">
+    <div><div class="lbl" style="color:#4CC9A0">Statics ON</div><div class="sub">Stand A16</div></div>
+    <div class="sw on"></div>
+  </div>
+
+  <div class="left">
+    <img class="logo" src="../../../../assets/SGM-512.png" alt="">
+    <h1>SGM<span>Statics &amp; GSX Manager</span></h1>
+    <p class="lead">Switch your airports' static aircraft on or off in one click, and get your GSX Pro profiles where they belong.</p>
+    <div class="signs">
+      <div class="sg loc">MSFS 2024</div>
+      <div class="sg dir">MSFS 2020</div>
+      <div class="sg dir">FREE</div>
+      <div class="sg dir">PORTABLE</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 2. STATICS ═══════════════ -->
+<section class="frame" id="statics">
+  <div style="position:absolute; left:110px; top:120px;">
+    <div class="signs"><div class="sg loc">STATICS</div><div class="sg dir">ON
+      <svg viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6" stroke="#000" stroke-width="3" fill="none"/></svg> OFF</div></div>
+    <h2>Clear the apron or fill it, one click per airport</h2>
+    <ul class="pts">
+      <li><b>Uses each developer's own method</b>: .off, .disabled, .nostatic, with/without pairs, variants.</li>
+      <li><b>Never loads an airport twice.</b> Unclear cases are flagged "To check" and left alone.</li>
+      <li><b>All ON, All OFF or a saved profile</b> like "Dense AI traffic" for every scenery at once.</li>
+      <li><b>Finds everything</b> in Community and your own scenery folders, any depth.</li>
+    </ul>
+  </div>
+  <div class="shot" style="left:850px; top:120px; width:990px; height:775px;">
+    <img src="shots/narrow.png" style="width:1440px; margin-left:-40px; margin-top:-290px;">
+  </div>
+  <div class="foot"><img src="../../../../assets/SGM-512.png" alt=""><span><b>SGM</b> Statics &amp; GSX Manager</span></div>
+</section>
+
+<!-- ═══════════════ 3. GSX ═══════════════ -->
+<section class="frame" id="gsx">
+  <div class="shot" style="left:110px; top:120px; width:820px; height:775px;">
+    <img src="shots/narrow.png" style="width:1440px; margin-left:-500px; margin-top:-290px;">
+  </div>
+  <div style="position:absolute; left:1030px; top:120px;">
+    <div class="signs"><div class="sg loc">GSX PRO</div><div class="sg dir">PROFILES
+      <svg viewBox="0 0 24 24"><path d="M6 18L18 6M9 6h9v9" stroke="#000" stroke-width="3" fill="none"/></svg></div></div>
+    <h2>Your GSX profiles, installed without folder diving</h2>
+    <ul class="pts blue">
+      <li><b>Profiles shipped with a scenery</b> are spotted and copied to GSX in one click.</li>
+      <li><b>FULL, LITE or VDGS?</b> Pick one, SGM remembers it.</li>
+      <li><b>Drag and drop</b> a downloaded .zip, .7z or .rar, or let SGM find it in your Downloads.</li>
+      <li><b>No profile yet?</b> One click searches flightsim.to for "ICAO GSX".</li>
+    </ul>
+  </div>
+  <div class="foot" style="left:1030px"><img src="../../../../assets/SGM-512.png" alt=""><span><b>SGM</b> Statics &amp; GSX Manager</span></div>
+</section>
+
+<!-- ═══════════════ 4. SÉCURITÉ ═══════════════ -->
+<section class="frame" id="safety">
+  <div style="position:absolute; left:110px; top:120px;">
+    <div class="signs"><div class="sg man">SIM RUNNING</div><div class="sg man">HOLD</div></div>
+    <h2 style="max-width:700px">Your add-ons stay safe</h2>
+    <ul class="pts">
+      <li><b>Undo</b> any action with Ctrl+Z. All or nothing, even if a file is locked midway.</li>
+      <li><b>Backup before every change</b>, and right-click to restore a scenery's original state.</li>
+      <li><b>Nothing is touched while MSFS 2020 or 2024 runs.</b></li>
+      <li><b>Automatic updates</b>, optional and checked by SHA-256 fingerprint.</li>
+      <li><b>Unclear cases are never switched</b>: SGM opens the folder so you decide.</li>
+    </ul>
+  </div>
+  <div class="stack">
+    <div class="msg hold">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#E07A72" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="5" width="4.5" height="14" rx="1"/><rect x="14.5" y="5" width="4.5" height="14" rx="1"/></svg></div>
+      <div><h3>MSFS 2024 is running.</h3><p>Close the simulator before changing statics: it reads these files at startup and may lock them.</p></div>
+    </div>
+    <div class="msg undo">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#4CC9A0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></div>
+      <div><h3>Undone: All OFF</h3><p>The files of this action went back exactly as they were before.</p>
+        <div class="row"><span class="kbd">Ctrl</span><span class="kbd">Z</span></div></div>
+    </div>
+    <div class="msg upd">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#7AA7F5" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></div>
+      <div><h3>SGM beta v0.9.2 is available</h3><p>Your settings, backups and profiles are kept. If something goes wrong, the previous version is put back.</p>
+        <div class="row"><span class="btn go">Update now</span><span class="btn">Later</span><span class="ok">✓ SHA-256 verified</span></div></div>
+    </div>
+  </div>
+  <div class="foot"><img src="../../../../assets/SGM-512.png" alt=""><span><b>SGM</b> Statics &amp; GSX Manager</span></div>
+</section>
+</body>
+</html>
