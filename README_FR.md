@@ -30,7 +30,11 @@ SGM le fait pour toi :
 
 ## Installation
 
-Il n'y a rien à installer.
+Deux versions, le même programme : choisis-en une.
+
+**Version installée** (conseillée) : lance `SGM_Setup_vX.Y.exe`. SGM est installé pour ton compte Windows seulement (sans droits administrateur, dans `%LOCALAPPDATA%\Programs\SGM`), avec un raccourci dans le menu Démarrer et une désinstallation dans *Paramètres › Applications › Applications installées*. Réglages et sauvegardes sont rangés dans `%APPDATA%\SGM`. Si tu utilisais la version portable, SGM propose au premier lancement de **reprendre ses données** (réglages, profils de statics, sauvegardes, états d'origine) : choisis son dossier ; la version portable n'est pas modifiée (aussi dans *Paramètres › Reprendre les données de la version portable…*). La désinstallation garde tes données, sauf si tu demandes de les supprimer.
+
+**Version portable** : rien à installer.
 
 1. Décompresse `SGM_beta_v0.9.3.zip` où tu veux (dossier d'outils, clé USB…).
 2. Lance `SGM.exe`, dans le dossier `SGM`.
@@ -39,7 +43,7 @@ Garde tout le dossier `SGM` ensemble : `SGM.exe` a besoin du dossier `_internal`
 
 Au premier lancement, SGM crée un dossier `SGM_data` à côté de `SGM.exe`, qui contient ses réglages et ses sauvegardes. Si tu déplaces SGM, déplace tout le dossier. Si SGM se trouve dans un dossier protégé en écriture (comme `Program Files`), les données sont rangées dans `%APPDATA%\SGM`.
 
-**Désinstallation :** supprime le dossier `SGM`. Les modifications déjà faites dans tes scènes restent en place : rebascule-les d'abord si besoin.
+**Désinstallation :** version installée : *Applications installées › SGM › Désinstaller* ; version portable : supprime le dossier `SGM`. Les modifications déjà faites dans tes scènes restent en place : rebascule-les d'abord si besoin.
 
 ## Démarrage rapide
 
