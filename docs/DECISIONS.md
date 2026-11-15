@@ -73,3 +73,10 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
   SHA-256 obligatoire, extraction sûre, remplacement après fermeture par un script (`robocopy`, `SGM_data`
   exclu), sauvegarde de la version actuelle et retour en arrière en cas d'échec, puis relance.
 - Signature de l'exe : non décidée (À trier).
+
+## Application hôte (3AM)
+
+- 2026-11-15 : 3AM embarque la **dernière version de SGM** (0.8) ; Fabian place dans « Prêt » la demande de
+  **points d'accroche** (`docs/rd/2026-11-15-accroches-3am.md`) pour que les prochaines intégrations soient une simple
+  copie. Ces accroches n'ont **aucun effet sur SGM seul**. Dans 3AM, le menu Aide de SGM est allégé (les
+  signalements, le don et « À propos » sont ceux de 3AM).

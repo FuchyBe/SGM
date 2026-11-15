@@ -7,15 +7,39 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-14, dans cet ordre.
 
-_(vide — Fabian déplace ici les sujets à développer, dans l'ordre souhaité)_
+1. **Sécurité G1 à G3** — placé par Fabian le 2026-11-15, avant les accroches. Relevés par le gardien de 3AM
+   (fiche `docs/rd/2026-11-15-accroches-3am.md`, section « Sécurité ») : G1 « Tout restaurer » et profils GSX
+   retouchés, G2 Corbeille sur clé USB / disque réseau, G3 contrôle « simulateur fermé » pour 2020 et 2024. S/M.
+2. **Points d'accroche pour une application hôte (3AM)** — placé par Fabian le 2026-11-15 (conversation 3AM).
+   SGM porte lui-même les accroches dont 3AM a besoin (thème, contrôle de MSFS à trois états, sources, menu Aide,
+   mise à jour inactive en mode hôte), **sans aucun effet sur SGM seul**. Fiche `docs/rd/2026-11-15-accroches-3am.md`
+   (S1 à S12). S/M.
 
 ## En cours (PR à tester)
 
-- Mise à jour automatique — branche `sprint/2026-11-15-mise-a-jour`.
 
 ## À trier
 
 Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L), risque.
+
+- **Sécurité — relecture de SGM 0.8 par le gardien de 3AM (15 novembre), à placer dans « Prêt » par Fabian, en
+  priorité.** Ces points touchent aussi SGM seul. 3AM 0.9.3 pose des correctifs provisoires (script d'accroches de 3AM),
+  à remplacer par les vrais correctifs dans SGM. Détail : `docs/rd/2026-11-15-accroches-3am.md`, § « Sécurité ».
+  - G1 `_gsx_restore` (« Tout restaurer ») supprime ou écrase un profil GSX **sans comparer son contenu** : un profil
+    retouché dans l'éditeur GSX après l'installation disparaît (essai reproduit). S. Risque : perte d'un fichier
+    modifié par l'utilisateur.
+  - G2 Corbeille : `FOF_NOCONFIRMATION` sans `FOF_WANTNUKEWARNING` : sur une clé USB, un disque réseau ou un fichier
+    trop gros, Windows **efface définitivement sans rien dire**, alors que le texte annonce la Corbeille. S.
+  - G3 `origin/`, `undo/` et `_GSX` sont communs à MSFS 2020 et 2024, mais le contrôle « simulateur fermé » ne regarde
+    que le simulateur choisi : « Tout restaurer » ou « Annuler » peut réécrire une scène de l'autre simulateur pendant
+    qu'il tourne. S.
+  - G4 Sauvegardes : avant une annulation, `undo_last` sauvegarde sous le nom du dossier parent (souvent « scenery ») ;
+    la limite de 10 sauvegardes efface celles d'autres scènes ; `backup_files` range tout à plat (deux fichiers de
+    même nom dans deux sous-dossiers s'écrasent). S.
+  - G5 Archives : aucun plafond sur le nombre de fichiers ni sur le total pour les .zip ; .7z contrôlé seulement après
+    l'extraction (hérité de 0.6). S.
+  - G6 `undo/` copie tout le .bgl renommé alors qu'il se retrouve par empreinte, sans plafond global (voir S8) :
+    plusieurs Go possibles avec des « Tout OFF » sur une grosse collection. S.
 
 - **Envoi direct des rapports sans compte GitHub** — origine : Fabian. Relais serveur. M. **Décision de Fabian**
   (réseau, serveur, confidentialité). Fiche, étape 3.
@@ -34,6 +58,7 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **Mise à jour automatique** (PR #19) — GitHub Releases, SHA-256, retour arrière.
 - **beta v0.8** publiée dans `main` (PR #18).
 - **beta v0.8** — Annuler, profils de statics, colonnes ajustées au texte, Tout ON/OFF dans l'en-tête Statics (cas simples), Analyser vérifie les téléchargements, fenêtre Signaler / Suggérer, journal, bouton flightsim.to.
 - **Profils de statics** (PR #17).
