@@ -32,16 +32,17 @@ class SevenZipTest(SandboxTest):
         got = sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())
         self.assertEqual(got, ["EBBR/ebbr-demo.ini", "EBBR/ebbr-demo.py"])
 
-    def test_fichier_trop_gros_ignore(self):
+    def test_profil_trop_gros_archive_refusee(self):
+        """7-Zip extrairait le fichier avant le garde-fou : l'archive est refusée d'avance (sécurité)."""
         old = m.MAX_MEMBER_SIZE
         m.MAX_MEMBER_SIZE = 50
         try:
             arc = self.make_7z({"ebbr-a.ini": profile("a"), "ebbr-big.ini": b"[general]\n" + b"x" * 200})
             out = self.tmp / "out"
             out.mkdir()
-            m.extract_profiles(arc, out)
-            self.assertTrue((out / "ebbr-a.ini").is_file())
-            self.assertFalse((out / "ebbr-big.ini").exists())
+            with self.assertRaises(m.ArchiveError):
+                m.extract_profiles(arc, out)
+            self.assertEqual(list(out.rglob("*")), [])
         finally:
             m.MAX_MEMBER_SIZE = old
 
