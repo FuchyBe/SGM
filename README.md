@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.8
+# SGM — Statics & GSX Manager · beta v0.9
 
 <p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
 
@@ -32,7 +32,7 @@ SGM does it for you:
 
 There is nothing to install.
 
-1. Unzip `SGM_beta_v0.8.zip` anywhere (tools folder, USB stick…).
+1. Unzip `SGM_beta_v0.9.zip` anywhere (tools folder, USB stick…).
 2. Run `SGM.exe` from the `SGM` folder.
 
 Keep the whole `SGM` folder together: `SGM.exe` needs the `_internal` folder next to it.
@@ -132,7 +132,7 @@ A scenery update (for example through the Marketplace or an installer) may resto
 Requirements: Python 3.10 or newer.
 
 1. Put `statics_manager.py`, `i18n.py`, `build_exe.bat`, both README files and the `licenses` folder together.
-2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.8.zip`.
+2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.9.zip`.
 
 To run without building: `pip install pyside6`, then `python statics_manager.py`.
 
@@ -182,10 +182,13 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 
 ## Version history
 
-**Next version (in development)**
-- **Safety**: backups are stored per scenery package with their folder structure (no more overwritten copies); archives are checked (number and size of files) before anything is extracted; Undo no longer keeps a copy of files that were only renamed.
-- **Safety**: "Restore everything" never removes or overwrites a GSX profile you modified after SGM installed it; archives are sent to the Recycle Bin only from a fixed drive (kept on USB sticks / network drives instead of being deleted for good); file changes are blocked while MSFS 2020 **or** MSFS 2024 is running, and SGM asks if it cannot tell.
-- **Automatic updates** (optional, asked at first launch): checks GitHub once a day at most, downloads, verifies SHA-256 and restarts; `SGM_data` kept, previous version restored on failure.
+**beta v0.9**
+- **Automatic updates** (optional, asked at first launch): SGM checks GitHub once a day at most, shows what's new, downloads, verifies the SHA-256 fingerprint and restarts; `SGM_data` is kept and the previous version is put back if something goes wrong. Help › Check for updates… at any time.
+- **Safety**: "Restore everything" never removes or overwrites a GSX profile you modified after SGM installed it; archives go to the Recycle Bin only from a fixed drive (kept on USB sticks / network drives instead of being deleted for good); file changes are blocked while MSFS 2020 **or** MSFS 2024 is running, and SGM asks if it cannot tell.
+- **Safety**: backups stored per scenery package with their folder structure (no more overwritten copies); archives checked (number and size of files) before anything is extracted; Undo no longer keeps copies of files that were only renamed, and its copies are capped at 500 MB.
+- **.7z / .rar archives** now tested with a real 7-Zip; `7zz` / `7za` recognised.
+- **French interface complete**; stricter reading of MSFS's `UserCfg.opt`; resizable Folders and Guide windows.
+- SGM can now be embedded in **3AM** (Again, Another Addon Manager) without any change for SGM on its own.
 
 **beta v0.8**
 - **Undo** (button or Ctrl+Z, 10 actions kept): a switch, All ON/OFF, a GSX profile, a restore — files back exactly as before, refused if a file changed since.

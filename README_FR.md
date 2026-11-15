@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.8
+# SGM — Statics & GSX Manager · beta v0.9
 
 <p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
 
@@ -32,7 +32,7 @@ SGM le fait pour toi :
 
 Il n'y a rien à installer.
 
-1. Décompresse `SGM_beta_v0.8.zip` où tu veux (dossier d'outils, clé USB…).
+1. Décompresse `SGM_beta_v0.9.zip` où tu veux (dossier d'outils, clé USB…).
 2. Lance `SGM.exe`, dans le dossier `SGM`.
 
 Garde tout le dossier `SGM` ensemble : `SGM.exe` a besoin du dossier `_internal` placé à côté de lui.
@@ -132,7 +132,7 @@ Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre
 Prérequis : Python 3.10 ou plus récent.
 
 1. Place ensemble `statics_manager.py`, `i18n.py`, `build_exe.bat`, les deux README et le dossier `licenses`.
-2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.8.zip`.
+2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.9.zip`.
 
 Pour lancer sans compiler : `pip install pyside6`, puis `python statics_manager.py`.
 
@@ -182,10 +182,13 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 
 ## Historique des versions
 
-**Prochaine version (en développement)**
-- **Sécurité** : sauvegardes rangées par paquet avec leur arborescence (plus de copies écrasées) ; archives contrôlées (nombre et taille des fichiers) avant toute extraction ; Annuler ne garde plus de copie des fichiers seulement renommés.
+**beta v0.9**
+- **Mise à jour automatique** (optionnelle, demandée au premier lancement) : SGM vérifie GitHub une fois par jour au plus, montre les nouveautés, télécharge, vérifie l'empreinte SHA-256 et relance ; `SGM_data` est gardé et l'ancienne version est remise en cas de problème. Aide › Rechercher une mise à jour… à tout moment.
 - **Sécurité** : « Tout restaurer » ne supprime ni n'écrase jamais un profil GSX que tu as modifié après son installation par SGM ; les archives ne vont à la Corbeille que depuis un disque fixe (gardées sur clé USB / disque réseau au lieu d'être effacées définitivement) ; modifications bloquées si MSFS 2020 **ou** MSFS 2024 tourne, et SGM demande s'il ne peut pas le savoir.
-- **Mise à jour automatique** (optionnelle, demandée au premier lancement) : vérifie GitHub une fois par jour au plus, télécharge, vérifie le SHA-256 et relance ; `SGM_data` gardé, ancienne version remise en cas d'échec.
+- **Sécurité** : sauvegardes rangées par paquet avec leur arborescence (plus de copies écrasées) ; archives contrôlées (nombre et taille des fichiers) avant toute extraction ; Annuler ne garde plus de copie des fichiers seulement renommés, et ses copies sont plafonnées à 500 Mo.
+- **Archives .7z / .rar** désormais testées avec un vrai 7-Zip ; `7zz` / `7za` reconnus.
+- **Interface française complète** ; lecture plus stricte du `UserCfg.opt` de MSFS ; fenêtres Dossiers et Guide redimensionnables.
+- SGM peut désormais être embarqué dans **3AM** (Again, Another Addon Manager), sans aucun changement pour SGM seul.
 
 **beta v0.8**
 - **Annuler** (bouton ou Ctrl+Z, 10 actions gardées) : une bascule, Tout ON/OFF, un profil GSX, une restauration — fichiers remis exactement, refus si un fichier a changé depuis.
