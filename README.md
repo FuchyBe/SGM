@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.9.2
+# SGM — Statics & GSX Manager · beta v0.9.3
 
 <p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
 
@@ -32,7 +32,7 @@ SGM does it for you:
 
 There is nothing to install.
 
-1. Unzip `SGM_beta_v0.9.2.zip` anywhere (tools folder, USB stick…).
+1. Unzip `SGM_beta_v0.9.3.zip` anywhere (tools folder, USB stick…).
 2. Run `SGM.exe` from the `SGM` folder.
 
 Keep the whole `SGM` folder together: `SGM.exe` needs the `_internal` folder next to it.
@@ -132,7 +132,7 @@ A scenery update (for example through the Marketplace or an installer) may resto
 Requirements: Python 3.10 or newer.
 
 1. Put `statics_manager.py`, `i18n.py`, `build_exe.bat`, both README files and the `licenses` folder together.
-2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.9.2.zip`.
+2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.9.3.zip`.
 
 To run without building: `pip install pyside6`, then `python statics_manager.py`.
 
@@ -181,6 +181,11 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Microsoft Flight Simulator is a trademark of Microsoft Corporation. GSX is a product of FSDreamTeam / Virtuali. All other names and trademarks are the property of their respective owners.
 
 ## Version history
+
+**beta v0.9.3**
+- **Menus reorganised**: *Settings*, a new *Tools* menu (scan, install a GSX profile, statics profiles, undo, restore everything, analysis report, backups and log folders) and *Help*.
+- **Keyboard shortcuts**: Ctrl+F search, Esc clears the search then the filters, F5 scan, Ctrl+Z undo, F1 guide.
+- Clearer labels (*Statics profiles*, *New sceneries*), update question shown in a banner instead of a blocking window, lighter GSX column, Folders window in titled sections.
 
 **beta v0.9.2**
 - **Safety**: archives containing absolute or network paths are refused; .7z / .rar archives with an oversized profile file are refused before extraction; the updater only replaces SGM's own files and handles any folder name.
