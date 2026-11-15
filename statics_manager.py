@@ -2635,7 +2635,9 @@ class UpdateError(Exception):
 
 def parse_version(text: str) -> tuple:
     """« v0.10 », « beta v0.8.1 », « 0.8 » -> (0, 10) / (0, 8, 1) / (0, 8). Vide si illisible."""
-    m = re.search(r"(\d+(?:\.\d+)*)", str(text or ""))
+    text = str(text or "")
+    m = (re.search(r"(?i)\bv(\d+(?:\.\d+)*)", text)          # « v0.10 » d'abord (« SGM 2024 beta v0.10 »)
+         or re.search(r"(\d+\.\d+(?:\.\d+)*)", text) or re.fullmatch(r"\s*(\d+)\s*", text))
     return tuple(int(x) for x in m.group(1).split(".")) if m else ()
 
 

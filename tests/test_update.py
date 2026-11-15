@@ -32,6 +32,12 @@ def release(**kw):
 
 
 class UpdateEngineTest(SandboxTest):
+    def test_version_avec_annee_dans_le_titre(self):
+        self.assertEqual(m.parse_version("SGM 2024 beta v0.10"), (0, 10))
+        self.assertEqual(m.parse_version("MSFS 2024 – 0.9.2"), (0, 9, 2))
+        self.assertEqual(m.parse_version("1"), (1,))
+        self.assertFalse(m.is_newer("SGM 2024 beta v0.9", "0.9.1"))
+
     def test_versions(self):
         self.assertEqual(m.parse_version("beta v0.10"), (0, 10))
         self.assertTrue(m.is_newer("v0.10", "0.9"))
