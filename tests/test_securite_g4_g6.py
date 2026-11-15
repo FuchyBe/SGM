@@ -11,7 +11,7 @@ class G4SauvegardesTest(SandboxTest):
         a = make_pkg(self.community, "pkg-a", "AAAA", [("scenery/x/statics.bgl", b"A1", True),
                                                        ("scenery/y/statics.bgl", b"A2", True)])
         m.backup_files(a, [a / "scenery/x/statics.bgl", a / "scenery/y/statics.bgl"])
-        snap = next((self.data / "backups" / "pkg-a").iterdir())
+        snap = next(next((self.data / "backups").glob("pkg-a-*")).iterdir())
         self.assertEqual((snap / "scenery/x/statics.bgl").read_bytes(), b"A1")    # plus de collision de noms
         self.assertEqual((snap / "scenery/y/statics.bgl").read_bytes(), b"A2")
 
@@ -22,7 +22,7 @@ class G4SauvegardesTest(SandboxTest):
             m.set_scene_state(self.scan()["pkg-b"], m.OFF)
         m.undo_last()
         self.assertFalse((self.data / "backups" / "scenery").exists())            # plus de dossier « scenery »
-        self.assertTrue((self.data / "backups" / "pkg-b").is_dir())
+        self.assertTrue(list((self.data / "backups").glob("pkg-b-*")))
 
 
 class G5ArchivesTest(SandboxTest):

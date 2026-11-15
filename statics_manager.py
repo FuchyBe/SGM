@@ -1260,7 +1260,9 @@ def package_root(path: Path) -> Path:
 def backup_files(root: Path, files: list[Path]):
     """Copie de sauvegarde, rangée sous le nom du PAQUET et avec l'arborescence relative (sécurité G4 : deux
     fichiers de même nom ne s'écrasent plus, et la sauvegarde d'une scène n'efface pas celles d'une autre)."""
-    base = data_dir() / "backups" / re.sub(r'[<>:"/\\|?*]', "_", root.name)
+    tag = hashlib.sha1(norm_key(root).encode("utf-8")).hexdigest()[:6]    # deux paquets de même nom (2020 / 2024)
+    safe = re.sub(r'[<>:"/\\|?*]', "_", root.name)
+    base = data_dir() / "backups" / f"{safe}-{tag}"
     dest = base / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
     dest.mkdir(parents=True, exist_ok=True)
     for f in files:
@@ -1312,7 +1314,7 @@ class UndoRecorder:
             k = norm_key(p)
             if k in self.before:
                 continue
-            h, copy = None, None
+            h, copy, size = None, None, 0
             if p.is_file():
                 h = file_hash(p)
                 size = p.stat().st_size
@@ -1321,15 +1323,15 @@ class UndoRecorder:
                     copy = f"{len(self.before)}_{p.name}"
                     shutil.copy2(p, self.tmp / copy)
                     self.used += size
-            self.before[k] = (p, h, copy)
+            self.before[k] = (p, h, copy, size)
 
     def finish(self) -> bool:
         files = []
-        for p, h, copy in self.before.values():
+        for p, h, copy, size in self.before.values():
             forget_hash(p)
             after = file_hash(p) if p.is_file() else None
             if after != h:
-                files.append({"path": str(p), "before": h, "after": after, "copy": copy})
+                files.append({"path": str(p), "before": h, "after": after, "copy": copy, "size": size})
         # G6 : contenu seulement déplacé (renommage) = retrouvable par empreinte, la copie est inutile.
         # Une seule copie évitée par fichier présent après (doubles identiques : la suivante reste copiée).
         spare = [f["after"] for f in files if f["after"]]
@@ -1458,6 +1460,17 @@ def undo_last() -> str:
             continue
         # deux fichiers identiques avant (doubles) : le second est recopié depuis le premier remis en place
         twin = next((dd for s, dd in moves if cur.get(norm_key(s)) == f["before"]), None)
+        if twin is None:                             # double identique resté intact à côté (.staticq, .off…)
+            for sib in (dst.parent.iterdir() if dst.parent.is_dir() else []):
+                try:
+                    if sib.is_file() and sib.stat().st_size == f.get("size", -1) and file_hash(sib) == f["before"]:
+                        copies.append((sib, dst))
+                        twin = sib
+                        break
+                except OSError:
+                    continue
+            if twin is not None:
+                continue
         if twin is None:
             raise UndoError(tr("undo_changed", files=f"• {dst.name}"))
         from_target.append((twin, dst))
@@ -1471,19 +1484,32 @@ def undo_last() -> str:
             by_root.setdefault(package_root(p), []).append(p)
     for parent, ps in by_root.items():
         backup_files(parent, ps)
-    staged = []
-    for s, dd in moves:
-        tmp = s.with_name(s.name + ".sgm-undo")
-        os.rename(s, tmp)
-        staged.append((tmp, dd))
-    for q in deletes:
-        q.unlink()
-    for tmp, dd in staged:
-        os.replace(tmp, dd)
-    for s, dd in copies + from_target:
-        tmp = dd.with_name(dd.name + ".sm-tmp")
-        shutil.copy2(s, tmp)
-        os.replace(tmp, dd)
+    staged, placed = [], []
+    try:
+        for s, dd in moves:
+            tmp = s.with_name(s.name + ".sgm-undo")
+            os.rename(s, tmp)
+            staged.append((tmp, dd, s))
+        for q in deletes:
+            q.unlink()
+        for tmp, dd, s in staged:
+            os.replace(tmp, dd)
+            placed.append(tmp)
+        for s, dd in copies + from_target:
+            tmp = dd.with_name(dd.name + ".sm-tmp")
+            shutil.copy2(s, tmp)
+            os.replace(tmp, dd)
+    except OSError as e:
+        for tmp, dd, s in staged:                    # aucun fichier ne reste sous un nom temporaire
+            if tmp not in placed and tmp.exists() and not s.exists():
+                try:
+                    os.rename(tmp, s)
+                except OSError:
+                    pass
+        for pth in paths.values():
+            forget_hash(pth)
+        LOG.warning("Annulation interrompue : %s", e)
+        raise UndoError(tr("undo_failed", err=e))
     for p in paths.values():
         forget_hash(p)
     shutil.rmtree(d, ignore_errors=True)
@@ -1546,6 +1572,9 @@ def snapshot_scene(scene: Scene):
         if (scene.root / n).is_file():
             to_copy.append(scene.root / n)
             record["files"][n] = file_hash(scene.root / n)
+    if not record["files"]:                         # rien trouvé (scène déplacée…) : pas de photo vide
+        shutil.rmtree(d, ignore_errors=True)
+        return
     for p in to_copy:
         if p.is_file():
             target = files_dir / rel(p)
@@ -1639,8 +1668,8 @@ def _restore_scene_statics(root: Path):
     # 2. Exécution, après sauvegarde de l'état actuel
     undo_watch(root / "layout.json", root / "manifest.json", *cur.values(), *(root / r for r in wanted))
     backup_files(root, [root / "layout.json", root / "manifest.json"] + list(cur.values()))
+    staged = []
     try:
-        staged = []
         for s, dd in moves:                      # d'abord vers des noms temporaires (échanges de noms)
             tmp = s.with_name(s.name + ".sgm-restore")
             os.rename(s, tmp)
@@ -1663,9 +1692,17 @@ def _restore_scene_statics(root: Path):
                 tmp = root / (r + ".sm-tmp")
                 shutil.copy2(files_dir / r, tmp)
                 os.replace(tmp, root / r)
-    except PermissionError as e:
-        raise RestoreError(tr("err_access", file=e.filename))
-    shutil.rmtree(d, ignore_errors=True)
+    except OSError as e:
+        for tmp, dd in staged:                   # retour arrière des renommages déjà faits
+            src = next((s for s, d2 in moves if d2 == dd), None)
+            if src is not None and tmp.exists() and not src.exists():
+                try:
+                    os.rename(tmp, src)
+                except OSError:
+                    pass
+        raise RestoreError(tr("err_access", file=getattr(e, "filename", None) or e))
+    # La photo d'origine est GARDÉE : elle décrit toujours l'état d'origine (et « Annuler » une restauration
+    # doit retrouver la même photo). Une mise à jour de la scène l'invalide (version de l'éditeur).
 
 
 def origin_roots() -> list[Path]:
@@ -1898,22 +1935,22 @@ def _gsx_restore(dest_dir: Path, names=None, skipped: list | None = None) -> int
         bdir.mkdir(parents=True, exist_ok=True)
         for p in current:
             shutil.copy2(p, bdir / p.name)
+    done = 0
     for k in keys:
-        e = j["files"].pop(k)
+        e = j["files"][k]                     # le journal d'origine est GARDÉ (Annuler une restauration le retrouve)
         p = dest_dir / e["name"]
+        forget_hash(p)
+        cur = file_hash(p) if p.is_file() else None
         if e["existed"]:
             src = jd / "files" / e["name"]
-            if src.is_file():
+            if src.is_file() and cur != file_hash(src):
                 shutil.copy2(src, p)
-                src.unlink()
+                done += 1
         elif p.is_file():
             p.unlink()
+            done += 1
         forget_hash(p)
-    if j["files"]:
-        write_atomic(jd / "journal.json", json.dumps(j, indent=2, ensure_ascii=False))
-    else:
-        shutil.rmtree(jd, ignore_errors=True)
-    return len(keys)
+    return done
 
 
 def gsx_journal_dests() -> list[Path]:
@@ -2467,10 +2504,29 @@ def _group_desc(g) -> str:
     return f"{g.mode}[{', '.join(dict.fromkeys(names))}]"
 
 
+def scene_unchanged(scene: Scene, groups) -> bool:
+    """La scène est encore exactement comme à l'analyse (relue sur le disque) : mêmes groupes, mêmes états."""
+    if not scene.root.is_dir():
+        return False
+    try:
+        fresh = scan_package(scene.root, scene.source)
+    except Exception:
+        return False
+    if fresh is None:
+        return False
+    sig = lambda g: (g.mode, str(g.active), g.state, tuple(str(q) for q in g.paths()))
+    now = {sig(g) for g in fresh.groups}
+    return all(sig(g) in now for g in groups)
+
+
 def set_scene_state(scene: Scene, target: str):
     groups = [g for g in scene.groups if g.toggleable and g.state != target]
     if not groups:
         return
+    # scène déplacée ou modifiée depuis l'analyse : on ne touche à rien (et aucune photo d'origine vide)
+    if not scene_unchanged(scene, groups):
+        LOG.warning("Bascule refusée, fichiers introuvables : %s", scene_label(scene))
+        raise ToggleError(tr("err_scene_gone", name=scene.title))
     LOG.info("Statics %s : %s -> %s ; %s", scene_label(scene), scene.state, target,
              " ; ".join(_group_desc(g) for g in groups))
     try:
@@ -4916,6 +4972,8 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, lambda: self.install_paths(paths))
 
     def install_paths(self, paths: list):
+        if not self.ensure_sim_closed():
+            return
         names = ", ".join(Path(p).name for p in paths[:2]) + ("…" if len(paths) > 2 else "")
         with undoable(f"GSX — {names}"):
             self._install_paths(paths)
@@ -5501,6 +5559,8 @@ class MainWindow(QMainWindow):
     def on_gsx(self, scene: Scene, idx: int, folder: str):
         if not (0 <= idx < len(scene.gsx_variants)):
             return
+        if not self.ensure_sim_closed():
+            return
         v = scene.gsx_variants[idx]
         multi = len(scene.gsx_variants) > 1
         what = tr("what_version", name=vlabel(v)) if multi else tr("what_profile")
@@ -5653,7 +5713,8 @@ class MainWindow(QMainWindow):
             self.update_undo_btn()
             return
         except OSError as e:
-            warn(self, tr("toggle_fail", name=label, err=e))
+            warn(self, tr("undo_failed", err=e))
+            return
         # scènes concernées relues ; choix de version GSX oubliés pour les profils remis
         keys = {norm_key(p) for p in touched}
         gsx_names = {p.name.lower() for p in touched}
