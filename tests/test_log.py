@@ -30,6 +30,9 @@ class LogTest(SandboxTest):
         self.assertNotIn("bob", s)
         self.assertIn(r"~\Downloads\a.zip", s)
         self.assertIn(r"D:\MSFS\Community\pkg", s)
+        s2 = m.scrub(r"C:\Users\O'Brien\x et \\PC\c$\Users\bob\y")
+        self.assertNotIn("Brien", s2)
+        self.assertNotIn("bob", s2)
         self.assertNotIn(str(self.tmp / "home"), m.scrub(str(self.tmp / "home" / "Downloads" / "x.zip")))
 
     def test_bascule_journalisee_sans_chemin(self):

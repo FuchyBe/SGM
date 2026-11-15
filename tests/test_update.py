@@ -75,6 +75,25 @@ class UpdateEngineTest(SandboxTest):
         with self.assertRaises(m.UpdateError):
             m.fetch_latest_release(g500)
 
+    def test_script_chemins_speciaux(self):
+        src = self.tmp / "new"
+        (src / "_internal").mkdir(parents=True)
+        (src / "SGM.exe").write_bytes(b"E")
+        s = m.updater_script(src, m.Path("C:/Jeux/A&B/50%"), 42, self.tmp / "bak", self.tmp / "log")
+        self.assertIn('set "DST=C:/Jeux/A&B/50%%"', s)          # % doublé, & entre guillemets
+        self.assertIn('/FI "PID eq 42" /FI "IMAGENAME eq SGM.exe"', s)
+
+    def test_plusieurs_zip_dans_la_release(self):
+        two = release(assets=release()["assets"] + [
+            {"name": "SGM-v9.9-source.zip", "browser_download_url": DL + "SGM-v9.9-source.zip"}])
+        self.assertEqual(m.release_info(two)["zip_name"], "SGM_beta_v9.9.zip")
+        amb = release(assets=[{"name": "SGM-a.zip", "browser_download_url": DL + "SGM-a.zip"},
+                              {"name": "SGM-b.zip", "browser_download_url": DL + "SGM-b.zip"}])
+        self.assertIsNone(m.release_info(amb))                 # deux paquets possibles : on n'en choisit aucun
+        dots = release(assets=[{"name": "SGM_beta_v9.9.zip", "browser_download_url": DL + "../x/SGM_beta_v9.9.zip"}])
+        self.assertIsNone(m.release_info(dots))
+        self.assertTrue(m.is_newer("v1", "0.9.1"))
+
     def test_empreinte(self):
         h = "a" * 64
         self.assertEqual(m.expected_sha256(f"{h}  SGM_beta_v9.9.zip\n", "SGM_beta_v9.9.zip"), h)
@@ -89,12 +108,15 @@ class UpdateEngineTest(SandboxTest):
         return m.prepare_update(info, getter=lambda url, *a: files[url], base=self.tmp / "upd")
 
     def test_preparation_complete(self):
-        z = make_zip({"SGM/SGM.exe": b"EXE", "SGM/_internal/x.dll": b"D", "SGM/README.md": b"r"})
+        z = make_zip({"SGM/SGM.exe": b"EXE", "SGM/_internal/x.dll": b"D", "SGM/README.md": b"r",
+                      "SGM/SGM_data/config.json": b"{}"})
         res = self.prepared(z)
         self.assertEqual(res["version"], "9.9")
         self.assertTrue((res["src"] / "SGM.exe").is_file())
         script = res["script"].read_text(encoding="utf-8")
-        self.assertIn("/XD SGM_data", script)                        # données de l'utilisateur jamais copiées
+        self.assertNotIn("SGM_data", script.replace(str(self.tmp), ""))  # SGM_data jamais sauvegardé ni copié
+        self.assertIn('robocopy "%SRC%" "%DST%" "SGM.exe"', script)       # seulement les éléments de la version
+        self.assertIn('robocopy "%SRC%\\_internal" "%DST%\\_internal" /E', script)
         self.assertIn(":rollback", script)                           # retour à l'ancienne version en cas d'échec
         self.assertIn(str(m.app_dir()), script)
         self.assertIn(f"PID eq {os.getpid()}", script)

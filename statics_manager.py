@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import quote_plus, urlencode
 import platform
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from PySide6.QtCore import (QEvent, Property, QEasingCurve, QPropertyAnimation, QRectF,
                             QSize, Qt, QThread, QTimer, QUrl, Signal)
@@ -132,7 +132,8 @@ LOG = logging.getLogger("sgm")
 LOG.addHandler(logging.NullHandler())
 LOG_MAX_BYTES = 1_000_000
 LOG_BACKUPS = 4                                   # sgm.log + 4 anciens = 5 Mo au maximum
-_USERS_RE = re.compile(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\r\n\"'<>|:*?]+", re.I)   # espaces permis
+_USERS_RE = re.compile(r"(?:[A-Za-z]:|[\\/]{2}[^\\/\s]+[\\/]+[A-Za-z]\$)[\\/]+Users[\\/]+[^\\/\r\n\"<>|:*?]+",
+                       re.I)   # espaces et apostrophes permis ; aussi \\PC\c$\Users\nom
 _HOME_RE = re.compile(r"(?<![\w.])/(?:home|Users)/[^/\s\"']+")
 
 
@@ -2182,8 +2183,11 @@ def find_7z() -> str | None:
 
 def _safe_rel(name: str) -> Path | None:
     """Chemin relatif sûr (pas de .., pas de lecteur, pas de chemin absolu)."""
-    parts = [p for p in PurePosixPath(name.replace("\\", "/")).parts if p not in ("", ".", "/")]
-    if not parts or any(p == ".." or ":" in p for p in parts):
+    norm = name.replace("\\", "/")
+    if norm.startswith("/") or PureWindowsPath(name).anchor or ":" in norm:
+        return None                                   # absolu, lecteur, partage réseau //serveur/… (sécurité)
+    parts = [p for p in PurePosixPath(norm).parts if p not in ("", ".")]
+    if not parts or any(p == ".." or p.startswith("/") for p in parts):
         return None
     return Path(*parts)
 
@@ -2231,6 +2235,8 @@ def extract_profiles(archive: Path, dest: Path):
                     if rel is None:
                         continue
                     target = dest / rel
+                    if not target.resolve().is_relative_to(dest.resolve()):
+                        continue
                     target.parent.mkdir(parents=True, exist_ok=True)
                     with zf.open(info) as src, open(target, "wb") as out:
                         out.write(src.read(MAX_MEMBER_SIZE + 1)[:MAX_MEMBER_SIZE])
@@ -2246,6 +2252,9 @@ def extract_profiles(archive: Path, dest: Path):
         except Exception as e:
             raise ArchiveError("arch_error", name=archive.name, err=e)
         check_archive_limits(entries, archive.name)
+        big = [n for n, s in entries if n.lower().endswith((".ini", ".py")) and s > MAX_MEMBER_SIZE]
+        if big:
+            raise ArchiveError("arch_error", name=archive.name, err=f"{Path(big[0]).name}: too large")
         try:
             res = subprocess.run([exe, "x", "-y", f"-o{dest}", str(archive), "*.ini", "*.py", "-r"],
                                  capture_output=True, timeout=120,
@@ -2626,7 +2635,7 @@ class UpdateError(Exception):
 
 def parse_version(text: str) -> tuple:
     """« v0.10 », « beta v0.8.1 », « 0.8 » -> (0, 10) / (0, 8, 1) / (0, 8). Vide si illisible."""
-    m = re.search(r"(\d+(?:\.\d+)+)", str(text or ""))
+    m = re.search(r"(\d+(?:\.\d+)*)", str(text or ""))
     return tuple(int(x) for x in m.group(1).split(".")) if m else ()
 
 
@@ -2652,17 +2661,20 @@ def release_info(data: dict) -> dict | None:
     version = ".".join(map(str, parse_version(data.get("tag_name") or data.get("name") or "")))
     if not version:
         return None
-    zip_a = sha_a = None
+    zips, sha_a = [], None
     for a in data.get("assets") or []:
         name = str(a.get("name") or "")
         url = str(a.get("browser_download_url") or "")
-        if not url.startswith(DOWNLOAD_PREFIX):
+        if not url.startswith(DOWNLOAD_PREFIX) or ".." in url or "/" in name or "\\" in name or ".." in name:
             continue
         low = name.lower()
         if low.startswith("sgm") and low.endswith(".zip"):
-            zip_a = a
+            zips.append(a)
         elif low.endswith(".sha256") or low in ("sha256sums.txt", "sha256sums"):
             sha_a = a
+    # le paquet de l'application : SGM_beta_vX.Y(.Z).zip ; sinon un seul .zip SGM, jamais un choix au hasard
+    exact = [a for a in zips if re.fullmatch(r"sgm_beta_v[\d.]+\.zip", str(a["name"]).lower())]
+    zip_a = exact[0] if len(exact) == 1 else (zips[0] if len(zips) == 1 else None)
     if zip_a is None:
         return None
     return {"version": version, "notes": str(data.get("body") or "")[:20000],
@@ -2736,36 +2748,49 @@ def unpack_update(zip_path: Path, dest: Path) -> Path:
     return exe[0].parent
 
 
+def _bat(path) -> str:
+    """Chemin pour un script .bat : les % sont doublés (sinon lus comme variables)."""
+    return str(path).replace("%", "%%")
+
+
 def updater_script(src: Path, dst: Path, pid: int, backup: Path, log: Path) -> str:
-    """Script Windows lancé après la fermeture de SGM : sauvegarde de la version actuelle, copie de la nouvelle
-    (SGM_data jamais touché), retour à l'ancienne en cas d'échec, puis relance de SGM."""
-    return "\r\n".join([
+    """Script Windows lancé après la fermeture de SGM : sauvegarde des SEULS éléments que la nouvelle version
+    remplace, copie de la nouvelle version (SGM_data jamais touché), retour à l'ancienne en cas d'échec, relance.
+    `src` doit exister (liste des éléments à remplacer)."""
+    items = sorted(p.name for p in Path(src).iterdir() if p.name.lower() != "sgm_data")
+    lines = [
         "@echo off",
         "chcp 65001 >nul",
-        "setlocal",
-        f'set "SRC={src}"',
-        f'set "DST={dst}"',
-        f'set "BAK={backup}"',
-        f'set "LOG={log}"',
-        f'echo SGM : mise a jour en attente de la fermeture (PID {pid}) > "%LOG%"',
+        "setlocal DisableDelayedExpansion",
+        f'set "SRC={_bat(src)}"',
+        f'set "DST={_bat(dst)}"',
+        f'set "BAK={_bat(backup)}"',
+        f'set "LOG={_bat(log)}"',
+        f'echo SGM : mise a jour en attente de la fermeture (PID {int(pid)}) > "%LOG%"',
         ":wait",
-        f'tasklist /FI "PID eq {pid}" 2>nul | find "{pid}" >nul && (timeout /t 1 /nobreak >nul & goto wait)',
-        'robocopy "%DST%" "%BAK%" /E /XD SGM_data /R:2 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
-        "if %ERRORLEVEL% GEQ 8 goto fail",
-        'robocopy "%SRC%" "%DST%" /E /XD SGM_data /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
-        "if %ERRORLEVEL% GEQ 8 goto rollback",
-        'echo OK >> "%LOG%"',
-        'start "" "%DST%\\SGM.exe"',
-        "goto end",
-        ":rollback",
-        'echo ECHEC : retour a la version precedente >> "%LOG%"',
-        'robocopy "%BAK%" "%DST%" /E /XD SGM_data /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
-        ":fail",
-        'start "" "%DST%\\SGM.exe"',
-        ":end",
-        "endlocal",
-        "",
-    ])
+        f'tasklist /FI "PID eq {int(pid)}" /FI "IMAGENAME eq SGM.exe" /NH 2>nul | find /I "SGM.exe" >nul '
+        '&& (timeout /t 1 /nobreak >nul & goto wait)',
+    ]
+    copy = '/R:3 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"'
+    for it in items:                                   # 1. sauvegarde de ce qui va être remplacé
+        n = _bat(it)
+        if (Path(src) / it).is_dir():
+            lines.append(f'if exist "%DST%\\{n}\\" robocopy "%DST%\\{n}" "%BAK%\\{n}" /E {copy}')
+        else:
+            lines.append(f'if exist "%DST%\\{n}" robocopy "%DST%" "%BAK%" "{n}" {copy}')
+        lines.append("if %ERRORLEVEL% GEQ 8 goto fail")
+    for it in items:                                   # 2. copie de la nouvelle version
+        n = _bat(it)
+        if (Path(src) / it).is_dir():
+            lines.append(f'robocopy "%SRC%\\{n}" "%DST%\\{n}" /E {copy}')
+        else:
+            lines.append(f'robocopy "%SRC%" "%DST%" "{n}" {copy}')
+        lines.append("if %ERRORLEVEL% GEQ 8 goto rollback")
+    lines += ['echo OK >> "%LOG%"', 'start "" "%DST%\\SGM.exe"', "goto end", ":rollback",
+              'echo ECHEC : retour a la version precedente >> "%LOG%"',
+              'robocopy "%BAK%" "%DST%" /E /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
+              ":fail", 'start "" "%DST%\\SGM.exe"', ":end", "endlocal", ""]
+    return "\r\n".join(lines)
 
 
 def prepare_update(info: dict, progress=None, getter=None, base: Path | None = None) -> dict:
@@ -5247,7 +5272,8 @@ class MainWindow(QMainWindow):
             if not ask(self, tr("update_ready", ver=res["version"])):
                 return
             LOG.info("Lancement de la mise à jour vers v%s", res["version"])
-            subprocess.Popen(["cmd", "/c", str(res["script"])], cwd=str(res["script"].parent),
+            # chaîne passée telle quelle à cmd (/s : guillemets extérieurs retirés) : & et espaces sans risque
+            subprocess.Popen(f'cmd /d /s /c ""{res["script"]}""', cwd=str(res["script"].parent),
                              creationflags=0x00000008 | 0x08000000)      # DETACHED_PROCESS | CREATE_NO_WINDOW
             QApplication.instance().quit()
         self.dl_upd.done.connect(finished)
