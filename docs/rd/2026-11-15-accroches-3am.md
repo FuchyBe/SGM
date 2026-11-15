@@ -39,3 +39,19 @@ survol des boutons Tout ON / OFF), `sel`, `off_text`, `off_text_hover`, `off_lin
 **Effort** : S/M (environ 190 lignes). **Risque** : nul pour SGM seul si les valeurs par défaut sont respectées ;
 le test de contrat de 3AM (`tests/test_sgm_contrat.py`) dira « déjà présent » pour chaque accroche reprise.
 **Test** : `bash tests/run_tests.sh` ; captures avant / après de SGM seul (identiques) ; `SGM.exe` testé par Fabian.
+
+## Sécurité (relecture de SGM 0.8 par le gardien de 3AM, 15 novembre)
+
+Relevé en intégrant SGM 0.8 dans 3AM. Ces points touchent **aussi SGM seul** ; ils sont dans « À trier » de la
+feuille de route, à placer dans « Prêt » par Fabian. Dans 3AM 0.9.3, G1, G2 et G3 sont couverts provisoirement (script
+d'accroches de 3AM, marqués « en attendant SGM ») ; ces correctifs disparaîtront quand SGM les aura.
+
+| # | Où | Problème | Correction proposée |
+|---|---|---|---|
+| G1 | `_gsx_restore` | profil GSX supprimé (`existed: False`) ou écrasé (`existed: True`) sans comparer le contenu ; profil retouché dans l'éditeur GSX puis « Tout restaurer » → disparu (reste une copie dans `backups/_GSX`) | noter l'empreinte (SHA-256) écrite dans `journal.json` à l'installation / la copie ; à la restauration, ne toucher au fichier que si l'empreinte actuelle est la même, sinon « À vérifier » |
+| G2 | envoi à la Corbeille (`SHFileOperationW`) | `FOF_NOCONFIRMATION` sans `FOF_WANTNUKEWARNING` (0x4000) : effacement définitif silencieux sur clé USB, réseau, fichier trop gros | ajouter `FOF_WANTNUKEWARNING` ; Corbeille seulement sur disque fixe (`GetDriveTypeW == DRIVE_FIXED`), sinon l'archive reste et un message le dit |
+| G3 | `ensure_sim_closed` avant « Tout restaurer » / « Annuler » / restauration | les dossiers d'état sont communs aux deux simulateurs, le contrôle ne regarde que le simulateur choisi | bloquer si **l'un des deux** processus tourne ; « inconnu » → demander |
+| G4 | `undo_last`, `backup_files` | sauvegarde nommée d'après le dossier parent (« scenery ») + limite de 10 → efface celles d'autres scènes ; rangement à plat → collisions de noms | nommer d'après le paquet ; garder l'arborescence relative |
+| G5 | extraction d'archives | pas de plafond de nombre de fichiers ni de total (.zip) ; .7z vérifié après extraction | plafonds avant extraction |
+| G6 | `undo/` | copie complète d'un fichier seulement renommé ; pas de plafond global (S8) | ne pas copier un fichier retrouvable par empreinte ; plafond global |
+
