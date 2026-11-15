@@ -13,6 +13,9 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
   `%LOCALAPPDATA%\Programs\SGM` (pas de demande administrateur), données dans `%APPDATA%\SGM`. Le portable reste
   proposé : `SGM_data` à côté de l'exe = mode portable. Au premier lancement, la version installée propose de
   **copier** (jamais déplacer) le `SGM_data` d'une version portable. La désinstallation garde les données par défaut.
+  Mise à jour automatique de la version installée : même mécanisme que le portable (zip vérifié SHA-256, fichiers
+  remplacés dans le dossier du programme, qui appartient à l'utilisateur), plus le numéro de version de « Applications
+  installées ». Release : zip + installeur + un seul `SHA256SUMS.txt` (lu aussi par les v0.9.x).
 - **Chemin vers la v1.0** (décision du 2026-11-15) : v0.9.3 ergonomie, puis v1.0 RC (installeur, reprise du portable,
   fin de « beta »), puis v1.0 publiée par Fabian.
 - **Interface** : sombre, sobre et élégante. 12 langues, anglais par défaut, codes langue à deux lettres.
