@@ -46,7 +46,8 @@ from PySide6.QtWidgets import (QAbstractButton, QApplication, QButtonGroup, QChe
                                QInputDialog, QDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
                                QPlainTextEdit, QProgressDialog,
                                QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
-                               QPushButton, QScrollArea, QSizePolicy, QTextBrowser, QToolButton,
+                               QPushButton, QScrollArea, QSizePolicy, QStyle, QStyleOptionButton,
+                               QTextBrowser, QToolButton,
                                QVBoxLayout, QWidget)
 
 from i18n import LANGS, RTL_LANGS, get_lang, set_lang, tr
@@ -2956,11 +2957,11 @@ QPushButton#gsx[gsx="same"] {{ color: {C['muted']}; border-color: {C['border2']}
 QPushButton#gsx[gsx="diff"] {{ color: {C['warn']}; border-color: {C['warn_line']}; }}
 QFrame#vsep {{ background: {C['border']}; min-width: 1px; max-width: 1px; border: none; }}
 QFrame#vsepHidden {{ background: transparent; min-width: 1px; max-width: 1px; border: none; }}
-QLabel#colHead {{ color: {C['faint']}; font-size: {px(10)}; font-weight: 700; letter-spacing: 1.2px; }}
+QLabel#colHead {{ color: {C['muted']}; font-size: {px(10)}; font-weight: 700; letter-spacing: 1.2px; }}
 QLabel#colHead[plain="true"] {{ font-size: {px(11)}; letter-spacing: 0px; }}
-QLabel#note {{ color: {C['faint']}; font-size: {px(11)}; }}
+QLabel#note {{ color: {C['muted']}; font-size: {px(11)}; }}
 QLabel#note[warn="true"] {{ color: {C['warn']}; }}
-QLabel#none {{ color: {C['faint']}; font-size: {px(12)}; }}
+QLabel#none {{ color: {C['muted']}; font-size: {px(12)}; }}
 QPushButton#ghost {{ background: transparent; border: none; color: {C['muted']}; padding: 4px 8px; }}
 QPushButton#ghost:hover {{ color: {C['text']}; }}
 QFrame#chips {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 9px; }}
@@ -3152,6 +3153,30 @@ class ChevronCombo(QComboBox):
         p.drawPath(path)
 
 
+class CheckBox(QCheckBox):
+    """Case à cocher avec une vraie coche dessinée (l'état ne passe pas seulement par la couleur)."""
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        if not self.isChecked():
+            return
+        opt = QStyleOptionButton()
+        self.initStyleOption(opt)
+        r = self.style().subElementRect(QStyle.SE_CheckBoxIndicator, opt, self)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        draw_check_mark(p, QRectF(r).adjusted(-1, -1, 1, 1), True, C["accent_dark"])
+        p.end()
+
+
+_LTR_RE = re.compile(r"[\w*.\-]*\.[\w.*\-]+(?:\s*(?:↔|->|→)\s*[\w*.\-]*\.[\w.*\-]+)?")
+
+
+def ltr_fragments(text: str) -> str:
+    """Interface de droite à gauche : noms de fichiers (.bgl ↔ .bgl.off) isolés en gauche-à-droite."""
+    return _LTR_RE.sub(lambda m: "\u202a" + m.group(0) + "\u202c", text)   # LRE … PDF (rendu sûr dans Qt)
+
+
 class ElidedLabel(QLabel):
     def __init__(self, text="", parent=None):
         super().__init__(parent)
@@ -3169,7 +3194,8 @@ class ElidedLabel(QLabel):
         self._refresh()
 
     def _refresh(self):
-        super().setText(self.fontMetrics().elidedText(self._full, Qt.ElideRight, max(10, self.width())))
+        full = ltr_fragments(self._full) if get_lang() in RTL_LANGS else self._full
+        super().setText(self.fontMetrics().elidedText(full, Qt.ElideRight, max(10, self.width())))
 
 
 def state_text(st: str) -> str:
@@ -3205,6 +3231,7 @@ COL_GSX_W = 450
 COL_STATICS_MIN = 250        # minimums : bascule, boutons et icônes toujours visibles
 COL_GSX_MIN = 320
 COL_SCENE_MIN = 230
+COMPACT_BELOW = 1040         # largeur de liste sous laquelle l'en-tête passe en version courte
 COL_REF_W = 1200             # largeur de liste de référence pour les proportions par défaut
 STATICS_FILTERS = ("all", "on", "off", "check", "none")
 GSX_FILTERS = ("all", "installed", "todo", "manual", "none", "check")
@@ -3226,8 +3253,8 @@ def fit_widths(avail: int, natural: tuple, floors: tuple) -> tuple[int, int]:
     cut = min(ns + ng - room, extra_s + extra_g)
     if extra_s + extra_g <= 0:
         return ns, ng
-    cs = round(cut * extra_s / (extra_s + extra_g))
-    return ns - cs, ng - (cut - cs)
+    cg = min(cut, extra_g)                     # la colonne GSX cède d'abord : le nom de la scène reste lisible
+    return ns - (cut - cg), ng - cg
 
 
 def column_widths(avail: int, fs: float, fg: float, mins=(COL_STATICS_MIN, COL_GSX_MIN)) -> tuple[int, int]:
@@ -3392,12 +3419,16 @@ class ColumnHeader(QWidget):
             lbl.setProperty("plain", plain)
             combo = ChevronCombo()
             combo.setObjectName("colFilter")
+            # largeur réduite (le texte choisi est court) ; la liste déroulante garde la largeur de ses entrées
+            combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+            combo.setMinimumContentsLength(7)
             combo.setCursor(Qt.PointingHandCursor)
             combo.setToolTip(tr("tip_col_filter"))
             prefix = "fst_" if col == "statics" else "fgx_"
             for k in filters:
                 combo.addItem(tr(prefix + k), k)
             combo.currentIndexChanged.connect(lambda _i, c=col, cb=combo: self._changed(c, cb))
+            combo.view().setMinimumWidth(combo.view().sizeHintForColumn(0) + 36)
             bl.addWidget(lbl)
             bl.addWidget(combo)
             bl.addStretch()
@@ -3440,6 +3471,16 @@ class ColumnHeader(QWidget):
         combo.setCurrentIndex(i)
         combo.blockSignals(False)
         polish(combo, active=(combo.currentData() or "all") != "all")
+
+    _compact = False
+
+    def set_compact(self, on: bool):
+        """Fenêtre étroite : « Tout OFF / Tout ON » deviennent « OFF / ON » (l'infobulle garde le sens complet)."""
+        if on == self._compact or not hasattr(self, "bulk_btns"):
+            return
+        self._compact = on
+        for target, key in ((OFF, "btn_all_off"), (ON, "btn_all_on")):
+            self.bulk_btns[target].setText(("OFF" if target == OFF else "ON") if on else tr(key))
 
     def natural_widths(self) -> tuple[int, int]:
         """Largeur minimale lisible de chaque en-tête (titre + filtre)."""
@@ -3631,8 +3672,9 @@ class SceneRow(QFrame):
         b.clicked.connect(lambda _=False: self.search_requested.emit(self.scene))
         self._add_gsx_widget(b)
 
-    def natural_widths(self) -> tuple[int, int]:
-        """Largeur de chaque colonne quand tout son texte tient sur une ligne."""
+    def natural_widths(self, notes: bool = True) -> tuple[int, int]:
+        """Largeur de chaque colonne quand tout son texte tient sur une ligne (sans les notes si notes=False :
+        la ligne principale — état, interrupteur, boutons — doit toujours rester entière)."""
         def line(lay) -> int:
             ws = [lay.itemAt(i).widget() for i in range(lay.count())]
             ws = [w for w in ws if w is not None and (not w.isHidden() or w is self.switch)]
@@ -3641,6 +3683,8 @@ class SceneRow(QFrame):
         def note(lbl) -> int:
             return lbl.fontMetrics().horizontalAdvance(lbl._full) + 2 if lbl._full else 0
         st_line = self.st_col.layout().itemAt(0).layout()
+        if not notes:
+            return line(st_line) + 2, line(self.gsx_line) + 2
         return (max(line(st_line), note(self.st_note)) + 2,
                 max(line(self.gsx_line), note(self.gsx_note)) + 2)
 
@@ -4175,8 +4219,8 @@ class ReportDialog(QDialog):
         grid.setColumnStretch(1, 1)
         v.addLayout(grid)
 
-        self.cb_report = QCheckBox(tr("rd_attach_report"))
-        self.cb_log = QCheckBox(tr("rd_attach_log"))
+        self.cb_report = CheckBox(tr("rd_attach_report"))
+        self.cb_log = CheckBox(tr("rd_attach_log"))
         for cb in (self.cb_report, self.cb_log):
             cb.toggled.connect(self.update_preview)
             v.addWidget(cb)
@@ -4450,7 +4494,14 @@ class MainWindow(QMainWindow):
             hd.reset.connect(self._auto_columns)
         self._col_auto = self.config.col_auto
         self._natural = None                  # largeurs du texte (mode automatique), recalculées si besoin
-        self.list_l.addWidget(self.col_header)
+        # en-tête FIXE au-dessus de la zone qui défile (il ne disparaît plus en descendant dans la liste)
+        self.header_box = QWidget()
+        hb = QHBoxLayout(self.header_box)
+        hb.setContentsMargins(0, 0, 0, 0)
+        hb.setSpacing(0)
+        hb.addWidget(self.col_header)
+        hb.addStretch()
+        root.addWidget(self.header_box)
         self.empty = QLabel(tr("empty_scanning"))
         self.empty.setObjectName("empty")
         self.empty.setAlignment(Qt.AlignCenter)
@@ -5273,7 +5324,7 @@ class MainWindow(QMainWindow):
             row.gsx_requested.connect(self.on_gsx)
             row.search_requested.connect(self.search_profile)
             row.restore_requested.connect(self.on_restore)
-            self.list_l.insertWidget(2 + i, row)
+            self.list_l.insertWidget(1 + i, row)
             self.rows[s.key] = row
         self.apply_filter()
         self.update_stats()
@@ -5342,22 +5393,31 @@ class MainWindow(QMainWindow):
 
     def _natural_widths(self) -> tuple[int, int]:
         if self._natural is None:
-            ns = ng = 0
+            ns = ng = cs = cg = 0
             for row in self.rows.values():
                 if not row.isHidden():
                     s, g = row.natural_widths()
-                    ns, ng = max(ns, s), max(ng, g)
+                    a, b = row.natural_widths(notes=False)
+                    ns, ng, cs, cg = max(ns, s), max(ng, g), max(cs, a), max(cg, b)
             self._natural = (ns, ng)
+            self._compact = (cs, cg)
         return self._natural
+
+    _compact = (0, 0)
 
     def current_col_widths(self) -> tuple[int, int]:
         avail = self._avail_width()
+        self.col_header.set_compact(avail < COMPACT_BELOW)
         if self._col_auto:
-            return fit_widths(avail, self._natural_widths(), self._floors())
+            nat = self._natural_widths()
+            fs, fg = self._floors()
+            return fit_widths(avail, nat, (max(fs, self._compact[0]), max(fg, self._compact[1])))
         return column_widths(avail, self.col_fs, self.col_fg, self._floors())
 
     def layout_columns(self):
         ws, wg = self.current_col_widths()
+        # l'en-tête (hors de la zone qui défile) a exactement la largeur des lignes
+        self.col_header.setFixedWidth(self._avail_width())
         self.col_header.set_widths(ws, wg)
         for row in self.rows.values():
             row.set_col_widths(ws, wg)
