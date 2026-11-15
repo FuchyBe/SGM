@@ -5,7 +5,7 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
 ## Produit
 
 - **Nom** : SGM — Statics & GSX Manager (anciennement Statics Manager).
-- **Auteur** : Fabian Fuchs. Version actuelle : beta v0.9.3 (ergonomie, chemin vers la v1.0 décidé par Fabian le 2026-11-15).
+- **Auteur** : Fabian Fuchs. Version actuelle : v1.0 (première version stable, demandée par Fabian le 2026-11-15).
 - **Simulateurs** : MSFS 2024 par défaut, mode MSFS 2020 en option, mémoire séparée par simulateur.
 - **Portable** : aucune installation, données dans `SGM_data` à côté de `SGM.exe`.
 - **Version installable (v1.0, décision du 2026-11-15)** : installeur **Inno Setup** (outil de compilation seulement,
@@ -35,7 +35,8 @@ Ces décisions s'imposent à tous les agents. Seul Fabian les modifie.
 - Qt for Python (PySide6) sous LGPL v3 : distribution **en dossier** (`--onedir`), textes de licence fournis,
   engagement de fournir les sources de Qt pendant 3 ans.
 - Dons : https://paypal.me/Fuchy
-- Publication : flightsim.to, un seul fichier `SGM_beta_vX.Y.zip`.
+- Publication : flightsim.to et GitHub Releases : `SGM_Setup_vX.Y.exe` (installeur) et `SGM_vX.Y.zip` (portable).
+  Avant la 1.0 : `SGM_beta_vX.Y.zip`.
 
 ## Retours des utilisateurs
 

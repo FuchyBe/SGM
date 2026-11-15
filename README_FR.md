@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.9.3
+# SGM — Statics & GSX Manager · v1.0
 
 <p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
 
@@ -36,7 +36,7 @@ Deux versions, le même programme : choisis-en une.
 
 **Version portable** : rien à installer.
 
-1. Décompresse `SGM_beta_v0.9.3.zip` où tu veux (dossier d'outils, clé USB…).
+1. Décompresse `SGM_v1.0.zip` où tu veux (dossier d'outils, clé USB…).
 2. Lance `SGM.exe`, dans le dossier `SGM`.
 
 Garde tout le dossier `SGM` ensemble : `SGM.exe` a besoin du dossier `_internal` placé à côté de lui.
@@ -136,7 +136,7 @@ Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre
 Prérequis : Python 3.10 ou plus récent.
 
 1. Place ensemble `statics_manager.py`, `i18n.py`, `build_exe.bat`, les deux README et le dossier `licenses`.
-2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_beta_v0.9.3.zip`.
+2. Lance `build_exe.bat`. Il installe PySide6 et PyInstaller, crée `dist\SGM\SGM.exe`, y copie les licences et les README, puis crée `dist\SGM_v1.0.zip`.
 
 Pour lancer sans compiler : `pip install pyside6`, puis `python statics_manager.py`.
 
@@ -185,6 +185,12 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Microsoft Flight Simulator est une marque de Microsoft Corporation. GSX est un produit de FSDreamTeam / Virtuali. Les autres noms et marques appartiennent à leurs propriétaires.
 
 ## Historique des versions
+
+**v1.0**
+- **Première version stable.** SGM sort de la beta.
+- **Version installée** : `SGM_Setup_v1.0.exe` installe SGM pour ton compte Windows seulement (sans droits administrateur), avec un raccourci dans le menu Démarrer et une désinstallation. Le `.zip` portable reste disponible.
+- **Reprise de la version portable** : au premier lancement, la version installée propose de copier les données de ta version portable (réglages, profils de statics, sauvegardes, états d'origine). La version portable n'est pas modifiée.
+- La désinstallation garde tes données, sauf si tu demandes de les supprimer. La mise à jour automatique fonctionne pour les deux versions.
 
 **beta v0.9.3**
 - **Menus réorganisés** : *Paramètres*, un nouveau menu *Outils* (analyser, installer un profil GSX, profils de statics, annuler, tout restaurer, rapport d'analyse, dossiers des sauvegardes et du journal) et *Aide*.

@@ -2,8 +2,8 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
-set VERSION=0.9.3
-echo === SGM - Statics ^& GSX Manager : creation du paquet portable (beta v%VERSION%) ===
+set VERSION=1.0
+echo === SGM - Statics ^& GSX Manager : creation du paquet portable (v%VERSION%) ===
 echo.
 
 for %%F in (statics_manager.py i18n.py assets\SGM.ico README.md README_FR.md licenses\LICENSE-SGM.txt licenses\THIRD-PARTY-NOTICES.txt licenses\LGPL-3.0-only.txt licenses\GPL-3.0-only.txt) do (
@@ -30,12 +30,12 @@ copy /Y README.md "dist\SGM\README.md" >nul
 copy /Y README_FR.md "dist\SGM\README_FR.md" >nul
 
 rem Archive prete a publier
-powershell -NoProfile -Command "Compress-Archive -Path 'dist\SGM' -DestinationPath 'dist\SGM_beta_v%VERSION%.zip' -Force"
+powershell -NoProfile -Command "Compress-Archive -Path 'dist\SGM' -DestinationPath 'dist\SGM_v%VERSION%.zip' -Force"
 
 echo.
 echo Termine :
 echo   - application : dist\SGM\SGM.exe   (garder tout le dossier dist\SGM)
-echo   - archive a publier : dist\SGM_beta_v%VERSION%.zip
+echo   - archive a publier : dist\SGM_v%VERSION%.zip
 echo.
 echo Application portable : copie le dossier SGM ou tu veux. Ses reglages et
 echo sauvegardes seront ranges dans "SGM_data", dans ce dossier.

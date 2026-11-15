@@ -1,40 +1,43 @@
-# Mise à jour flightsim.to — beta v0.9.3
+# Mise à jour flightsim.to — v1.0
 
 Tout ce qu'il faut pour mettre à jour la page https://flightsim.to/addon/119017/sgm-statics-gsx-manager-beta-v0-5
 Les textes à recopier sont en anglais, entre les lignes `---`.
 
 ## Marche à suivre
 
-1. **Fichier** : après la publication de la release v0.9.3 sur GitHub, télécharge `SGM_beta_v0.9.3.zip`
-   (pièce jointe de la release). C'est le même fichier que la mise à jour automatique, avec son empreinte SHA-256.
-2. Sur flightsim.to : *Edit* › *Upload new version* › dépose `SGM_beta_v0.9.3.zip`.
-3. **Version** : `beta v0.9.3` — **titre de la version** : `beta v0.9.3 — Safety, reliability & a cleaner interface`
-4. **Changelog** : recopie le bloc « Changelog ». Il couvre tout depuis la v0.8, puisque la v0.9 et la v0.9.1
-   et la v0.9.2 n'ont jamais été publiées. Si tu as déjà mis la v0.9 en ligne sur flightsim.to, ne recopie que les
-   parties « beta v0.9.3 » et « beta v0.9.2 ».
-5. **Short description** et **Description** : remplace les textes actuels par ceux ci-dessous.
-6. **Mots-clés** : ajoute ceux de la liste.
-7. **Images** : remplace la galerie par les 5 visuels de `docs/flightsim/visuels/` (1920 × 1080, le 5e en 2560 × 1440), dans l'ordre :
-   `1-hero.png` (vignette), `2-statics.png`, `3-gsx.png`, `4-securite.png`, `5-interface.png` (interface expliquée).
-8. Le message de don et « About Me » ne changent pas.
+1. **Fichier** : après la publication de la release v1.0 sur GitHub, télécharge `SGM_v1.0.zip` (version portable,
+   pièce jointe de la release). Je conseille de déposer **le zip portable** sur flightsim.to : c'est le format
+   habituel du site, et la mise à jour automatique fonctionne avec lui. L'installeur `SGM_Setup_v1.0.exe` est
+   proposé sur GitHub (lien dans la description). Si flightsim.to accepte un second fichier, ajoute aussi l'installeur.
+2. Sur flightsim.to : *Edit* › *Upload new version* › dépose `SGM_v1.0.zip`.
+3. **Titre de l'add-on** : retire « beta » : `SGM - Statics & GSX Manager`.
+4. **Version** : `1.0` — **titre de la version** : `v1.0 — Installer, import from portable, out of beta`
+5. **Changelog** : recopie le bloc « Changelog ». Il couvre tout depuis la v0.8 (les v0.9 à v0.9.3 n'ont pas été
+   publiées sur flightsim.to). Si tu en as déjà publié une, ne recopie que les parties plus récentes.
+6. **Short description** et **Description** : remplace les textes actuels par ceux ci-dessous.
+7. **Mots-clés** : ajoute ceux de la liste.
+8. **Images** : remplace la galerie par les 5 visuels de `docs/flightsim/visuels/` (1920 × 1080, le 5e en
+   2560 × 1440), dans l'ordre : `1-hero.png` (vignette), `2-statics.png`, `3-gsx.png`, `4-securite.png`,
+   `5-interface.png` (interface expliquée).
+9. Le message de don et « About Me » ne changent pas.
 
 ---
 
 ## Titre de la version
 
-beta v0.9.3 — Safety, reliability & a cleaner interface
+v1.0 — Installer, import from portable, out of beta
 
 ---
 
 ## Short description
 
-Switch airport static aircraft ON/OFF in one click — the developers' own methods (Orbx, iniBuilds, Drzewiecki, UK2000…), never an airport loaded twice — plus GSX Pro profiles installed by drag & drop or straight from your Downloads. Undo, statics profiles, restore original, automatic updates. Free & portable.
+Switch airport static aircraft ON/OFF in one click — the developers' own methods (Orbx, iniBuilds, Drzewiecki, UK2000…), never an airport loaded twice — plus GSX Pro profiles installed by drag & drop or straight from your Downloads. Undo, statics profiles, restore original, automatic updates. Free — installer or portable.
 
 ---
 
 ## Description
 
-**SGM — Statics & GSX Manager** is a free, portable Windows tool for **MSFS 2024** (and MSFS 2020) that lets you switch the **static aircraft** of your airport sceneries ON or OFF in one click, and manage your **GSX Pro profiles** — without digging through folders.
+**SGM — Statics & GSX Manager** is a free Windows tool for **MSFS 2024** (and MSFS 2020) that lets you switch the **static aircraft** of your airport sceneries ON or OFF in one click, and manage your **GSX Pro profiles** — without digging through folders.
 
 **Static aircraft**
 - Finds every airport with optional statics in your Community folders and your own scenery folders (any depth).
@@ -53,7 +56,11 @@ Switch airport static aircraft ON/OFF in one click — the developers' own metho
 - **Undo** (Ctrl+Z) for every action — all-or-nothing, even if a file is locked midway — backup before every change, and a record of the **original state** of each scenery: right-click › *Restore original state*, or *Tools › Restore everything to original*.
 - Blocked while MSFS 2020 or MSFS 2024 is running. A GSX profile you edited yourself is never removed or overwritten. A scenery changed since the last scan is never touched.
 - Downloaded archives are checked before anything is extracted: only `.ini` / `.py` profile files, safe paths, limited size.
-- No installation. The only internet connection is the optional **automatic update** check (asked at first launch): nothing about you or your files is ever sent. 12 languages.
+- The only internet connection is the optional **automatic update** check (asked at first launch): nothing about you or your files is ever sent. 12 languages.
+
+**Installer or portable — your choice**
+- **Portable** (this download): unzip anywhere and run `SGM.exe`.
+- **Installer**: `SGM_Setup_v1.0.exe` from https://github.com/FuchyBe/SGM/releases/latest — installs for your Windows account only, no administrator rights, Start menu shortcut, clean uninstall. At the first launch it can import the data of your portable SGM.
 
 **Found a bug or have an idea?** *Help › Report a problem…* opens a small form: SGM prepares your text, a statics analysis report and its log (no user name, no personal path) and opens the GitHub page — nothing is sent until you click Submit.
 🐞 https://github.com/FuchyBe/SGM/issues
@@ -63,6 +70,12 @@ If SGM saves you some time, you can buy me a coffee ☕ — https://paypal.me/Fu
 ---
 
 ## Changelog
+
+**v1.0 — Installer, import from portable, out of beta**
+- **First stable version.**
+- **Installer**: `SGM_Setup_v1.0.exe` installs SGM for your Windows account only (no administrator rights), with a Start menu shortcut and an uninstaller. The portable `.zip` stays available.
+- **Import from the portable version**: at the first launch, the installed version offers to copy your portable SGM's data (settings, statics profiles, backups, original states). The portable copy is left untouched.
+- Uninstalling keeps your data unless you ask to delete it. Automatic updates work for both versions.
 
 **beta v0.9.3 — Cleaner interface**
 - **Menus reorganised**: *Settings*, a new *Tools* menu (scan, install a GSX profile, statics profiles, undo, restore everything, analysis report, backups and log folders) and *Help*.
@@ -96,13 +109,13 @@ If SGM saves you some time, you can buy me a coffee ☕ — https://paypal.me/Fu
 
 **Updating**
 - From v0.9 or later: SGM offers this version itself (*Update now*).
-- From an older version: delete the old SGM folder (keep `SGM_data` to keep your settings, backups and profiles), unzip v0.9.3, run `SGM.exe`. From now on, SGM can update itself.
+- From an older version: delete the old SGM folder (keep `SGM_data` to keep your settings, backups and profiles), unzip v1.0, run `SGM.exe` — or run `SGM_Setup_v1.0.exe` and import your portable data at the first launch. From now on, SGM can update itself.
 
 ---
 
 ## Mots-clés (à ajouter aux actuels)
 
-auto update, undo, profiles, safe, 7z, rar, shortcuts
+auto update, undo, profiles, safe, 7z, rar, shortcuts, installer
 
 Mots-clés actuels, pour mémoire : statics, static aircraft, parked aircraft, GSX, GSX Pro, GSX profile, Virtuali,
 FSDreamTeam, scenery, airport, community folder, manager, tool, utility, MSFS 2024, MSFS 2020, toggle, AI traffic,
