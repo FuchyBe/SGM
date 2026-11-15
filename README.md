@@ -102,7 +102,7 @@ The full user guide is in the app: **Help › User guide** (F1).
 
 ## Backups
 
-**Undo** (button next to *Install GSX profile…*, or **Ctrl+Z**) cancels the last action — a switch, All ON / All OFF as a whole, a GSX profile copied or installed, a restore — and can be pressed again to go further back (10 actions kept). Files go back exactly as they were; if one was changed since, nothing is modified.
+**Undo** (button to the right of *Profiles*, or **Ctrl+Z**) cancels the last action — a switch, All ON / All OFF as a whole, a GSX profile copied or installed, a restore — and can be pressed again to go further back (10 actions kept). Files go back exactly as they were; if one was changed since, nothing is modified.
 
 Before every change, the modified files are copied to `SGM_data\backups`:
 - one folder per scenery, keeping the 10 most recent backups;
@@ -121,7 +121,7 @@ Before its very first change to a scenery, SGM records how it was in `SGM_data\o
 
 ## Updates of SGM
 
-At the first launch, SGM asks whether it may check for a new version. If you agree, once a day at most it asks GitHub (github.com/FuchyBe/SGM) for the latest version number: this is the only internet connection SGM makes, and nothing else is sent. When a new version exists, **Update now** downloads it, checks its published SHA-256 fingerprint, closes SGM, replaces its files and restarts — `SGM_data` (settings, backups, profiles) is never touched, and the previous version is put back if something goes wrong. **Help › Check for updates…** checks at any time; **Settings › Check for updates at launch** turns it on or off.
+At the first launch, SGM asks whether it may check for a new version. If you agree, once a day at most it asks GitHub (github.com/FuchyBe/SGM) for the latest version number. SGM only connects to GitHub: the version number and, if you choose **Update now**, the download of the new version; nothing else is sent. When a new version exists, **Update now** downloads it, checks its published SHA-256 fingerprint, closes SGM, replaces its files and restarts — `SGM_data` (settings, backups, profiles) is never touched, and the previous version is put back if something goes wrong. **Help › Check for updates…** checks at any time; **Settings › Check for updates at launch** turns it on or off.
 
 ## Updates of sceneries
 
