@@ -2171,7 +2171,7 @@ class ArchiveError(Exception):
 
 
 def find_7z() -> str | None:
-    exe = shutil.which("7z") or shutil.which("7z.exe")
+    exe = shutil.which("7z") or shutil.which("7z.exe") or shutil.which("7zz") or shutil.which("7za")
     if exe:
         return exe
     for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)"), os.environ.get("ProgramW6432")):
