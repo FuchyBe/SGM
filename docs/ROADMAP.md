@@ -5,19 +5,32 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 ## Prêt
 
-Placés par Fabian le 2026-11-15.
+Placés par Fabian le 2026-11-15 (« je suis tes propositions »).
 
-1. **Publier la v0.9 puis la v0.9.1 sur GitHub** — Fabian publie (aucun agent ne publie). Premier vrai test de la
-   mise à jour automatique : une v0.9 installée doit proposer, installer et relancer la v0.9.1. S.
+1. **Publier la v0.9.2 sur GitHub** — Fabian publie (aucun agent ne publie) : Actions › « Préparer une release
+   (brouillon) », puis « Publish release ». Ne pas publier le brouillon v0.9 (faille des chemins d'archive,
+   corrigée en v0.9.2) : le supprimer. S.
+2. **Ergonomie (revue design D6 à D14)** — menus regroupés (Outils / Paramètres / Aide), raccourcis Ctrl+F, F5,
+   Échap ; libellés « Défaire », « Profils statics », « Nouvelles scènes » ; question de mise à jour dans le bandeau ;
+   colonne GSX plus légère ; hiérarchie de la fenêtre Dossiers. M.
+3. **Nouvelles fonctions (revue R&D, E1 à E5)** — statics remis par une mise à jour de scène (bandeau
+   « Réappliquer ») ; profil GSX peut-être périmé ; détection du trafic IA ; export / import des réglages et profils ;
+   tri de « À trier ». Points à **décision de Fabian** avant développement : doublons OACI (SGM ou 3AM ?),
+   Marketplace en lecture seule, ligne de commande. M à L.
 
 ## En cours (PR à tester)
 
-- beta v0.9.1 — branche `sprint/2026-11-15-v0.9.1`.
+- beta v0.9.2 — branche `sprint/2026-11-15-v0.9.2`.
 
 ## À trier
 
 Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L), risque.
 
+- **Réserves de la revue finale v0.9.2** — origine : revue. Restauration proposée même sur une scène déjà
+  d'origine ; « Tout OFF » relit chaque scène (à mesurer) ; mise à jour annulée si SGM.exe a été renommé ;
+  retour arrière de la mise à jour qui laisse les nouveaux fichiers de `_internal` ; SGM à la racine d'un lecteur ;
+  .7z avec un .ini > 4 Mo sans rapport refusé en entier ; profil GSX remplacé par l'utilisateur entre deux
+  installations. S chacun. Risque faible.
 
 - **Envoi direct des rapports sans compte GitHub** — origine : Fabian. Relais serveur. M. **Décision de Fabian**
   (réseau, serveur, confidentialité). Fiche, étape 3.
@@ -36,6 +49,8 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **beta v0.9.2** (préparée) — sécurité archives et mise à jour (PR #29), robustesse et tout-ou-rien (PR #30),
+  défauts de design (PR #31), traductions et guide (PR #32).
 - **Mise à jour : 404 = aucune version publiée** (PR #27), **beta v0.9** (PR #26).
 - **beta v0.9** (préparée) — mise à jour automatique, sécurité G1 à G6, .7z testé, français complet, accroches 3AM.
 - **Archives .7z / .rar testées** (PR #25), **français complet** (PR #24), **sécurité G4 à G6** (PR #23).
