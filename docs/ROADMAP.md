@@ -7,12 +7,12 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-15.
 
-1. **Publier la v0.9 sur GitHub** — Fabian lance « Préparer une release (brouillon) » puis publie (aucun agent ne
-   publie). S.
+1. **Publier la v0.9 puis la v0.9.1 sur GitHub** — Fabian publie (aucun agent ne publie). Premier vrai test de la
+   mise à jour automatique : une v0.9 installée doit proposer, installer et relancer la v0.9.1. S.
 
 ## En cours (PR à tester)
 
-- beta v0.9 — branche `sprint/2026-11-15-v0.9`.
+- beta v0.9.1 — branche `sprint/2026-11-15-v0.9.1`.
 
 ## À trier
 
@@ -36,6 +36,7 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
+- **Mise à jour : 404 = aucune version publiée** (PR #27), **beta v0.9** (PR #26).
 - **beta v0.9** (préparée) — mise à jour automatique, sécurité G1 à G6, .7z testé, français complet, accroches 3AM.
 - **Archives .7z / .rar testées** (PR #25), **français complet** (PR #24), **sécurité G4 à G6** (PR #23).
 - **Points d'accroche pour 3AM, S1 à S12** (PR #22).

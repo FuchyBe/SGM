@@ -1,4 +1,4 @@
-# SGM — Statics & GSX Manager · beta v0.9
+# SGM — Statics & GSX Manager · beta v0.9.1
 
 <p align="center"><img src="assets/SGM-256.png" width="128" alt="SGM"></p>
 
@@ -32,7 +32,7 @@ SGM does it for you:
 
 There is nothing to install.
 
-1. Unzip `SGM_beta_v0.9.zip` anywhere (tools folder, USB stick…).
+1. Unzip `SGM_beta_v0.9.1.zip` anywhere (tools folder, USB stick…).
 2. Run `SGM.exe` from the `SGM` folder.
 
 Keep the whole `SGM` folder together: `SGM.exe` needs the `_internal` folder next to it.
@@ -132,7 +132,7 @@ A scenery update (for example through the Marketplace or an installer) may resto
 Requirements: Python 3.10 or newer.
 
 1. Put `statics_manager.py`, `i18n.py`, `build_exe.bat`, both README files and the `licenses` folder together.
-2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.9.zip`.
+2. Run `build_exe.bat`. It installs PySide6 and PyInstaller, builds `dist\SGM\SGM.exe`, copies the licences and README files, and creates `dist\SGM_beta_v0.9.1.zip`.
 
 To run without building: `pip install pyside6`, then `python statics_manager.py`.
 
@@ -181,6 +181,9 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Microsoft Flight Simulator is a trademark of Microsoft Corporation. GSX is a product of FSDreamTeam / Virtuali. All other names and trademarks are the property of their respective owners.
 
 ## Version history
+
+**beta v0.9.1**
+- **Fix**: *Help › Check for updates…* showed "HTTP Error 404" while no version was published yet on GitHub; it now says SGM is up to date.
 
 **beta v0.9**
 - **Automatic updates** (optional, asked at first launch): SGM checks GitHub once a day at most, shows what's new, downloads, verifies the SHA-256 fingerprint and restarts; `SGM_data` is kept and the previous version is put back if something goes wrong. Help › Check for updates… at any time.
