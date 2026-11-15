@@ -128,8 +128,14 @@ class InstallModeTest(SandboxTest):
                 keys = [a.data() for a in w.menuBar().actions()[0].menu().actions()]
                 self.assertIn("m_import", keys)
                 base = portable(self.tmp / "Outils" / "SGM")
-                with mock.patch.object(m.QMessageBox, "information"):
-                    w.import_from_portable(str(base))
+                w.set_busy(True)                                    # premier lancement : l'analyse tourne
+                with mock.patch.object(m.QFileDialog, "getExistingDirectory", return_value=str(base)) as dlg, \
+                        mock.patch.object(m.QMessageBox, "information"):
+                    w.import_from_portable(False)                   # clic sur « Reprendre… » (signal clicked)
+                    self.assertEqual(dlg.call_count, 1)             # le dossier se choisit même pendant l'analyse
+                    self.assertNotEqual(m.Config().lang, "fr")      # copie en attente
+                    w.set_busy(False)
+                    APP.processEvents()
                 self.assertEqual(m.Config().lang, "fr")              # données reprises et rechargées
             finally:
                 for x in APP.topLevelWidgets():

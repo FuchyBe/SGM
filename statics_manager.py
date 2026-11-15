@@ -5355,8 +5355,13 @@ class MainWindow(QMainWindow):
         self.banner_lbl.setText(html)
         self.banner.show()
 
+    _pending_import = None
+
     def set_busy(self, busy: bool):
         self.busy = busy
+        if not busy and self._pending_import:
+            folder, self._pending_import = self._pending_import, None
+            QTimer.singleShot(0, lambda: self.import_from_portable(folder))
         for b in (self.btn_folders, self.btn_scan, self.btn_install, self.btn_all_off, self.btn_all_on,
                   self.btn_profiles):
             b.setEnabled(not busy)
@@ -5473,9 +5478,8 @@ class MainWindow(QMainWindow):
             self.check_updates(manual=False)
 
     def import_from_portable(self, folder=None):
-        """Copie le SGM_data d'une version portable dans les données de la version installée, puis recharge."""
-        if self.busy:
-            return
+        """Copie le SGM_data d'une version portable dans les données de la version installée, puis recharge.
+        Le dossier se choisit tout de suite ; si une analyse tourne (premier lancement), la copie attend sa fin."""
         if not isinstance(folder, (str, Path)) or not folder:
             folder = QFileDialog.getExistingDirectory(self, tr("import_choose"), str(Path.home()))
             if not folder:
@@ -5483,6 +5487,9 @@ class MainWindow(QMainWindow):
         src = find_portable_data(folder)
         if src is None:
             warn(self, tr("import_none"))
+            return
+        if self.busy:                          # analyse en cours : reprise lancée dès qu'elle se termine
+            self._pending_import = str(folder)
             return
         dst = data_dir()
         if norm_key(src) == norm_key(dst):
