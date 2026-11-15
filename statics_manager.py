@@ -395,9 +395,32 @@ class Source:
     exists: bool = True
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  Points d'accroche pour une application hôte (3AM) — fiche docs/rd/2026-11-15-accroches-3am.md
+#  Tous à None / False : aucun effet sur SGM seul.
+# ════════════════════════════════════════════════════════════════════════════
+
+HOST_REPLACE = None       # S1 : fonction(state) appelée au lieu de recréer la fenêtre (changement de langue…)
+EXTRA_SOURCES = None      # S2 : [(étiquette, chemin)] ou fonction(config) -> [(étiquette, chemin)]
+REAL_ROOTS = False        # S3 : analyser les paquets par leur chemin réel (liens / jonctions résolus)
+HOST_CONFIRM_SIM = None   # S11 : fonction(parent) -> bool appelée avant chaque écriture, à la place du contrôle de SGM
+HOST_HELP_ITEMS = None    # S12 : clés des entrées du menu Aide à garder (None = toutes)
+
+
+def hosted() -> bool:
+    """SGM est embarqué dans une application hôte (3AM)."""
+    return HOST_REPLACE is not None
+
+
+USERCFG_MAX = 256 * 1024
+
+
 def parse_usercfg(cfg: Path) -> Path | None:
+    """Dossier des paquets (InstalledPackagesPath) de UserCfg.opt. Fichier anormal ou chemin douteux : None (S9)."""
     try:
-        text = cfg.read_text(encoding="utf-8", errors="ignore")
+        if cfg.stat().st_size > USERCFG_MAX:
+            return None
+        text = cfg.read_text(encoding="utf-8-sig", errors="ignore")
     except OSError:
         return None
     for line in text.splitlines():
@@ -409,9 +432,11 @@ def parse_usercfg(cfg: Path) -> Path | None:
             else:
                 parts = s.split(None, 1)
                 val = parts[1] if len(parts) == 2 else ""
-            val = val.strip()
-            if val:
-                return Path(val)
+            val = val.strip().strip('"').strip()
+            if not val or len(val) > 260 or any(ord(ch) < 32 for ch in val) or "*" in val or "?" in val:
+                return None
+            path = Path(val)
+            return path if (path.is_absolute() or os.name != "nt" and val.startswith("/")) else None
     return None
 
 
@@ -443,6 +468,17 @@ def find_sources(config: Config) -> list[Source]:
             continue
         seen.add(k)
         out.append(Source(MANUAL, Path(f), False, Path(f).is_dir()))
+    if EXTRA_SOURCES:                          # accroche S2 : bibliothèques de l'application hôte
+        try:
+            extra = EXTRA_SOURCES(config) if callable(EXTRA_SOURCES) else EXTRA_SOURCES
+            for label, f in extra or []:
+                k = norm_key(f)
+                if k in seen:
+                    continue
+                seen.add(k)
+                out.append(Source(str(label), Path(f), False, Path(f).is_dir()))
+        except Exception as e:
+            LOG.warning("Sources de l'hôte ignorées : %s", e)
     return out
 
 
@@ -1124,7 +1160,7 @@ def scan_all(sources: list[Source], progress=None) -> list[Scene]:
         if real in scenes:
             continue
         try:
-            sc = scan_package(p, source_label(s, p))
+            sc = scan_package(Path(os.path.realpath(p)) if REAL_ROOTS else p, source_label(s, p))
         except Exception:
             sc = None
         if sc:
@@ -1231,6 +1267,7 @@ def backup_files(root: Path, files: list[Path]):
 
 UNDO_MAX = 10                       # actions gardées
 UNDO_COPY_MAX = 8 * 1024 * 1024     # au-delà, pas de copie : le contenu est retrouvé par empreinte (renommage)
+UNDO_TOTAL_MAX = 500 * 1024 * 1024  # plafond de toutes les copies d'annulation (S8) ; au-delà : empreinte seule
 
 
 class UndoError(Exception):
@@ -1246,6 +1283,10 @@ class UndoRecorder:
         self.label = label
         self.before: dict = {}      # clé -> (chemin, empreinte ou None, copie ou None)
         self.tmp = Path(tempfile.mkdtemp(prefix="sgm-undo-", dir=str(data_dir())))
+        try:
+            self.used = sum(f.stat().st_size for f in undo_dir().rglob("*") if f.is_file())
+        except OSError:
+            self.used = 0
 
     def watch(self, *paths):
         for p in paths:
@@ -1258,9 +1299,12 @@ class UndoRecorder:
             h, copy = None, None
             if p.is_file():
                 h = file_hash(p)
-                if p.stat().st_size <= UNDO_COPY_MAX or p.name.lower() in ("layout.json", "manifest.json"):
+                size = p.stat().st_size
+                meta = p.name.lower() in ("layout.json", "manifest.json")
+                if meta or (size <= UNDO_COPY_MAX and self.used + size <= UNDO_TOTAL_MAX):
                     copy = f"{len(self.before)}_{p.name}"
                     shutil.copy2(p, self.tmp / copy)
+                    self.used += size
             self.before[k] = (p, h, copy)
 
     def finish(self) -> bool:
@@ -2705,8 +2749,19 @@ def running_sims() -> list | None:
     return [s for s in SIMS if f'"{SIMS[s]["process"]}"' in out]
 
 
+SIM_OPEN, SIM_CLOSED, SIM_UNKNOWN = "ouvert", "fermé", "inconnu"
+
+
+def sim_state(sim: str) -> str:
+    """État du simulateur à trois états (accroche S7)."""
+    running = running_sims()
+    if running is None:
+        return SIM_UNKNOWN
+    return SIM_OPEN if sim in running else SIM_CLOSED
+
+
 def sim_running(sim: str) -> bool:
-    return sim in (running_sims() or [])
+    return sim_state(sim) == SIM_OPEN
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -2718,24 +2773,41 @@ C = {
     "border2": "#2D3441", "text": "#E7E9ED", "muted": "#8B93A5", "faint": "#5E6678",
     "accent": "#4CC9A0", "accent_dark": "#0A1A14", "warn": "#E3B266", "blue": "#7AA7F5",
     "heart": "#E2677A",
+    # Jetons de thème (accroche S4 pour une application hôte) : valeurs = rendu sombre actuel de SGM
+    "text2": "#C9CED8", "doc_text": "#C9CED8", "hover": "#232835", "sel": "#232835", "pressed": "#1A1E27",
+    "accent_hover": "#5DD6AE", "accent_dis_bg": "#2A4A40", "accent_dis_fg": "#5E7A70", "accent_soft": "#12241E",
+    "accent_line": "#2B5A4B", "accent_pressed": "#183026",
+    "off_text": "#E07A72", "off_text_hover": "#F09088", "off_line": "#5A2D2A", "off_soft": "#1F1413",
+    "off_soft_hover": "#2A1817",
+    "warn_soft": "#221C12", "warn_line": "#4A3A1E", "warn_soft_hover": "#2C2416",
+    "blue_soft": "#141C2A", "blue_soft2": "#172235", "blue_line": "#2E4670", "banner_line": "#263A5C",
+    "danger": "#B5443D", "danger_hover": "#C85149", "danger_pressed": "#9E3A34", "danger_dis_bg": "#4A2725",
+    "danger_dis_fg": "#8A6360", "on_danger": "#FFF4F3",
+    "row_hover": "#181C24", "scroll_hover": "#3A4352", "heart_hover": "#F07F90",
+    "knob": "#F3F5F7", "switch_off": "#2A303C", "track_dis": "#20242D", "knob_dis": "#4A5161", "menubar": "#0E1014",
 }
+SWITCH_MARKS = False        # accroche S5 : l'hôte peut dessiner ✓ / ✗ dans les interrupteurs
 
-QSS = f"""
-* {{ font-size: 13px; }}
+def build_qss(C: dict, font_scale: float = 1.0) -> str:
+    """Feuille de style à partir des jetons de couleur (accroche S4). SGM seul : build_qss(C) = rendu actuel."""
+    def px(n: int) -> str:
+        return f"{max(1, round(n * font_scale))}px"
+    return f"""
+* {{ font-size: {px(13)}; }}
 QMainWindow, QDialog, QWidget#central, QWidget#list {{ background: {C['bg']}; color: {C['text']}; }}
 QLabel {{ background: transparent; color: {C['text']}; }}
-QLabel#h1 {{ font-size: 21px; font-weight: 600; letter-spacing: 0.3px; }}
+QLabel#h1 {{ font-size: {px(21)}; font-weight: 600; letter-spacing: 0.3px; }}
 QLabel#subtitle, QLabel#sub, QLabel#status, QLabel#hint {{ color: {C['muted']}; }}
-QLabel#sub {{ font-size: 12px; }}
-QLabel#status {{ font-size: 12px; }}
-QLabel#stats {{ color: {C['muted']}; font-size: 12px; }}
-QLabel#title {{ font-size: 14px; font-weight: 600; }}
-QLabel#empty {{ color: {C['faint']}; font-size: 14px; padding: 40px; }}
-QLabel#fullname {{ color: {C['muted']}; font-size: 15px; font-weight: 500; padding-bottom: 2px; }}
-QLabel#simPill {{ color: {C['blue']}; border: 1px solid #2E4670; background: #141C2A; border-radius: 5px;
-                  padding: 2px 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.6px; }}
-QLabel#credit {{ color: {C['faint']}; font-size: 11px; padding: 0 6px; }}
-QMenuBar {{ background: {C['bg']}; color: {C['muted']}; border-bottom: 1px solid {C['border']}; padding: 2px 8px; }}
+QLabel#sub {{ font-size: {px(12)}; }}
+QLabel#status {{ font-size: {px(12)}; }}
+QLabel#stats {{ color: {C['muted']}; font-size: {px(12)}; }}
+QLabel#title {{ font-size: {px(14)}; font-weight: 600; }}
+QLabel#empty {{ color: {C['faint']}; font-size: {px(14)}; padding: 40px; }}
+QLabel#fullname {{ color: {C['muted']}; font-size: {px(15)}; font-weight: 500; padding-bottom: 2px; }}
+QLabel#simPill {{ color: {C['blue']}; border: 1px solid {C['blue_line']}; background: {C['blue_soft']}; border-radius: 5px;
+                  padding: 2px 8px; font-size: {px(11)}; font-weight: 700; letter-spacing: 0.6px; }}
+QLabel#credit {{ color: {C['faint']}; font-size: {px(11)}; padding: 0 6px; }}
+QMenuBar {{ background: {C['menubar']}; color: {C['muted']}; border-bottom: 1px solid {C['border']}; padding: 2px 8px; }}
 QMenuBar::item {{ background: transparent; padding: 5px 10px; border-radius: 5px; }}
 QMenuBar::item:selected {{ background: {C['surface2']}; color: {C['text']}; }}
 QMenu {{ background: {C['surface']}; color: {C['text']}; border: 1px solid {C['border2']}; padding: 5px; }}
@@ -2744,32 +2816,32 @@ QMenu::item:selected {{ background: {C['surface2']}; }}
 QMenu::item:disabled {{ color: {C['faint']}; }}
 QMenu::separator {{ height: 1px; background: {C['border']}; margin: 5px 8px; }}
 QToolButton#cornerBtn {{ background: transparent; border: 1px solid transparent; border-radius: 5px;
-                         color: {C['muted']}; padding: 2px 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }}
+                         color: {C['muted']}; padding: 2px 6px; font-size: {px(11)}; font-weight: 700; letter-spacing: 0.5px; }}
 QToolButton#cornerBtn:hover {{ background: {C['surface2']}; border-color: {C['border2']}; color: {C['text']}; }}
 QToolButton#cornerBtn::menu-indicator {{ image: none; width: 0; }}
 QPushButton#varChip {{ background: transparent; color: {C['muted']}; border: 1px solid {C['border2']};
-                      border-radius: 6px; padding: 4px 10px; font-size: 12px; }}
+                      border-radius: 6px; padding: 4px 10px; font-size: {px(12)}; }}
 QPushButton#varChip:hover {{ color: {C['text']}; background: {C['surface2']}; }}
-QPushButton#varChip[vstate="active"] {{ color: {C['accent']}; border-color: #2B5A4B; background: #12241E; font-weight: 600; }}
-QPushButton#varChip[vstate="inactive"] {{ color: #E07A72; border-color: #5A2D2A; background: #1F1413; }}
-QPushButton#varChip[vstate="inactive"]:hover {{ color: #F09088; background: #2A1817; }}
-QPushButton#varChip[vstate="check"] {{ color: {C['warn']}; border-color: #4A3A1E; background: #221C12; }}
-QPushButton#varChip[vstate="check"]:hover {{ background: #2C2416; }}
+QPushButton#varChip[vstate="active"] {{ color: {C['accent']}; border-color: {C['accent_line']}; background: {C['accent_soft']}; font-weight: 600; }}
+QPushButton#varChip[vstate="inactive"] {{ color: {C['off_text']}; border-color: {C['off_line']}; background: {C['off_soft']}; }}
+QPushButton#varChip[vstate="inactive"]:hover {{ color: {C['off_text_hover']}; background: {C['off_soft_hover']}; }}
+QPushButton#varChip[vstate="check"] {{ color: {C['warn']}; border-color: {C['warn_line']}; background: {C['warn_soft']}; }}
+QPushButton#varChip[vstate="check"]:hover {{ background: {C['warn_soft_hover']}; }}
 QComboBox {{ background: {C['surface2']}; color: {C['text']}; border: 1px solid {C['border2']};
-             border-radius: 6px; padding: 3px 8px; font-size: 12px; }}
+             border-radius: 6px; padding: 3px 8px; font-size: {px(12)}; }}
 QComboBox QAbstractItemView {{ background: {C['surface2']}; color: {C['text']}; border: 1px solid {C['border2']};
-                               selection-background-color: #232835; }}
+                               selection-background-color: {C['sel']}; }}
 QLabel#note[ok="true"] {{ color: {C['accent']}; }}
-QLabel#gsxManual {{ color: {C['accent']}; border: 1px solid #2B5A4B; background: #12241E; border-radius: 6px;
-                   padding: 4px 10px; font-size: 12px; }}
+QLabel#gsxManual {{ color: {C['accent']}; border: 1px solid {C['accent_line']}; background: {C['accent_soft']}; border-radius: 6px;
+                   padding: 4px 10px; font-size: {px(12)}; }}
 QPushButton#searchBtn {{ background: transparent; color: {C['muted']}; border: 1px dashed {C['border2']};
-                        border-radius: 6px; padding: 4px 9px; font-size: 12px; }}
-QPushButton#searchBtn:hover {{ color: {C['blue']}; border-color: #2E4670; background: #141C2A; }}
+                        border-radius: 6px; padding: 4px 9px; font-size: {px(12)}; }}
+QPushButton#searchBtn:hover {{ color: {C['blue']}; border-color: {C['blue_line']}; background: {C['blue_soft']}; }}
 QComboBox#catCombo {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 9px;
-                      padding: 8px 34px 8px 12px; font-size: 13px; min-width: 190px; }}
+                      padding: 8px 34px 8px 12px; font-size: {px(13)}; min-width: 190px; }}
 QComboBox#catCombo:hover {{ border-color: {C['border2']}; }}
 QComboBox#colFilter {{ background: transparent; border: 1px solid {C['border']}; border-radius: 7px;
-                      padding: 2px 26px 2px 9px; color: {C['muted']}; font-size: 11px; font-weight: 600; min-height: 20px; }}
+                      padding: 2px 26px 2px 9px; color: {C['muted']}; font-size: {px(11)}; font-weight: 600; min-height: 20px; }}
 QComboBox#colFilter:hover {{ border-color: {C['border2']}; color: {C['text']}; }}
 QComboBox#colFilter[active="true"] {{ border-color: {C['accent']}; color: {C['accent']}; background: {C['surface']}; }}
 QComboBox#colFilter::drop-down {{ border: none; width: 22px; }}
@@ -2782,98 +2854,108 @@ QComboBox#catCombo::down-arrow {{ image: none; width: 0; height: 0; }}
 QPushButton#folderBtn {{ background: transparent; border: 1px solid transparent; border-radius: 6px;
                         padding: 0; min-width: 26px; max-width: 26px; min-height: 24px; max-height: 24px; }}
 QPushButton#folderBtn:hover {{ background: {C['surface2']}; border-color: {C['border2']}; }}
-QPushButton#folderBtn:pressed {{ background: #232835; }}
-QLabel#badgeNew {{ color: {C['blue']}; border: 1px solid #2E4670; background: #172235;
-                   border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; }}
+QPushButton#folderBtn:pressed {{ background: {C['hover']}; }}
+QLabel#badgeNew {{ color: {C['blue']}; border: 1px solid {C['blue_line']}; background: {C['blue_soft2']};
+                   border-radius: 4px; padding: 1px 6px; font-size: {px(10)}; font-weight: 700; letter-spacing: 0.8px; }}
 QLabel#chip {{ color: {C['faint']}; border: 1px solid {C['border2']}; border-radius: 4px;
-               padding: 1px 6px; font-size: 11px; }}
-QLabel#state {{ font-size: 12px; font-weight: 600; min-width: 92px; }}
+               padding: 1px 6px; font-size: {px(11)}; }}
+QLabel#state {{ font-size: {px(12)}; font-weight: 600; min-width: 92px; }}
 QLabel#state[state="on"] {{ color: {C['accent']}; }}
 QLabel#state[state="off"] {{ color: {C['muted']}; }}
 QLabel#state[state="none"] {{ color: {C['faint']}; font-weight: 400; }}
 QLabel#state[state="mixed"], QLabel#state[state="conflict"] {{ color: {C['warn']}; }}
-QLabel#src {{ color: {C['muted']}; font-size: 11px; font-weight: 700; letter-spacing: 0.6px; min-width: 70px; }}
+QLabel#src {{ color: {C['muted']}; font-size: {px(11)}; font-weight: 700; letter-spacing: 0.6px; min-width: 70px; }}
 QLabel#path {{ color: {C['text']}; }}
-QLabel#missing {{ color: {C['warn']}; font-size: 11px; }}
+QLabel#missing {{ color: {C['warn']}; font-size: {px(11)}; }}
 QLineEdit {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 8px;
              padding: 7px 11px; color: {C['text']}; selection-background-color: {C['accent']}; }}
 QLineEdit:focus {{ border-color: {C['border2']}; background: {C['surface2']}; }}
 QPushButton {{ background: {C['surface2']}; color: {C['text']}; border: 1px solid {C['border']};
                border-radius: 8px; padding: 7px 14px; }}
-QPushButton:hover {{ background: #232835; border-color: {C['border2']}; }}
-QPushButton:pressed {{ background: #1A1E27; }}
+QPushButton:hover {{ background: {C['hover']}; border-color: {C['border2']}; }}
+QPushButton:pressed {{ background: {C['pressed']}; }}
 QPushButton:disabled {{ color: {C['faint']}; background: {C['surface']}; }}
 QPushButton#primary {{ background: {C['accent']}; color: {C['accent_dark']}; border: none; font-weight: 600; }}
-QPushButton#primary:hover {{ background: #5DD6AE; }}
-QPushButton#primary:disabled {{ background: #2A4A40; color: #5E7A70; }}
-QPushButton#danger {{ background: #B5443D; color: #FFF4F3; border: none; font-weight: 600; }}
-QPushButton#danger:hover {{ background: #C85149; }}
-QPushButton#danger:pressed {{ background: #9E3A34; }}
-QPushButton#danger:disabled {{ background: #4A2725; color: #8A6360; }}
+QPushButton#primary:hover {{ background: {C['accent_hover']}; }}
+QPushButton#primary:disabled {{ background: {C['accent_dis_bg']}; color: {C['accent_dis_fg']}; }}
+QPushButton#danger {{ background: {C['danger']}; color: {C['on_danger']}; border: none; font-weight: 600; }}
+QPushButton#danger:hover {{ background: {C['danger_hover']}; }}
+QPushButton#danger:pressed {{ background: {C['danger_pressed']}; }}
+QPushButton#danger:disabled {{ background: {C['danger_dis_bg']}; color: {C['danger_dis_fg']}; }}
 QPushButton#chipBtn {{ background: transparent; border: 1px solid transparent; color: {C['muted']};
                        padding: 5px 11px; border-radius: 7px; }}
 QPushButton#chipBtn:hover {{ color: {C['text']}; }}
 QPushButton#chipBtn:checked {{ background: {C['surface2']}; border-color: {C['border2']}; color: {C['text']}; }}
-QPushButton#gsx {{ background: transparent; color: {C['blue']}; border: 1px solid #2E4670;
-                  border-radius: 6px; padding: 4px 10px; font-size: 12px; }}
-QPushButton#gsx:hover {{ background: #172235; }}
+QPushButton#gsx {{ background: transparent; color: {C['blue']}; border: 1px solid {C['blue_line']};
+                  border-radius: 6px; padding: 4px 10px; font-size: {px(12)}; }}
+QPushButton#gsx:hover {{ background: {C['blue_soft2']}; }}
 QPushButton#gsx[gsx="same"] {{ color: {C['muted']}; border-color: {C['border2']}; }}
-QPushButton#gsx[gsx="diff"] {{ color: {C['warn']}; border-color: #4A3A1E; }}
+QPushButton#gsx[gsx="diff"] {{ color: {C['warn']}; border-color: {C['warn_line']}; }}
 QFrame#vsep {{ background: {C['border']}; min-width: 1px; max-width: 1px; border: none; }}
 QFrame#vsepHidden {{ background: transparent; min-width: 1px; max-width: 1px; border: none; }}
-QLabel#colHead {{ color: {C['faint']}; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }}
-QLabel#colHead[plain="true"] {{ font-size: 11px; letter-spacing: 0px; }}
-QLabel#note {{ color: {C['faint']}; font-size: 11px; }}
+QLabel#colHead {{ color: {C['faint']}; font-size: {px(10)}; font-weight: 700; letter-spacing: 1.2px; }}
+QLabel#colHead[plain="true"] {{ font-size: {px(11)}; letter-spacing: 0px; }}
+QLabel#note {{ color: {C['faint']}; font-size: {px(11)}; }}
 QLabel#note[warn="true"] {{ color: {C['warn']}; }}
-QLabel#none {{ color: {C['faint']}; font-size: 12px; }}
+QLabel#none {{ color: {C['faint']}; font-size: {px(12)}; }}
 QPushButton#ghost {{ background: transparent; border: none; color: {C['muted']}; padding: 4px 8px; }}
 QPushButton#ghost:hover {{ color: {C['text']}; }}
 QFrame#chips {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 9px; }}
 QFrame#row {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 10px; }}
-QFrame#row:hover {{ border-color: {C['border2']}; background: #181C24; }}
-QFrame#banner {{ background: #141C2A; border: 1px solid #263A5C; border-radius: 9px; }}
-QFrame#banner[kind="warn"] {{ background: #221C12; border-color: #4A3A1E; }}
+QFrame#row:hover {{ border-color: {C['border2']}; background: {C['row_hover']}; }}
+QFrame#banner {{ background: {C['blue_soft']}; border: 1px solid {C['banner_line']}; border-radius: 9px; }}
+QFrame#banner[kind="warn"] {{ background: {C['warn_soft']}; border-color: {C['warn_line']}; }}
 QFrame#sep {{ background: {C['border']}; max-height: 1px; min-height: 1px; border: none; }}
 QFrame#folderRow {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 8px; }}
 QScrollArea {{ border: none; background: transparent; }}
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
 QScrollBar::handle:vertical {{ background: {C['border2']}; border-radius: 3px; min-height: 30px; }}
-QScrollBar::handle:vertical:hover {{ background: #3A4352; }}
+QScrollBar::handle:vertical:hover {{ background: {C['scroll_hover']}; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ height: 0; background: none; }}
 QToolTip {{ background: {C['surface2']}; color: {C['text']}; border: 1px solid {C['border2']}; padding: 6px; }}
 QMessageBox {{ background: {C['surface']}; }}
 QPlainTextEdit {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 8px;
                   padding: 5px 8px; color: {C['text']}; selection-background-color: {C['accent']}; }}
 QPlainTextEdit:focus {{ border-color: {C['border2']}; background: {C['surface2']}; }}
-QPlainTextEdit#preview {{ color: {C['muted']}; font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px; }}
+QPlainTextEdit#preview {{ color: {C['muted']}; font-family: Consolas, "Cascadia Mono", monospace; font-size: {px(11)}; }}
 QFrame#bulkSeg {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 13px;
                   min-height: 24px; max-height: 24px; }}
 QFrame#bulkSeg:hover {{ border-color: {C['border2']}; }}
 QFrame#bulkDiv {{ background: {C['border2']}; min-width: 1px; max-width: 1px; border: none; margin: 5px 0; }}
 QPushButton#bulkOff, QPushButton#bulkOn {{ background: transparent; border: none; border-radius: 11px;
-    padding: 0 7px; min-height: 22px; max-height: 22px; font-size: 11px; font-weight: 600; color: {C['muted']}; }}
-QPushButton#bulkOff:hover {{ color: #E07A72; background: #1F1413; }}
-QPushButton#bulkOn:hover {{ color: {C['accent']}; background: #12241E; }}
-QPushButton#bulkOff:pressed {{ background: #2A1817; }}
-QPushButton#bulkOn:pressed {{ background: #183026; }}
+    padding: 0 7px; min-height: 22px; max-height: 22px; font-size: {px(11)}; font-weight: 600; color: {C['muted']}; }}
+QPushButton#bulkOff:hover {{ color: {C['off_text']}; background: {C['off_soft']}; }}
+QPushButton#bulkOn:hover {{ color: {C['accent']}; background: {C['accent_soft']}; }}
+QPushButton#bulkOff:pressed {{ background: {C['off_soft_hover']}; }}
+QPushButton#bulkOn:pressed {{ background: {C['accent_pressed']}; }}
 QPushButton#bulkOff:disabled, QPushButton#bulkOn:disabled {{ color: {C['faint']}; }}
-QLabel#fieldLabel {{ color: {C['muted']}; font-size: 12px; }}
+QLabel#fieldLabel {{ color: {C['muted']}; font-size: {px(12)}; }}
 QCheckBox {{ color: {C['text']}; spacing: 8px; }}
 QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {C['border2']}; border-radius: 4px;
                         background: {C['surface']}; }}
 QCheckBox::indicator:checked {{ background: {C['accent']}; border-color: {C['accent']}; }}
 QTextBrowser#doc {{ background: {C['surface']}; color: {C['text']}; border: 1px solid {C['border']};
-                    border-radius: 10px; padding: 14px 18px; font-size: 13px; }}
+                    border-radius: 10px; padding: 14px 18px; font-size: {px(13)}; }}
 """
 
-DOC_CSS = f"""
-h2 {{ color: {C['text']}; font-size: 18px; margin: 0 0 8px 0; }}
-h3 {{ color: {C['accent']}; font-size: 14px; margin: 16px 0 4px 0; }}
-p, li {{ color: #C9CED8; line-height: 140%; }}
+
+QSS = build_qss(C)
+
+def build_doc_css(C: dict, font_scale: float = 1.0) -> str:
+    """Style des fenêtres de documentation (guide, licences) à partir des jetons (accroche S4)."""
+    def px(n: int) -> str:
+        return f"{max(1, round(n * font_scale))}px"
+    return f"""
+h2 {{ color: {C['text']}; font-size: {px(18)}; margin: 0 0 8px 0; }}
+h3 {{ color: {C['accent']}; font-size: {px(14)}; margin: 16px 0 4px 0; }}
+p, li {{ color: {C['text2']}; line-height: 140%; }}
 i {{ color: {C['muted']}; }}
 b {{ color: {C['text']}; }}
 a {{ color: {C['blue']}; }}
 """
+
+
+DOC_CSS = build_doc_css(C)
 
 
 def blend(a: QColor, b: QColor, t: float) -> QColor:
@@ -2941,10 +3023,10 @@ class Switch(QAbstractButton):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         r = QRectF(0.5, 0.5, self.width() - 1, self.height() - 1)
-        track = blend(QColor("#2A303C"), QColor(C["accent"]), self._knob)
-        knob = QColor("#F3F5F7")
+        track = blend(QColor(C["switch_off"]), QColor(C["accent"]), self._knob)
+        knob = QColor(C["knob"])
         if not self.isEnabled():
-            track, knob = QColor("#20242D"), QColor("#4A5161")
+            track, knob = QColor(C["track_dis"]), QColor(C["knob_dis"])
         p.setPen(Qt.NoPen)
         p.setBrush(track)
         p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
@@ -2953,9 +3035,38 @@ class Switch(QAbstractButton):
         x = 3 + t * (self.width() - 6 - d)
         p.setBrush(knob)
         p.drawEllipse(QRectF(x, 3, d, d))
+        if SWITCH_MARKS:                       # accroche S5 : ✓ / ✗ dans la piste, côté opposé au bouton
+            on = self._knob >= 0.5
+            ltr = self.layoutDirection() == Qt.LeftToRight
+            side = 3 if on == ltr else self.width() - 3 - d
+            draw_check_mark(p, QRectF(side, 3, d, d), on, knob)
 
     def sizeHint(self):
         return self.size()
+
+
+def draw_check_mark(p: QPainter, box: QRectF, on: bool, color):
+    """Petit ✓ (on) ou ✗ (off) dessiné dans `box` (accroche S5, utilisée si SWITCH_MARKS)."""
+    pen = QPen(QColor(color), max(1.4, box.width() / 8))
+    pen.setCapStyle(Qt.RoundCap)
+    pen.setJoinStyle(Qt.RoundJoin)
+    p.save()
+    p.setPen(pen)
+    p.setBrush(Qt.NoBrush)
+    m = box.width() * 0.28
+    b = box.adjusted(m, m, -m, -m)
+    path = QPainterPath()
+    if on:
+        path.moveTo(b.left(), b.center().y())
+        path.lineTo(b.left() + b.width() * 0.4, b.bottom())
+        path.lineTo(b.right(), b.top())
+    else:
+        path.moveTo(b.topLeft())
+        path.lineTo(b.bottomRight())
+        path.moveTo(b.topRight())
+        path.lineTo(b.bottomLeft())
+    p.drawPath(path)
+    p.restore()
 
 
 class ChevronCombo(QComboBox):
@@ -3243,7 +3354,7 @@ class ColumnHeader(QWidget):
                         sl.addWidget(div)
                     b = QPushButton("\u2009" + tr(key))     # espace fine : un peu d'air entre la pastille et le texte
                     b.setObjectName(name)
-                    b.setIcon(dot_icon("#E07A72" if target == OFF else C["accent"]))
+                    b.setIcon(dot_icon(C["off_text"] if target == OFF else C["accent"]))
                     b.setIconSize(QSize(6, 6))
                     b.setCursor(Qt.PointingHandCursor)
                     b.setToolTip(tr(tip))
@@ -3707,6 +3818,7 @@ class FoldersDialog(QDialog):
         self.downloads_changed = False
         self.setWindowTitle(f"{tr('dlg_folders')} — {config.sim}")
         self.setMinimumWidth(660)
+        self.setSizeGripEnabled(True)
         v = QVBoxLayout(self)
         v.setContentsMargins(22, 20, 22, 18)
         v.setSpacing(12)
@@ -3894,6 +4006,7 @@ class DocDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(f"{APP_NAME} — {title}")
         self.resize(720, 640)
+        self.setSizeGripEnabled(True)
         v = QVBoxLayout(self)
         v.setContentsMargins(18, 16, 18, 14)
         v.setSpacing(10)
@@ -4338,10 +4451,11 @@ class MainWindow(QMainWindow):
         a.setChecked(self.config.check_downloads)
         a.toggled.connect(self.set_check_downloads)
         m_set.addAction(a)
-        a = QAction(tr("m_update_auto"), self, checkable=True)
-        a.setChecked(self.config.update_check is True)
-        a.toggled.connect(self.set_update_check)
-        m_set.addAction(a)
+        if not hosted():                       # S10 : embarqué, pas de mise à jour propre à SGM
+            a = QAction(tr("m_update_auto"), self, checkable=True)
+            a.setChecked(self.config.update_check is True)
+            a.toggled.connect(self.set_update_check)
+            m_set.addAction(a)
         m_clean = m_set.addMenu(tr("m_arch_cleanup"))
         cgrp = QActionGroup(self)
         for mode in ARCHIVE_CLEANUP:
@@ -4365,33 +4479,50 @@ class MainWindow(QMainWindow):
         self.addAction(undo_act)
 
         m_help = mb.addMenu(tr("m_help"))
+
+        def keep(key: str) -> bool:              # accroche S12 : menu Aide allégé dans l'hôte
+            return HOST_HELP_ITEMS is None or key in HOST_HELP_ITEMS
         for key, fn, shortcut in (("m_guide", self.show_guide, "F1"),
                                   ("m_disclaimer", self.show_disclaimer, None),
                                   ("m_licenses", self.show_licenses, None),
                                   ("m_backups", self.open_backups, None),
                                   ("m_open_log", self.open_logs, None),
                                   ("m_restore_all", self.restore_all, None)):
+            if not keep(key):
+                continue
             a = QAction(tr(key), self)
+            a.setData(key)
             if shortcut:
                 a.setShortcut(shortcut)
             a.triggered.connect(fn)
             m_help.addAction(a)
         m_help.addSeparator()
         for key, kind in (("m_report_bug", "bug"), ("m_suggest", "idea")):
+            if not keep(key):
+                continue
             a = QAction(tr(key), self)
+            a.setData(key)
             a.triggered.connect(lambda _=False, k=kind: self.open_report(k))
             m_help.addAction(a)
-        a = QAction(tr("m_stats_report"), self)
-        a.triggered.connect(self.make_statics_report)
-        m_help.addAction(a)
+        if keep("m_stats_report"):
+            a = QAction(tr("m_stats_report"), self)
+            a.setData("m_stats_report")
+            a.triggered.connect(self.make_statics_report)
+            m_help.addAction(a)
         m_help.addSeparator()
-        a = QAction(tr("m_check_updates"), self)
-        a.triggered.connect(lambda: self.check_updates(manual=True))
-        m_help.addAction(a)
+        if keep("m_check_updates") and not hosted():
+            a = QAction(tr("m_check_updates"), self)
+            a.setData("m_check_updates")
+            a.triggered.connect(lambda: self.check_updates(manual=True))
+            m_help.addAction(a)
         for key, fn in (("m_donate", self.donate), ("m_about", self.about)):
+            if not keep(key):
+                continue
             a = QAction(tr(key), self)
+            a.setData(key)
             a.triggered.connect(fn)
             m_help.addAction(a)
+        self.help_menu = m_help
 
         # Coin droit : version · auteur, don, langue
         corner = QWidget()
@@ -4450,6 +4581,9 @@ class MainWindow(QMainWindow):
         self._replace_window(None)
 
     def _replace_window(self, state):
+        if HOST_REPLACE:                        # accroche S1 : l'hôte recrée lui-même l'onglet
+            HOST_REPLACE(state)
+            return
         w = MainWindow(state)
         w.setGeometry(self.geometry())
         if self.isMaximized():
@@ -4490,7 +4624,7 @@ class MainWindow(QMainWindow):
                 found = True
                 text = f.read_text(encoding="utf-8", errors="replace")
                 doc += (f"<h3>{name}</h3><pre style='white-space:pre-wrap; font-size:11px; "
-                        f"color:#C9CED8'>{_html.escape(text)}</pre>")
+                        f"color:{C['doc_text']}'>{_html.escape(text)}</pre>")
         if not found:
             doc += f"<p><i>{tr('licenses_missing')}</i></p>"
         DocDialog(tr("m_licenses").rstrip("…"), doc, "", self).exec()
@@ -4938,7 +5072,7 @@ class MainWindow(QMainWindow):
 
     def maybe_check_updates(self):
         """Au lancement : demande une fois l'autorisation, puis au plus une vérification par jour."""
-        if UPDATE_DISABLED:
+        if UPDATE_DISABLED or hosted():        # S10 : embarqué, c'est l'hôte qui livre SGM
             return
         if self.config.update_check is None:
             self.config.update_check = ask(self, tr("update_ask"))
@@ -4947,7 +5081,7 @@ class MainWindow(QMainWindow):
             self.check_updates(manual=False)
 
     def check_updates(self, manual: bool):
-        if UPDATE_DISABLED and not manual:
+        if (UPDATE_DISABLED and not manual) or hosted():
             return
         if self.upd_worker is not None and self.upd_worker.isRunning():
             return
@@ -5208,7 +5342,14 @@ class MainWindow(QMainWindow):
 
     # ── Bascule statics
     def ensure_sim_closed(self) -> bool:
-        """Bloque si MSFS 2020 OU MSFS 2024 tourne ; si on ne peut pas le savoir, demande (sécurité G3)."""
+        """Bloque si MSFS 2020 OU MSFS 2024 tourne ; si on ne peut pas le savoir, demande (sécurité G3).
+        Embarqué : l'hôte décide (accroche S11), avant chaque écriture."""
+        if HOST_CONFIRM_SIM:
+            try:
+                return bool(HOST_CONFIRM_SIM(self))
+            except Exception as e:
+                LOG.warning("Contrôle du simulateur de l'hôte en erreur : %s", e)
+                return False
         running = running_sims()
         if running is None:
             return ask(self, tr("sim_unknown"), default_yes=False)
@@ -5544,7 +5685,7 @@ def dot_icon(color: str) -> QIcon:
 
 def heart_icon() -> QIcon:
     icon = QIcon()
-    for mode, color in ((QIcon.Normal, C["heart"]), (QIcon.Active, "#F07F90")):
+    for mode, color in ((QIcon.Normal, C["heart"]), (QIcon.Active, C["heart_hover"])):
         pm = QPixmap(64, 64)
         pm.fill(Qt.transparent)
         p = QPainter(pm)

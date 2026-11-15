@@ -45,6 +45,14 @@ SGM modifie les add-ons des utilisateurs. Tout changement de code qui touche aux
 
 L'agent `gardien-securite` relit **tout** diff avant la PR. Son avis figure dans la description de la PR.
 
+## Application hôte (3AM)
+
+SGM peut être embarqué dans 3AM. Les **points d'accroche** (`HOST_REPLACE`, `EXTRA_SOURCES`, `REAL_ROOTS`,
+`HOST_CONFIRM_SIM`, `HOST_HELP_ITEMS`, `SWITCH_MARKS`, jetons de `C`, `build_qss`) sont décrits dans
+`docs/rd/2026-11-15-accroches-3am.md` et vérifiés par `tests/test_accroches.py`. Règles : leurs valeurs par défaut
+n'ont **aucun effet sur SGM seul** ; toute nouvelle couleur passe par un jeton de `C` ; toute nouvelle écriture de
+fichiers appelle `ensure_sim_closed()` ; ne pas renommer ces accroches sans prévenir 3AM.
+
 ## Qualité
 
 - `bash tests/run_tests.sh` doit passer. Toute correction de bug ajoute un test qui l'aurait détecté.

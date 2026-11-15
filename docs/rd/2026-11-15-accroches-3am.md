@@ -8,6 +8,9 @@ trois états, sources de bibliothèques…). Pour la 0.9.3 de 3AM, ces modificat
 (`tools/appliquer_accroches_sgm.py` dans le dépôt de 3AM). Le but de cette demande : que **SGM porte lui-même ces
 points d'accroche**, pour que la prochaine intégration soit une simple copie des deux fichiers.
 
+> **S1 à S12 faits dans SGM** (branche `sprint/2026-11-15-accroches-3am`, `tests/test_accroches.py`). Écart : S9, texte
+> d'aide avec `{data}` (option) non fait ; « Ranger » (S11) n'existe pas dans SGM.
+
 **Règle d'or : aucun effet sur SGM seul.** Chaque accroche vaut `None` / `False` par défaut ; chaque jeton de
 couleur vaut la couleur actuelle ; le rendu sombre de SGM reste identique au pixel près. Les tests de SGM doivent
 passer sans changement de comportement.
