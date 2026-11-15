@@ -183,6 +183,7 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 ## Historique des versions
 
 **Prochaine version (en développement)**
+- **Sécurité** : sauvegardes rangées par paquet avec leur arborescence (plus de copies écrasées) ; archives contrôlées (nombre et taille des fichiers) avant toute extraction ; Annuler ne garde plus de copie des fichiers seulement renommés.
 - **Sécurité** : « Tout restaurer » ne supprime ni n'écrase jamais un profil GSX que tu as modifié après son installation par SGM ; les archives ne vont à la Corbeille que depuis un disque fixe (gardées sur clé USB / disque réseau au lieu d'être effacées définitivement) ; modifications bloquées si MSFS 2020 **ou** MSFS 2024 tourne, et SGM demande s'il ne peut pas le savoir.
 - **Mise à jour automatique** (optionnelle, demandée au premier lancement) : vérifie GitHub une fois par jour au plus, télécharge, vérifie le SHA-256 et relance ; `SGM_data` gardé, ancienne version remise en cas d'échec.
 

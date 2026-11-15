@@ -183,6 +183,7 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 ## Version history
 
 **Next version (in development)**
+- **Safety**: backups are stored per scenery package with their folder structure (no more overwritten copies); archives are checked (number and size of files) before anything is extracted; Undo no longer keeps a copy of files that were only renamed.
 - **Safety**: "Restore everything" never removes or overwrites a GSX profile you modified after SGM installed it; archives are sent to the Recycle Bin only from a fixed drive (kept on USB sticks / network drives instead of being deleted for good); file changes are blocked while MSFS 2020 **or** MSFS 2024 is running, and SGM asks if it cannot tell.
 - **Automatic updates** (optional, asked at first launch): checks GitHub once a day at most, downloads, verifies SHA-256 and restarts; `SGM_data` kept, previous version restored on failure.
 
