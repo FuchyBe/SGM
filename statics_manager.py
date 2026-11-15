@@ -204,10 +204,31 @@ def license_dir() -> Path:
     return app_dir() / "licenses"
 
 
+# Version installée (installeur Inno Setup) : un fichier repère à côté de SGM.exe. Sans lui = version portable.
+INSTALL_MARKER = "SGM.installed"
+INSTALL_APP_ID = "{6F1C2B7E-5A43-4D2B-9C1E-7B3F0A9D4E21}"       # identique à installer/SGM.iss (AppId)
+FRESH_DATA = False          # fixé par main() : aucune donnée SGM avant ce lancement
+
+
+def is_installed() -> bool:
+    return (app_dir() / INSTALL_MARKER).is_file()
+
+
+def user_data_dir() -> Path:
+    """Données de la version installée : %APPDATA%\\SGM."""
+    return Path(os.environ.get("APPDATA") or str(Path.home() / ".config")) / "SGM"
+
+
 def data_dir() -> Path:
-    """Dossier portable à côté de l'application ; repli sur %APPDATA% s'il n'est pas inscriptible."""
+    """Version portable : SGM_data à côté de l'application (repli sur %APPDATA% s'il n'est pas inscriptible).
+    Version installée : toujours %APPDATA%\\SGM (le dossier du programme ne garde que le programme)."""
     global _DATA_DIR
     if _DATA_DIR is None:
+        if is_installed():
+            d = user_data_dir()
+            d.mkdir(parents=True, exist_ok=True)
+            _DATA_DIR = d
+            return d
         d = app_dir() / "SGM_data"
         old = app_dir() / "StaticsManager_data"          # nom des premières betas
         if old.is_dir() and not d.exists():
@@ -231,6 +252,57 @@ def data_dir() -> Path:
             d.mkdir(parents=True, exist_ok=True)
         _DATA_DIR = d
     return _DATA_DIR
+
+
+# ── Reprise des données d'une version portable (copie, jamais de déplacement) ──
+IMPORT_SKIP = {"update", ".write_test"}               # téléchargements de mise à jour : inutiles
+
+
+def find_portable_data(folder) -> Path | None:
+    """Dossier SGM_data d'une version portable : le dossier choisi lui-même, ou SGM_data / StaticsManager_data
+    à l'intérieur. Il doit contenir config.json. None sinon."""
+    f = Path(folder)
+    for cand in (f, f / "SGM_data", f / "StaticsManager_data"):
+        try:
+            if (cand / "config.json").is_file():
+                return cand
+        except OSError:
+            continue
+    return None
+
+
+def has_user_data(d: Path) -> bool:
+    return (Path(d) / "config.json").is_file()
+
+
+def import_portable(src: Path, dst: Path) -> int:
+    """Copie les données portables `src` dans `dst` (réglages, profils, sauvegardes, états d'origine, Annuler,
+    journal). La source n'est jamais modifiée. Les fichiers de `dst` du même nom sont remplacés.
+    Copie d'abord dans un dossier temporaire voisin : en cas d'erreur, `dst` reste tel quel. Rend le nombre
+    de fichiers copiés."""
+    src, dst = Path(src), Path(dst)
+    if norm_key(src) == norm_key(dst) or norm_key(dst).startswith(norm_key(src) + os.sep):
+        raise ValueError("same folder")
+    dst.mkdir(parents=True, exist_ok=True)
+    tmp = dst.parent / (dst.name + ".import-tmp")
+    shutil.rmtree(tmp, ignore_errors=True)
+    n = 0
+    try:
+        for item in src.iterdir():
+            if item.name in IMPORT_SKIP or item.is_symlink():
+                continue
+            if item.is_dir():
+                shutil.copytree(item, tmp / item.name, symlinks=False, copy_function=shutil.copy2,
+                                ignore=lambda _d, names: [x for x in names if x == ".write_test"])
+            else:
+                tmp.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(item, tmp / item.name)
+        n = sum(1 for p in tmp.rglob("*") if p.is_file()) if tmp.exists() else 0
+        if tmp.exists():
+            shutil.copytree(tmp, dst, dirs_exist_ok=True, copy_function=shutil.copy2)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return n
 
 
 def norm_key(p) -> str:
@@ -2856,10 +2928,11 @@ def _bat(path) -> str:
     return str(path).replace("%", "%%")
 
 
-def updater_script(src: Path, dst: Path, pid: int, backup: Path, log: Path) -> str:
+def updater_script(src: Path, dst: Path, pid: int, backup: Path, log: Path, reg_version: str = "") -> str:
     """Script Windows lancé après la fermeture de SGM : sauvegarde des SEULS éléments que la nouvelle version
     remplace, copie de la nouvelle version (SGM_data jamais touché), retour à l'ancienne en cas d'échec, relance.
-    `src` doit exister (liste des éléments à remplacer)."""
+    `src` doit exister (liste des éléments à remplacer). Version installée (`reg_version`) : le numéro affiché dans
+    « Applications installées » de Windows est mis à jour aussi (clé de l'utilisateur, aucune élévation)."""
     items = sorted(p.name for p in Path(src).iterdir() if p.name.lower() != "sgm_data")
     lines = [
         "@echo off",
@@ -2889,7 +2962,12 @@ def updater_script(src: Path, dst: Path, pid: int, backup: Path, log: Path) -> s
         else:
             lines.append(f'robocopy "%SRC%" "%DST%" "{n}" {copy}')
         lines.append("if %ERRORLEVEL% GEQ 8 goto rollback")
-    lines += ['echo OK >> "%LOG%"', 'start "" "%DST%\\SGM.exe"', "goto end", ":rollback",
+    lines.append('echo OK >> "%LOG%"')
+    ver = re.sub(r"[^0-9.]", "", str(reg_version or ""))
+    if ver:
+        key = f"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{INSTALL_APP_ID}_is1"
+        lines.append(f'reg add "{key}" /v DisplayVersion /t REG_SZ /d "{ver}" /f >nul 2>&1')
+    lines += ['start "" "%DST%\\SGM.exe"', "goto end", ":rollback",
               'echo ECHEC : retour a la version precedente >> "%LOG%"',
               'robocopy "%BAK%" "%DST%" /E /R:5 /W:1 /NFL /NDL /NJH /NJS >> "%LOG%"',
               ":fail", 'start "" "%DST%\\SGM.exe"', ":end", "endlocal", ""]
@@ -2919,7 +2997,8 @@ def prepare_update(info: dict, progress=None, getter=None, base: Path | None = N
     log = base / "update.log"
     backup = base / f"backup-v{APP_VERSION}"
     shutil.rmtree(backup, ignore_errors=True)
-    script.write_text(updater_script(src, app_dir(), os.getpid(), backup, log), encoding="utf-8")
+    script.write_text(updater_script(src, app_dir(), os.getpid(), backup, log,
+                                     reg_version=info["version"] if is_installed() else ""), encoding="utf-8")
     LOG.info("Mise à jour v%s préparée (SHA-256 vérifié)", info["version"])
     return {"version": info["version"], "script": script, "src": src}
 
@@ -4629,6 +4708,28 @@ class MainWindow(QMainWindow):
         uh.addWidget(up_no, 0, Qt.AlignVCenter)
         self.upd_banner.hide()
         root.addWidget(self.upd_banner)
+
+        # Version installée, premier lancement : reprendre les données d'une version portable
+        self.imp_banner = QFrame()
+        self.imp_banner.setObjectName("banner")
+        ih = QHBoxLayout(self.imp_banner)
+        ih.setContentsMargins(14, 9, 8, 9)
+        ih.setSpacing(8)
+        imp_lbl = QLabel(tr("import_ask"))
+        imp_lbl.setWordWrap(True)
+        imp_go = QPushButton(tr("import_btn"))
+        imp_go.setObjectName("primary")
+        imp_go.clicked.connect(self.import_from_portable)
+        imp_no = QPushButton(tr("no"))
+        imp_no.setObjectName("ghost")
+        imp_no.clicked.connect(self.imp_banner.hide)
+        for b_ in (imp_go, imp_no):
+            b_.setCursor(Qt.PointingHandCursor)
+        ih.addWidget(imp_lbl, 1)
+        ih.addWidget(imp_go, 0, Qt.AlignVCenter)
+        ih.addWidget(imp_no, 0, Qt.AlignVCenter)
+        self.imp_banner.setVisible(bool(FRESH_DATA and is_installed() and not hosted() and not state))
+        root.addWidget(self.imp_banner)
         self._dl_found: list = []
         self._dl_checked = False
         self.setAcceptDrops(True)
@@ -4737,6 +4838,12 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, md=mode: self.set_archive_cleanup(md))
             cgrp.addAction(a)
             m_clean.addAction(a)
+        if is_installed() and not hosted():
+            m_set.addSeparator()
+            a = QAction(tr("m_import"), self)
+            a.setData("m_import")
+            a.triggered.connect(self.import_from_portable)
+            m_set.addAction(a)
         if not hosted():                       # S10 : embarqué, pas de mise à jour propre à SGM
             m_set.addSeparator()
             a = QAction(tr("m_update_auto"), self, checkable=True)
@@ -5364,6 +5471,42 @@ class MainWindow(QMainWindow):
             return
         if should_check_updates(self.config.update_check, self.config.update_last):
             self.check_updates(manual=False)
+
+    def import_from_portable(self, folder=None):
+        """Copie le SGM_data d'une version portable dans les données de la version installée, puis recharge."""
+        if self.busy:
+            return
+        if not isinstance(folder, (str, Path)) or not folder:
+            folder = QFileDialog.getExistingDirectory(self, tr("import_choose"), str(Path.home()))
+            if not folder:
+                return
+        src = find_portable_data(folder)
+        if src is None:
+            warn(self, tr("import_none"))
+            return
+        dst = data_dir()
+        if norm_key(src) == norm_key(dst):
+            warn(self, tr("import_none"))
+            return
+        if has_user_data(dst) and not FRESH_DATA and not ask(self, tr("import_replace"), default_yes=False):
+            return
+        try:
+            close_logging()
+            n = import_portable(src, dst)
+        except (OSError, ValueError, shutil.Error) as e:
+            setup_logging()
+            LOG.warning("Reprise des données portables impossible : %s", e)
+            warn(self, tr("import_err", err=e))
+            return
+        setup_logging()
+        LOG.info("Données de la version portable reprises : %d fichiers", n)
+        self.imp_banner.hide()
+        QMessageBox.information(self, APP_NAME, tr("import_done", n=n))
+        cfg = Config()
+        self.config = cfg                     # la fenêtre qui se ferme n'écrase pas les réglages repris
+        set_lang(cfg.lang)
+        QApplication.instance().setLayoutDirection(Qt.RightToLeft if cfg.lang in RTL_LANGS else Qt.LeftToRight)
+        self._replace_window(None)
 
     def answer_update_question(self, yes: bool):
         self.upd_banner.hide()
@@ -6110,6 +6253,8 @@ def main():
     app.setStyle("Fusion")
     app.setStyleSheet(QSS)
     app.setWindowIcon(make_icon())
+    global FRESH_DATA
+    FRESH_DATA = not has_user_data(data_dir())      # version installée lancée pour la 1re fois : reprise proposée
     cfg = Config()
     lang = cfg.lang
     set_lang(lang)

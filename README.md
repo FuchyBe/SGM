@@ -30,7 +30,11 @@ SGM does it for you:
 
 ## Installation
 
-There is nothing to install.
+Two versions, same program: choose one.
+
+**Installed version** (recommended): run `SGM_Setup_vX.Y.exe`. SGM is installed for your Windows account only (no administrator rights, in `%LOCALAPPDATA%\Programs\SGM`), with a Start menu shortcut and an uninstaller in *Settings › Apps › Installed apps*. Settings and backups are stored in `%APPDATA%\SGM`. If you used the portable version, SGM offers at the first launch to **import its data** (settings, statics profiles, backups, original states): choose its folder; the portable copy is left untouched (also in *Settings › Import from the portable version…*). Uninstalling keeps your data unless you ask to delete it.
+
+**Portable version**: nothing to install.
 
 1. Unzip `SGM_beta_v0.9.2.zip` anywhere (tools folder, USB stick…).
 2. Run `SGM.exe` from the `SGM` folder.
@@ -39,7 +43,7 @@ Keep the whole `SGM` folder together: `SGM.exe` needs the `_internal` folder nex
 
 On first launch SGM creates a `SGM_data` folder next to `SGM.exe`, containing its settings and backups. If you move SGM, move the whole folder. If SGM sits in a write-protected folder (such as `Program Files`), the data is stored in `%APPDATA%\SGM` instead.
 
-**Uninstall:** delete the `SGM` folder. Changes already made to your sceneries stay as they are, so switch them back first if needed.
+**Uninstall:** installed version: *Installed apps › SGM › Uninstall*; portable version: delete the `SGM` folder. Changes already made to your sceneries stay as they are, so switch them back first if needed.
 
 ## Quick start
 

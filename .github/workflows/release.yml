@@ -1,7 +1,8 @@
 # Prépare une version publiable de SGM, en BROUILLON : seul Fabian la publie (bouton « Publish release »).
 # Lancement : onglet Actions › « Préparer une release (brouillon) » › Run workflow.
-# Contenu : SGM_beta_vX.Y.zip (dossier SGM complet) + SGM_beta_vX.Y.zip.sha256, notes tirées du README.
-# La mise à jour automatique de SGM n'installe que des releases publiées, avec ce fichier .sha256.
+# Contenu : SGM_beta_vX.Y.zip (version portable), SGM_Setup_vX.Y.exe (installeur) et SHA256SUMS.txt (empreintes
+# des deux, un seul fichier d'empreintes : les v0.9.x le lisent aussi), notes tirées du README.
+# La mise à jour automatique de SGM n'installe que des releases publiées, avec ce fichier d'empreintes.
 name: Préparer une release (brouillon)
 
 on:
@@ -35,8 +36,14 @@ jobs:
           Copy-Item README.md, README_FR.md dist/SGM/
           $zip = "SGM_beta_v$ver.zip"
           Compress-Archive -Path dist/SGM -DestinationPath $zip -Force
-          $h = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-          "$h  $zip" | Out-File -Encoding ascii "$zip.sha256"
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          & $iscc "/DAppVersion=$ver" "/DSourceDir=..\dist\SGM" installer\SGM.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Copy-Item "dist/SGM_Setup_v$ver.exe" .
+          $setup = "SGM_Setup_v$ver.exe"
+          $lines = foreach ($f in @($zip, $setup)) { "$((Get-FileHash $f -Algorithm SHA256).Hash.ToLower())  $f" }
+          $lines | Out-File -Encoding ascii SHA256SUMS.txt
           # notes : section « **beta vX.Y** » de l'historique du README
           $lines = Get-Content README.md -Encoding utf8
           $start = [array]::IndexOf($lines, "**beta v$ver**")
@@ -51,5 +58,5 @@ jobs:
         shell: pwsh
         run: |
           $ver = "${{ steps.v.outputs.ver }}"
-          gh release create "v$ver" "SGM_beta_v$ver.zip" "SGM_beta_v$ver.zip.sha256" `
+          gh release create "v$ver" "SGM_beta_v$ver.zip" "SGM_Setup_v$ver.exe" SHA256SUMS.txt `
             --draft --title "SGM beta v$ver" --notes-file notes.md --target "${{ github.sha }}"
