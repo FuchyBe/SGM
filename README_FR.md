@@ -102,7 +102,7 @@ Le guide complet est dans l'application : **Aide › Guide d'utilisation** (F1).
 
 ## Sauvegardes
 
-**Annuler** (bouton à côté de *Installer un profil GSX…*, ou **Ctrl+Z**) défait la dernière action — une bascule, Tout ON / Tout OFF en entier, un profil GSX copié ou installé, une restauration — et se réutilise pour remonter plus loin (10 actions gardées). Les fichiers reviennent exactement comme avant ; si l'un d'eux a changé depuis, rien n'est modifié.
+**Annuler** (bouton à droite de *Profils*, ou **Ctrl+Z**) défait la dernière action — une bascule, Tout ON / Tout OFF en entier, un profil GSX copié ou installé, une restauration — et se réutilise pour remonter plus loin (10 actions gardées). Les fichiers reviennent exactement comme avant ; si l'un d'eux a changé depuis, rien n'est modifié.
 
 Avant chaque modification, les fichiers concernés sont copiés dans `SGM_data\backups` :
 - un dossier par scène, avec les 10 sauvegardes les plus récentes ;
@@ -121,7 +121,7 @@ Avant sa toute première modification d'une scène, SGM enregistre son état dan
 
 ## Mises à jour de SGM
 
-Au premier lancement, SGM demande s'il peut vérifier l'existence d'une nouvelle version. Si tu acceptes, une fois par jour au plus, il demande à GitHub (github.com/FuchyBe/SGM) le numéro de la dernière version : c'est la seule connexion Internet de SGM, rien d'autre n'est envoyé. Quand une nouvelle version existe, **Mettre à jour** la télécharge, vérifie son empreinte SHA-256 publiée, ferme SGM, remplace ses fichiers et le relance — `SGM_data` (réglages, sauvegardes, profils) n'est jamais touché, et l'ancienne version est remise en cas de problème. **Aide › Rechercher une mise à jour…** vérifie à tout moment ; **Paramètres › Rechercher les mises à jour au lancement** l'active ou la désactive.
+Au premier lancement, SGM demande s'il peut vérifier l'existence d'une nouvelle version. Si tu acceptes, une fois par jour au plus, il demande à GitHub (github.com/FuchyBe/SGM) le numéro de la dernière version. SGM ne se connecte qu'à GitHub : numéro de version et, si tu choisis **Mettre à jour**, téléchargement de la nouvelle version ; rien d'autre n'est envoyé. Quand une nouvelle version existe, **Mettre à jour** la télécharge, vérifie son empreinte SHA-256 publiée, ferme SGM, remplace ses fichiers et le relance — `SGM_data` (réglages, sauvegardes, profils) n'est jamais touché, et l'ancienne version est remise en cas de problème. **Aide › Rechercher une mise à jour…** vérifie à tout moment ; **Paramètres › Rechercher les mises à jour au lancement** l'active ou la désactive.
 
 ## Mises à jour des scènes
 
