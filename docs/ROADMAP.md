@@ -7,18 +7,18 @@ Règles : les agents ajoutent les idées dans **À trier**. **Seul Fabian** dép
 
 Placés par Fabian le 2026-11-15 (« je suis tes propositions »).
 
-1. **Publier la v1.0** — Fabian publie (aucun agent ne publie) : supprimer le brouillon v0.9, puis Actions ›
-   « Préparer une release (brouillon) » › Run workflow, vérifier (zip portable, installeur, SHA256SUMS.txt), puis
-   « Publish release ». Mise à jour flightsim.to : `docs/flightsim/maj-v1.0.md` et `docs/flightsim/visuels/`. S.
-2. **Nouvelles fonctions (revue R&D, E1 à E5)**, après la 1.0 — statics remis par une mise à jour de scène (bandeau
-   « Réappliquer ») ; profil GSX peut-être périmé ; détection du trafic IA ; export / import des réglages et profils ;
+1. **Publier la v1.0** — release v1.0 publiée sur GitHub le 2026-11-15 ; reste à Fabian : mise à jour flightsim.to
+   (`docs/flightsim/maj-v1.0.md`, `docs/flightsim/visuels/`). S.
+2. **Nouvelles fonctions (revue R&D, E2 à E5)**, après la 1.0 — (E1 en cours, voir ci-dessous) ; profil GSX
+   peut-être périmé ; détection du trafic IA ; export / import des réglages et profils ;
    tri de « À trier ». Points à **décision de Fabian** avant développement : doublons OACI (SGM ou 3AM ?),
    Marketplace en lecture seule, ligne de commande. M à L.
 - **Signature de l'exécutable** — à décider par Fabian (coût d'un certificat), utile avant la 1.0 (SmartScreen).
 
 ## En cours (PR à tester)
 
-- v1.0 — branche `sprint/2026-11-15-v1.0`.
+- **E1 — statics remis par une mise à jour de scène** (bandeau « Réappliquer OFF » / « Ignorer ») — branche
+  `sprint/2026-11-16-reappliquer`.
 
 ## À trier
 
@@ -47,7 +47,7 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 
 ## Livré
 
-- **v1.0** (préparée) — version installable par utilisateur (PR #36), reprise du portable par copie, fin de « beta ».
+- **v1.0** publiée (PR #37) — version installable par utilisateur (PR #36), reprise du portable par copie, fin de « beta ».
 - **beta v0.9.3** (PR #35) — ergonomie et visuels flightsim.to refaits.
 - **Ergonomie v0.9.3** (PR #34) — menus Paramètres / Outils / Aide, raccourcis, libellés, bandeau de mise à jour,
   colonne GSX allégée, fenêtre Dossiers en sections. « Annuler » gardé (mot de Windows pour Ctrl+Z).
