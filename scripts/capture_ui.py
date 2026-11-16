@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """Capture d'écran de SGM avec des scènes de démonstration (sans toucher au vrai simulateur).
 
-Usage : python scripts/capture_ui.py [langue] [sortie.png] [largeur] [hauteur]
+Usage : python scripts/capture_ui.py [langue] [sortie.png] [largeur] [hauteur] [reapply]
   ex.   python scripts/capture_ui.py fr docs/captures/fr.png 1280 760
+        python scripts/capture_ui.py fr docs/captures/fr_reapply.png 1280 760 reapply
+  « reapply » : affiche le bandeau « statics remis par une mise à jour » (5 scènes de démonstration remises ON).
 Sert à l'agent designer-interface pour vérifier l'interface (textes coupés, alignements, arabe RTL…).
 Tout se passe dans un dossier temporaire : données SGM, APPDATA et scènes factices.
 """
@@ -20,6 +22,7 @@ lang = sys.argv[1] if len(sys.argv) > 1 else "en"
 out = Path(sys.argv[2] if len(sys.argv) > 2 else f"capture_{lang}.png").resolve()
 width = int(sys.argv[3]) if len(sys.argv) > 3 else 1280
 height = int(sys.argv[4]) if len(sys.argv) > 4 else 760
+reapply = len(sys.argv) > 5 and sys.argv[5] == "reapply"
 
 tmp = Path(tempfile.mkdtemp(prefix="sgm_capture_"))
 os.environ["APPDATA"] = str(tmp / "roaming")
@@ -36,7 +39,7 @@ lib = tmp / "Library"
 INI = b"[general]\n[section.1]\npushback=1\n"
 
 
-def pkg(folder, title, creator, files):
+def pkg(folder, title, creator, files, version="1.0.0"):
     root = lib / folder
     content = []
     for rel, data, in_layout in files:
@@ -47,7 +50,7 @@ def pkg(folder, title, creator, files):
             content.append({"path": rel, "size": len(data), "date": 0})
     (root / "layout.json").write_text(json.dumps({"content": content}))
     (root / "manifest.json").write_text(json.dumps({"title": title, "creator": creator, "content_type": "SCENERY",
-                                                    "package_version": "1.0.0",
+                                                    "package_version": version,
                                                     "total_package_size": str(sum(c["size"] for c in content)).zfill(20)}))
 
 
@@ -66,6 +69,11 @@ pkg("demo-kdfw-dallas", "Dallas Fort Worth KDFW", "Demo Builds", [
 pkg("demo-lyni-nis", "Nis Constantine LYNI", "Demo Studio", [
     ("scenery/world/scenery/lyni_place.bgl", b"P" * 20, True), ("scenery/world/scenery/lyni_place.bgl.nostatic", b"N" * 15, False)])
 pkg("demo-eham-schiphol", "Amsterdam Schiphol EHAM", "Demo Studio", [("scenery/EHAM.bgl", b"A" * 9, True)])
+REAPPLY_DEMO = [("demo-lszh-zurich", "Zurich Airport LSZH"), ("demo-lowi-innsbruck", "Innsbruck Airport LOWI"),
+                ("demo-eddm-munich", "Munich Airport EDDM"), ("demo-lirf-rome", "Rome Fiumicino LIRF")]
+if reapply:     # scènes mises sur OFF avec SGM en version 1.0.0, revenues ON en version 1.1.0
+    for folder, title in REAPPLY_DEMO:
+        pkg(folder, title, "Demo Studio", [(f"scenery/{folder[5:9].upper()}_statics.bgl", b"S" * 9, True)], "1.1.0")
 
 from PySide6.QtCore import Qt, QTimer  # noqa: E402
 from PySide6.QtGui import QFont  # noqa: E402
@@ -81,6 +89,9 @@ app.setFont(f)
 cfg = m.Config()
 cfg.lang = lang
 cfg.manual_folders.append(str(lib))
+if reapply:
+    for folder in [f for f, _t in REAPPLY_DEMO] + ["demo-ebbr-brussels"]:
+        cfg.statics_wanted[m.norm_key(lib / folder)] = {"state": "off", "version": "0.9.0"}
 cfg.save()
 m.set_lang(lang)
 app.setLayoutDirection(Qt.RightToLeft if lang in m.RTL_LANGS else Qt.LeftToRight)   # comme main()

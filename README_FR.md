@@ -21,6 +21,7 @@ SGM le fait pour toi :
 - **Montre les aéroports qui n'ont pas encore de profil GSX**, détecte les profils que tu as installés à la main, et cherche ceux qui manquent sur flightsim.to en un clic.
 - **Installe les profils GSX téléchargés** : dépose l'archive sur la fenêtre, ou laisse SGM la trouver dans tes Téléchargements.
 - **Signale les nouvelles scènes** installées depuis le dernier lancement.
+- **Te prévient quand une mise à jour de scène remet des statics** que tu avais mis sur OFF, et les remet sur OFF en un clic (annulable).
 
 ## Configuration requise
 
@@ -129,7 +130,7 @@ Au premier lancement, SGM demande s'il peut vérifier l'existence d'une nouvelle
 
 ## Mises à jour des scènes
 
-Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre ses fichiers d'origine. Il suffit de la rebasculer dans SGM.
+Une mise à jour de scène (par le Marketplace ou un installateur) peut remettre ses fichiers d'origine. SGM retient les statics que tu as mis sur OFF et la version de la scène à ce moment : quand une nouvelle version les remet, un bandeau orange liste les scènes. **Réappliquer OFF** les remet sur OFF (avec les sauvegardes habituelles, et c'est annulable), **Ignorer** les laisse ON pour cette mise à jour. Rien ne change tant que tu ne cliques pas. Restaurer l'état d'origine d'une scène efface ce choix.
 
 ## Compiler depuis les sources
 
@@ -185,6 +186,9 @@ Détails et versions exactes : `licenses/THIRD-PARTY-NOTICES.txt` et **Aide › 
 - Microsoft Flight Simulator est une marque de Microsoft Corporation. GSX est un produit de FSDreamTeam / Virtuali. Les autres noms et marques appartiennent à leurs propriétaires.
 
 ## Historique des versions
+
+**En cours (prochaine version)**
+- **Statics remis par une mise à jour de scène** : un bandeau orange liste les scènes dont les statics sont revenus sur ON après une mise à jour alors que tu les avais mis sur OFF avec SGM ; **Réappliquer OFF** (annulable) ou **Ignorer**.
 
 **v1.0**
 - **Première version stable.** SGM sort de la beta.
