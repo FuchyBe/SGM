@@ -3584,7 +3584,7 @@ def remember_statics(wanted: dict, scenes) -> bool:
 
 def reapply_candidates(scenes, wanted: dict) -> list:
     """Scènes « remises par une mise à jour » : choix mémorisé OFF, statics ON maintenant, cas simple (aucun fichier
-    à vérifier) et package_version actuelle non vide et différente de celle mémorisée. Ordre des scènes conservé.
+    à vérifier) et package_version actuelle et mémorisée non vides et différentes. Ordre des scènes conservé.
     Une bascule faite à la main hors SGM (même version) ne compte pas."""
     out = []
     for s in scenes:
@@ -3593,7 +3593,8 @@ def reapply_candidates(scenes, wanted: dict) -> list:
             continue
         if s.state != ON or wanted_entry(s) is None:
             continue
-        if s.version and s.version != str(w.get("version") or ""):
+        known = str(w.get("version") or "")
+        if known and s.version and s.version != known:      # version inconnue au moment du choix : cas ambigu
             out.append(s)
     return out
 
