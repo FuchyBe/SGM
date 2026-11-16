@@ -311,7 +311,20 @@ def norm_key(p) -> str:
 
 def _empty_profile() -> dict:
     return {"manual_folders": [], "known_scenes": [], "gsx_folder": "", "gsx_choices": {}, "scanned": False,
-            "statics_profiles": {}}
+            "statics_profiles": {}, "statics_wanted": {}}
+
+
+STATICS_WANTED_MAX = 5000      # scènes mémorisées par simulateur (au-delà : ignorées au chargement)
+
+
+def _clean_statics_wanted(raw) -> dict:
+    """Choix ON / OFF faits avec SGM : clé de scène -> {"state": "on" / "off", "version": package_version}."""
+    out = {}
+    if isinstance(raw, dict):
+        for key, v in list(raw.items())[:STATICS_WANTED_MAX]:
+            if isinstance(v, dict) and v.get("state") in ("on", "off") and str(key).strip():
+                out[str(key)] = {"state": v["state"], "version": str(v.get("version") or "")[:64]}
+    return out
 
 
 def _clean_statics_profiles(raw) -> dict:
@@ -376,6 +389,7 @@ class Config:
                             "gsx_choices": {str(k): str(v) for k, v in (p.get("gsx_choices") or {}).items()},
                             "scanned": bool(p.get("scanned")),
                             "statics_profiles": _clean_statics_profiles(p.get("statics_profiles")),
+                            "statics_wanted": _clean_statics_wanted(p.get("statics_wanted")),
                         })
                         self.profiles[sim] = prof
             else:   # ancienne version (MSFS 2024 uniquement) -> profil 2024
@@ -426,6 +440,11 @@ class Config:
     def statics_profiles(self) -> dict:
         """Profils de statics de ce simulateur : nom -> {clé de scène: "on" / "off"}."""
         return self.p.setdefault("statics_profiles", {})
+
+    @property
+    def statics_wanted(self) -> dict:
+        """Dernier choix ON / OFF fait avec SGM, par scène : {clé: {"state": "on"/"off", "version": "1.2.0"}}."""
+        return self.p.setdefault("statics_wanted", {})
 
     @property
     def first_run(self) -> bool:
@@ -613,6 +632,7 @@ class Scene:
     gsx_variants: list = field(default_factory=list)
     icao: str = ""              # code OACI détecté (EBBR…), vide si inconnu
     is_airport: bool = False
+    version: str = ""           # package_version du manifest.json (vide si absente)
 
     @property
     def key(self) -> str:
@@ -1175,7 +1195,7 @@ def scan_package(root: Path, source_label: str) -> Scene | None:
         return None
     return Scene(root, root.name, title, creator, source_label, groups,
                  gsx_files=gsx, gsx_variants=build_gsx_variants(root, gsx) if gsx else [],
-                 icao=icao, is_airport=is_airport)
+                 icao=icao, is_airport=is_airport, version=str(man.get("package_version") or "").strip()[:64])
 
 
 MAX_SEARCH_DEPTH = 8
@@ -3544,6 +3564,40 @@ def bulk_targets(rows, target: str) -> tuple:
     return targets, skipped
 
 
+def wanted_entry(scene) -> dict | None:
+    """Choix à mémoriser pour une scène simple (entièrement ON ou OFF) ; None si la scène est ambiguë."""
+    if not simple_statics(scene) or not all(g.toggleable for g in scene.groups):
+        return None
+    return {"state": "on" if scene.state == ON else "off", "version": scene.version}
+
+
+def remember_statics(wanted: dict, scenes) -> bool:
+    """Mémorise l'état réel des scènes simples après une bascule faite par SGM. Rend True si la mémoire a changé."""
+    changed = False
+    for s in scenes:
+        e = wanted_entry(s) if s is not None else None
+        if e is not None and wanted.get(s.key) != e:
+            wanted[s.key] = e
+            changed = True
+    return changed
+
+
+def reapply_candidates(scenes, wanted: dict) -> list:
+    """Scènes « remises par une mise à jour » : choix mémorisé OFF, statics ON maintenant, cas simple (aucun fichier
+    à vérifier) et package_version actuelle non vide et différente de celle mémorisée. Ordre des scènes conservé.
+    Une bascule faite à la main hors SGM (même version) ne compte pas."""
+    out = []
+    for s in scenes:
+        w = wanted.get(s.key)
+        if not isinstance(w, dict) or w.get("state") != "off":
+            continue
+        if s.state != ON or wanted_entry(s) is None:
+            continue
+        if s.version and s.version != str(w.get("version") or ""):
+            out.append(s)
+    return out
+
+
 class ColHandle(QFrame):
     """Séparateur d'en-tête qu'on peut tirer pour régler la largeur des colonnes."""
     dragged = Signal(int)
@@ -4668,6 +4722,30 @@ class MainWindow(QMainWindow):
         self.banner.hide()
         root.addWidget(self.banner)
 
+        # Statics remis par une mise à jour de scène : rien ne se fait sans clic
+        self.reapply_banner = QFrame()
+        self.reapply_banner.setObjectName("banner")
+        rh = QHBoxLayout(self.reapply_banner)
+        rh.setContentsMargins(14, 7, 8, 7)
+        rh.setSpacing(8)
+        self.reapply_lbl = ElidedLabel()
+        self.reapply_lbl.setTextFormat(Qt.PlainText)        # titres des scènes : jamais interprétés comme HTML
+        re_go = QPushButton(tr("reapply_btn"))
+        re_go.setObjectName("primary")
+        re_go.setCursor(Qt.PointingHandCursor)
+        re_go.clicked.connect(self.reapply_found)
+        re_ign = QPushButton(tr("reapply_ignore"))
+        re_ign.setObjectName("ghost")
+        re_ign.setCursor(Qt.PointingHandCursor)
+        re_ign.clicked.connect(self.ignore_reapply)
+        rh.addWidget(self.reapply_lbl, 1)
+        rh.addWidget(re_go)
+        rh.addWidget(re_ign)
+        polish(self.reapply_banner, kind="warn")
+        self.reapply_banner.hide()
+        root.addWidget(self.reapply_banner)
+        self._reapply: list = []
+
         self.dl_banner = QFrame()
         self.dl_banner.setObjectName("banner")
         dh = QHBoxLayout(self.dl_banner)
@@ -4792,6 +4870,7 @@ class MainWindow(QMainWindow):
             self._scan_time = state.get("scan_time", "")
             self.rebuild_rows()
             self.status.setText(state.get("status_fn", lambda: "")())
+            self.check_reapply()
         else:
             QTimer.singleShot(50, self.start_scan)
 
@@ -5028,6 +5107,7 @@ class MainWindow(QMainWindow):
             if has_origin(scene.root):
                 try:
                     restore_scene_statics(scene.root)
+                    self.forget_statics([scene.key])     # l'utilisateur a voulu l'origine : plus de choix mémorisé
                 except RestoreError as e:
                     msgs.append(str(e))
             folder = self.config.gsx_folder()
@@ -5060,6 +5140,7 @@ class MainWindow(QMainWindow):
             for root in roots:
                 try:
                     restore_scene_statics(root)
+                    self.forget_statics([norm_key(root)])
                 except RestoreError as e:
                     errors.append(f"• {root.name} : {e}")
             kept = []
@@ -5439,6 +5520,7 @@ class MainWindow(QMainWindow):
         missing = [s for s in self.sources if not s.exists]
         if missing and srcs:
             self.show_banner(tr("banner_missing", paths=", ".join(str(s.path) for s in missing)), "warn")
+        self.check_reapply()
         if self._dl_manual:
             self._dl_manual = False
             self._dl_checked = True
@@ -5856,6 +5938,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             warn(self, tr("toggle_fail", name=scene.title, err=e))
         self.refresh_scene(scene)
+        self.remember_statics([scene], target)
         self.update_undo_btn()
         self.update_stats()
         if scene.key in self.scenes:
@@ -5884,12 +5967,81 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     errors.append(f"• {s.title} : {e}")
                 self.refresh_scene(s)
+        self.remember_statics(targets, target)
         self.set_busy(False)
         self.update_stats()
         self.apply_filter()
         self.status.setText(tr("all_done", n=len(targets) - len(errors), label=label))
         if errors:
             warn(self, tr("all_errors") + "\n\n" + "\n".join(errors[:15]) + ("\n…" if len(errors) > 15 else ""))
+
+    # ── Choix ON / OFF mémorisé et statics remis par une mise à jour de scène
+    def remember_statics(self, scenes, target: str | None = None):
+        """Mémorise l'état réel (relu) des scènes après une bascule réussie de SGM ; avec `target`, seules les scènes
+        arrivées dans cet état comptent (une bascule en échec ne change rien)."""
+        fresh = [self.scenes.get(s.key) for s in scenes]
+        fresh = [s for s in fresh if s is not None and (target is None or s.state == target)]
+        if remember_statics(self.config.statics_wanted, fresh):
+            self._save_config_quiet()
+
+    def forget_statics(self, keys):
+        wanted = self.config.statics_wanted
+        if any(wanted.pop(k, None) is not None for k in list(keys)):
+            self._save_config_quiet()
+
+    def check_reapply(self):
+        """Après une analyse : bandeau si des statics mis sur OFF avec SGM sont revenus après une mise à jour."""
+        found = reapply_candidates(self.scenes.values(), self.config.statics_wanted)
+        self._reapply = found
+        if not found:
+            self.reapply_banner.hide()
+            return
+        LOG.info("Statics remis par une mise à jour : %s", ", ".join(scene_label(s) for s in found))
+        names = ", ".join(s.title for s in found[:3]) + ("…" if len(found) > 3 else "")
+        self.reapply_lbl.setFullText(tr("reapply_found", n=len(found), names=names))
+        tip = [_html.escape(s.title) for s in found[:15]] + (["…"] if len(found) > 15 else [])
+        self.reapply_lbl.setToolTip(tr("reapply_tip") + "<br><br>" + "<br>".join(tip))
+        self.reapply_banner.show()
+
+    def reapply_found(self):
+        """Réappliquer OFF : mêmes sauvegardes que la bascule normale, une seule action annulable."""
+        if self.busy:
+            return
+        # scènes relues : seules celles qui sont encore « remises par une mise à jour » sont basculées
+        found = reapply_candidates([self.scenes[s.key] for s in self._reapply if s.key in self.scenes],
+                                   self.config.statics_wanted)
+        if not found:
+            self.reapply_banner.hide()
+            return
+        if not self.ensure_sim_closed():
+            return
+        self.reapply_banner.hide()
+        self._reapply = []
+        label = tr("reapply_btn")
+        self.set_busy(True)
+        errors = []
+        with undoable(f"{label} ({len(found)})"):
+            for i, s in enumerate(found, 1):
+                self.status.setText(tr("all_progress", label=label, i=i, n=len(found), name=s.title))
+                QApplication.processEvents()
+                try:
+                    set_scene_state(s, OFF)
+                except Exception as e:
+                    errors.append(f"• {s.title} : {e}")
+                self.refresh_scene(s)
+        self.remember_statics(found, OFF)
+        self.set_busy(False)
+        self.update_stats()
+        self.apply_filter()
+        self.status.setText(tr("reapply_done", n=len(found) - len(errors)))
+        if errors:
+            warn(self, tr("all_errors") + "\n\n" + "\n".join(errors[:15]) + ("\n…" if len(errors) > 15 else ""))
+
+    def ignore_reapply(self):
+        """Ignorer : l'état actuel (ON) et la nouvelle version sont mémorisés, le bandeau ne revient pas."""
+        self.remember_statics([s for s in self._reapply])
+        self._reapply = []
+        self.reapply_banner.hide()
 
     # ── GSX
     def search_profile(self, scene: Scene):
@@ -6029,6 +6181,7 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     errors.append(f"• {s.title} : {e}")
                 self.refresh_scene(s)
+                self.remember_statics([s], target)
         self.set_busy(False)
         self.update_stats()
         self.apply_filter()
@@ -6070,6 +6223,7 @@ class MainWindow(QMainWindow):
             root = norm_key(s.root)
             if any(k.startswith(root) for k in keys):
                 self.refresh_scene(s)
+                self.remember_statics([s])               # état réel relu après l'annulation
             if gsx_names & {f.name.lower() for f in s.gsx_files}:
                 self.config.gsx_choices.pop(s.key, None)
         try:

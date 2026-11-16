@@ -21,6 +21,7 @@ SGM does it for you:
 - **Shows which airports have no GSX profile yet**, detects profiles you installed manually, and searches flightsim.to for the missing ones in one click.
 - **Installs downloaded GSX profiles**: drop the archive on the window, or let SGM find it in your Downloads folder.
 - **Flags new sceneries** installed since the last launch.
+- **Warns when a scenery update brings statics back** that you had turned OFF, and turns them OFF again in one click (undoable).
 
 ## Requirements
 
@@ -129,7 +130,7 @@ At the first launch, SGM asks whether it may check for a new version. If you agr
 
 ## Updates of sceneries
 
-A scenery update (for example through the Marketplace or an installer) may restore its original files. Just switch it again in SGM.
+A scenery update (for example through the Marketplace or an installer) may restore its original files. SGM remembers the statics you turned OFF and the scenery version at that time: when a new version brings them back, an orange banner lists the sceneries. **Reapply OFF** turns them OFF again (with the usual backups, and it can be undone), **Ignore** keeps them ON for this update. Nothing changes until you click. Restoring a scenery's original state forgets this choice.
 
 ## Building from source
 
@@ -185,6 +186,9 @@ Details and exact versions: `licenses/THIRD-PARTY-NOTICES.txt` and **Help › Li
 - Microsoft Flight Simulator is a trademark of Microsoft Corporation. GSX is a product of FSDreamTeam / Virtuali. All other names and trademarks are the property of their respective owners.
 
 ## Version history
+
+**In progress (next version)**
+- **Statics brought back by a scenery update**: an orange banner lists the sceneries whose statics came back ON after an update although you had turned them OFF with SGM; **Reapply OFF** (undoable) or **Ignore**.
 
 **v1.0**
 - **First stable version.** SGM leaves beta.
