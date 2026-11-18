@@ -53,6 +53,22 @@ class DesignTest(SandboxTest):
         cb.setChecked(True)
         self.assertFalse(cb.grab().isNull())
 
+    def test_fleche_de_menu_dans_le_bouton_en_arabe(self):
+        # Revue qualité 2026-11-18 : en RTL, Qt dessinait la flèche du bouton « Profils de statics » hors du bouton.
+        for qss in (m.QSS, m.build_qss(m.C)):
+            line = next(l for l in qss.splitlines() if l.startswith("QPushButton::menu-indicator {"))
+            self.assertIn("subcontrol-origin: border", line)
+            self.assertIn("subcontrol-position: right center", line)
+            self.assertNotIn("#", line.split("/*")[0])        # aucune couleur codée en dur (jetons de C seulement)
+
+    def test_info_bulle_signale_le_clic_droit(self):
+        # La restauration n'est accessible que par clic droit : l'info-bulle de la ligne doit le dire, partout.
+        from i18n import EN, TR
+        self.assertIn("·", EN["tip_dblclick"])
+        self.assertEqual(len(TR), 11)
+        for lang, d in TR.items():
+            self.assertIn("·", d["tip_dblclick"], lang)
+
 
 if __name__ == "__main__":
     import unittest

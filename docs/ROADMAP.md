@@ -44,6 +44,20 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 - **Profils de statics** — origine : idée. Enregistrer un jeu d'états ON/OFF (« Trafic IA dense », « Vols
   photo ») et l'appliquer d'un clic. Bénéfice : confort. M. Risque faible.
 - **Relecture native des traductions** (ar, zh, ja surtout) — origine : publication. S. Risque nul.
+- **Restauration visible sans clic droit** — origine : revue qualité 2026-11-18 (`docs/captures/qualite-2026-11-18/AUDIT.md`,
+  point 2). La restauration d'une scène n'est accessible que par clic droit (désormais signalé dans l'info-bulle).
+  Piste : petite icône « ↺ » à côté du dossier quand SGM a modifié la scène. Bénéfice : un nouvel utilisateur trouve
+  comment revenir en arrière. S. Risque faible (interface seule).
+- **Couleur de « Statics OFF »** — origine : revue qualité 2026-11-18 (`fr.png`, point 3). OFF est gris alors que la
+  règle de couleur dit rouge = inactif. **Décision de Fabian** : garder le gris (sobre) ou rouge atténué, puis l'écrire
+  dans `docs/DECISIONS.md`. S. Risque nul.
+- **« Nouvelles scènes » en forme de filtre** — origine : revue qualité 2026-11-18 (`en.png`, point 4). Le bouton
+  ressemble à une action alors que c'est un filtre. Piste : aspect de puce de filtre ou place dans la ligne des
+  filtres. Bénéfice : moins d'hésitation. S. Risque faible.
+- **Disposition compacte sous 1100 px** — origine : revue qualité 2026-11-18 (`fr-1024.png`, point 5). À 1024 × 700,
+  seulement 4 lignes visibles. Piste : recherche et boutons sur une seule ligne, ou lignes plus basses. M. Risque faible.
+- **Pluriels sans parenthèses** — origine : revue qualité 2026-11-18 (point 7). « 7 scenery(ies) » → « Sceneries
+  detected: 7 » et équivalents, ≈ 20 clés × 12 langues, par l'agent traducteur. S. Risque nul.
 
 ## Livré
 

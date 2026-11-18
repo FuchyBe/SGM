@@ -11,6 +11,7 @@ Termes à traduire toujours de la même façon. « = » : ne pas traduire.
 | To check | À vérifier | Zu prüfen | Por revisar | Da verificare | Te controleren | état orange |
 | Restore original state | Restaurer l'état d'origine | Originalzustand wiederherstellen | Restaurar estado original | Ripristina stato originale | Originele staat herstellen | |
 | backup | sauvegarde | Sicherung | copia de seguridad | backup | back-up | |
+| fingerprint (SHA-256) | empreinte (SHA-256) | Prüfsumme (SHA-256) | huella (SHA-256) | impronta (SHA-256) | vingerafdruk (SHA-256) | de : « Prüfsumme », pas « Fingerabdruck » (2026-11-18) |
 | Community folder | dossier Community | Community-Ordner | carpeta Community | cartella Community | Community-map | « Community » = |
 | layout.json, manifest.json, .bgl, .off, .nostatic, ICAO, MSFS, GSX, Orbx Central | = | = | = | = | = | noms techniques |
 
@@ -26,6 +27,7 @@ Termes à traduire toujours de la même façon. « = » : ne pas traduire.
 | fingerprint (SHA-256) | impressão digital (SHA-256) | 校验值（SHA-256） | ハッシュ値（SHA-256） | بصمة (SHA-256) | |
 | Downloads folder | pasta Transferências | “下载”文件夹 | ダウンロードフォルダー | مجلد التنزيلات | pt : « Transferências » (Windows PT-PT) |
 | Settings (menu) | Definições | 设置 | 設定 | الإعدادات | pt : pas « Configurações » (PT-BR) |
+| SGM (genre grammatical) | o SGM | — | — | — | pl : masculin (« SGM jest gotowy », « Dostępny jest SGM ») ; ru : féminin (программа) |
 | default | predefinido | 默认 | 既定 | الافتراضي | pt : pas « padrão » au sens de « par défaut » |
 
 Ponctuation : pt « … » ; nl ‘…’ ; de „…“ ; pl „…” ; ru «…» ; zh “…” et parenthèses pleine chasse （…） ; ja 「…」 et （…） ;

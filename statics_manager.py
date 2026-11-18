@@ -3147,6 +3147,7 @@ QPushButton {{ background: {C['surface2']}; color: {C['text']}; border: 1px soli
 QPushButton:hover {{ background: {C['hover']}; border-color: {C['border2']}; }}
 QPushButton:pressed {{ background: {C['pressed']}; }}
 QPushButton:disabled {{ color: {C['faint']}; background: {C['surface']}; }}
+QPushButton::menu-indicator {{ subcontrol-origin: border; subcontrol-position: right center; width: 10px; right: 6px; }}  /* flèche de menu visible aussi en arabe (RTL) */
 QPushButton#primary {{ background: {C['accent']}; color: {C['accent_dark']}; border: none; font-weight: 600; }}
 QPushButton#primary:hover {{ background: {C['accent_hover']}; }}
 QPushButton#primary:disabled {{ background: {C['accent_dis_bg']}; color: {C['accent_dis_fg']}; }}
