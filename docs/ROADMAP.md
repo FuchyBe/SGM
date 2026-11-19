@@ -45,6 +45,25 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
   photo ») et l'appliquer d'un clic. Bénéfice : confort. M. Risque faible.
 - **Relecture native des traductions** (ar, zh, ja surtout) — origine : publication. S. Risque nul.
 
+Ajouts R&D du 2026-11-19 (PR `rd/2026-11-19`) :
+
+- **Aéroports en double : SGM signale, 3AM agit** — origine : revue R&D E1 à E5, fiche
+  `docs/rd/2026-11-19-doublons-oaci.md`. Bénéfice : explique les statics qui « reviennent » et la colonne GSX orange
+  sans raison. S à M. Risque nul (lecture seule ; faux positifs possibles avec des paquets complémentaires).
+  **Décision de Fabian** (SGM ou 3AM).
+- **Scènes du Marketplace en lecture seule, pour leurs profils GSX** — origine : revue R&D E1 à E5, fiche
+  `docs/rd/2026-11-19-marketplace-lecture-seule.md`. Bénéfice : profils GSX pour les aéroports achetés. M.
+  Risque moyen (interdiction d'écrire dans ces paquets à tenir dans le moteur, testée). **Décision de Fabian**, après
+  un relevé des dossiers Marketplace dans MSFS 2024 (étape 0, sans code).
+- **Repli du bouton « OACI GSX » vers la liste flightsim.to « GSX Pro »** — origine : chercheur GSX. Bénéfice : lien
+  qui marche si la recherche Google échoue (simple lien ouvert dans le navigateur, aucun réseau dans l'application).
+  S. Risque faible. **Décision de Fabian** (change le comportement du bouton).
+- **Profils GSX nommés avec un point** (`xxxx-v1.2.ini`) — origine : lecture du code (`GSX_NAME_RE`, détail dans
+  `docs/gsx/CAS.md`). Bénéfice : profils d'archives mieux détectés. S. Risque : faux positifs, tests nécessaires.
+- **Profil GSX réservé à MSFS 2020 ou 2024** — origine : chercheur GSX. Bénéfice : éviter un profil incompatible.
+  M. L'information n'est que dans la description en ligne : **décision de Fabian** (réseau), sinon abandon.
+- **Ligne de commande** — reste à ficher (prochain passage R&D).
+
 ## Livré
 
 - **v1.0** (préparée) — version installable par utilisateur (PR #36), reprise du portable par copie, fin de « beta ».
