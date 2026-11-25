@@ -44,6 +44,20 @@ Chaque sujet : titre, origine, bénéfice pour l'utilisateur, estimation (S/M/L)
 - **Profils de statics** — origine : idée. Enregistrer un jeu d'états ON/OFF (« Trafic IA dense », « Vols
   photo ») et l'appliquer d'un clic. Bénéfice : confort. M. Risque faible.
 - **Relecture native des traductions** (ar, zh, ja surtout) — origine : publication. S. Risque nul.
+- **Arabe : flèche du menu « Profils de statics » invisible** — origine : revue qualité 2026-11-25 (bug Qt en
+  RTL, capture `docs/captures/qualite-2026-11-25/ar-barre-x3.png`, essais `test-fleche-menu-rtl.png`). Règle QSS
+  `menu-indicator` propre au RTL, à vérifier sous Windows et avec `build_qss` (3AM). Bénéfice : on voit que le
+  bouton ouvre un menu. S. Risque faible.
+- **Rendre « Restaurer l'état d'origine » visible** — origine : revue qualité 2026-11-25 (`AUDIT.md`, P2).
+  Ajouter « Clic droit : restaurer l'état d'origine » à l'info-bulle de ligne (12 langues). Bénéfice : retour
+  arrière trouvé sans le guide. S. Risque nul.
+- **Filtre actif en bleu plutôt qu'en vert** — origine : revue qualité 2026-11-25 (`nl-a-verifier.png`). Le vert
+  est réservé à ON ; un filtre « À vérifier » actif apparaît en vert. Décision de Fabian (sens des couleurs). S.
+  Risque nul.
+- **Info-bulle sur l'interrupteur désactivé d'une scène « À vérifier »** — origine : revue qualité 2026-11-25
+  (`en.png`, ligne EBCI). Même texte que l'icône dossier. S. Risque nul.
+- **Nettoyer les clés de traduction mortes** (`f_all`, `f_on`, `f_off`, `f_gsx`, `f_check`, `FILTER_KEYS`) —
+  origine : revue qualité 2026-11-25. Vérifier d'abord que 3AM ne s'en sert pas. S. Risque faible.
 
 ## Livré
 

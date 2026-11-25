@@ -8,7 +8,7 @@ Termes à traduire toujours de la même façon. « = » : ne pas traduire.
 | scenery | scène | Szenerie | escenario | scenario | scenery | |
 | GSX profile | profil GSX | GSX-Profil | perfil GSX | profilo GSX | GSX-profiel | |
 | ON / OFF | ON / OFF | AN / AUS | ON / OFF | ON / OFF | AAN / UIT | choix déjà en place |
-| To check | À vérifier | Zu prüfen | Por revisar | Da verificare | Te controleren | état orange |
+| To check | À vérifier | Zu prüfen | Por revisar | Da verificare | Te controleren | état orange : même libellé partout (filtre, colonne, notes, compteur), jamais l'impératif seul (« Prüfen », « Revisar ») |
 | Restore original state | Restaurer l'état d'origine | Originalzustand wiederherstellen | Restaurar estado original | Ripristina stato originale | Originele staat herstellen | |
 | backup | sauvegarde | Sicherung | copia de seguridad | backup | back-up | |
 | Community folder | dossier Community | Community-Ordner | carpeta Community | cartella Community | Community-map | « Community » = |
@@ -26,6 +26,7 @@ Termes à traduire toujours de la même façon. « = » : ne pas traduire.
 | fingerprint (SHA-256) | impressão digital (SHA-256) | 校验值（SHA-256） | ハッシュ値（SHA-256） | بصمة (SHA-256) | |
 | Downloads folder | pasta Transferências | “下载”文件夹 | ダウンロードフォルダー | مجلد التنزيلات | pt : « Transferências » (Windows PT-PT) |
 | Settings (menu) | Definições | 设置 | 設定 | الإعدادات | pt : pas « Configurações » (PT-BR) |
+| To check (état) | A verificar | 待检查 | 要確認 | للتحقق | pl « Do sprawdzenia », ru « Проверить » (à confirmer) |
 | default | predefinido | 默认 | 既定 | الافتراضي | pt : pas « padrão » au sens de « par défaut » |
 
 Ponctuation : pt « … » ; nl ‘…’ ; de „…“ ; pl „…” ; ru «…» ; zh “…” et parenthèses pleine chasse （…） ; ja 「…」 et （…） ;
