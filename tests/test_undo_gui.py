@@ -52,6 +52,23 @@ class UndoGuiTest(SandboxTest):
         w.deleteLater()
         APP.processEvents()
 
+    def test_libelle_annuler_traduit(self):
+        """L'info-bulle Annuler d'une bascule suit la langue (« Statics AUS », pas « Statics OFF »)."""
+        cfg = m.Config()                                    # relit la configuration du setUp
+        cfg.lang = "de"
+        cfg.save()
+        w = m.MainWindow()
+        QTimer.singleShot(0, w.start_scan)
+        wait_scan(w)
+        scene = next(s for s in w.scenes.values() if s.folder == "test-ebbr")
+        w.on_toggle(scene, False)
+        self.assertIn(m.tr("st_off") + " — Brussels Airport EBBR", w.btn_undo.toolTip())
+        self.assertIn("Statics AUS", w.btn_undo.toolTip())
+        self.assertNotIn("Statics OFF", w.btn_undo.toolTip())
+        w.close()
+        w.deleteLater()
+        APP.processEvents()
+
 
 if __name__ == "__main__":
     import unittest

@@ -5851,7 +5851,7 @@ class MainWindow(QMainWindow):
                 row.refresh(scene)
             return
         try:
-            with undoable(f"Statics {'ON' if target == ON else 'OFF'} — {scene.title}"):
+            with undoable(f"{state_text(target)} — {scene.title}"):   # libellé traduit (info-bulle Annuler)
                 set_scene_state(scene, target)
         except Exception as e:
             warn(self, tr("toggle_fail", name=scene.title, err=e))
